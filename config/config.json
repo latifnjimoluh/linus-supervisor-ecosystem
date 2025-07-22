@@ -1,0 +1,9 @@
+{
+  "development": {
+    "username": "postgres",
+    "password": "Nexus2023.",
+    "database": "linusupervision",
+    "host": "localhost",
+    "dialect": "postgres"
+  }
+}
