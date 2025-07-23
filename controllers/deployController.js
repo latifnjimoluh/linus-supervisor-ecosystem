@@ -1,6 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 const { runTerraformApply } = require("../utils/terraformRunner");
+const { runTerraformDestroy } = require("../utils/terraformRunner");
+
 const Deployment = require("../models").Deployment;
 
 exports.deployInfrastructure = async (req, res) => {
@@ -38,12 +40,14 @@ exports.deployInfrastructure = async (req, res) => {
       user_email: user.email,
       vm_name: vmName,
       service_name,
+      operation_type: "apply",
       started_at: startTime,
       ended_at: endTime,
       duration: `${duration}s`,
       success,
-      log_path: logPath
+      log_path: logPath,
     });
+
 
     // Réponse HTTP
     res.status(200).json({
@@ -74,8 +78,10 @@ exports.destroyInfrastructure = async (req, res) => {
     const endTime = new Date();
     const duration = (endTime - startTime) / 1000;
 
+    // 📁 Génération du log
     const logFilename = `destroy-${startTime.toISOString().replace(/[:.]/g, "-")}-${user.id}.log`;
     const logPath = path.join(__dirname, "..", "logs", logFilename);
+
     const logContent =
       `==== DESTRUCTION ${service_name.toUpperCase()} PAR ${user.email} ====\n\n` +
       `📅 Début : ${startTime.toISOString()}\n` +
@@ -83,16 +89,32 @@ exports.destroyInfrastructure = async (req, res) => {
       `✅ Succès : ${success}\n\n` +
       `--- STDOUT ---\n${stdout}\n\n` +
       `--- STDERR ---\n${stderr}`;
+
     fs.writeFileSync(logPath, logContent);
 
-    res.status(200).json({
-      message: "🧨 Destruction terminée",
+    // 🗄️ Enregistrement dans la base
+    await Deployment.create({
+      user_id: user.id,
+      user_email: user.email,
+      vm_name: vmName,
+      service_name,
+      operation_type: "destroy",
+      started_at: startTime,
+      ended_at: endTime,
+      duration: `${duration}s`,
+      success,
+      log_path: logPath,
+    });
+
+
+    return res.status(200).json({
+      message: "✅ Destruction réussie",
       output: stdout,
       log: logPath,
     });
   } catch (error) {
     console.error("❌ Erreur de destruction:", error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "❌ Échec de la destruction",
       error: error.message,
     });

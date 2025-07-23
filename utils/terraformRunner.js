@@ -33,7 +33,6 @@ exports.runTerraformApply = (variables) => {
   });
 };
 
-
 exports.runTerraformDestroy = (variables) => {
   return new Promise((resolve, reject) => {
     const tfDir = path.resolve(__dirname, "../terraform");
