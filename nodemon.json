@@ -1,0 +1,4 @@
+{
+  "watch": ["."],
+  "ignore": ["terraform/*", "terraform/**/*.tf", "terraform/**/*.sh", "terraform/**/*.json"]
+}
