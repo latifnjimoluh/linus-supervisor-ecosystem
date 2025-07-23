@@ -119,3 +119,8 @@ variable "gateway_ip" {
   type        = string
   default     = "192.168.24.2"
 }
+
+variable "service_config_scripts" {
+  type        = map(string)
+  description = "Scripts de configuration par service ex: { dns = '/chemin/script.sh' }"
+}

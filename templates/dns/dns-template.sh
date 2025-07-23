@@ -27,31 +27,29 @@ EOF
 
 # 2. Déclaration de zone
 cat > /etc/bind/named.conf.local <<EOF
-zone "camer.cm" {
+zone "{{zone_name}}" {
     type master;
-    file "/etc/bind/db.camer.cm";
+    file "/etc/bind/db.{{zone_name}}";
 };
 EOF
 
 # 3. Fichier de zone simple
-cat > /etc/bind/db.camer.cm <<EOF
+cat > /etc/bind/db.{{zone_name}} <<EOF
 \$TTL    604800
-@       IN      SOA     ns1.camer.cm. admin.camer.cm. (
-                              2025071001 ; Serial
+@       IN      SOA     {{fqdn_ns}}. {{admin_email}}. (
+                              {{serial}} ; Serial
                                  604800 ; Refresh
                                   86400 ; Retry
                                 2419200 ; Expire
                                  604800 ) ; Negative Cache TTL
 
-@       IN      NS      ns1.camer.cm.
-ns1     IN      A       192.168.24.163
-www     IN      A       192.168.24.163
+{{dns_records}}
 EOF
 
 # 4. Vérification
 echo "🔍 Vérification configuration :"
 named-checkconf
-named-checkzone camer.cm /etc/bind/db.camer.cm
+named-checkzone {{zone_name}} /etc/bind/db.{{zone_name}}
 
 # 5. Restart
 systemctl restart bind9
@@ -59,6 +57,6 @@ systemctl status bind9 --no-pager
 
 echo "✔️  Vérification finale..."
 systemctl is-active bind9
-named-checkconf && named-checkzone camer.cm /etc/bind/db.camer.cm
+named-checkconf && named-checkzone {{zone_name}} /etc/bind/db.{{zone_name}}
 
-echo "✅ DNS CAMER.CM correctement installé et vérifié." > /var/log/dns_setup.log
+echo "✅ DNS {{zone_name}} correctement installé et vérifié." > /var/log/dns_setup.log

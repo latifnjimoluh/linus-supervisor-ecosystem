@@ -29,6 +29,8 @@ db.Sequelize = Sequelize;
 // 🔧 Si le chargement auto ne suffit pas :
 db.Deployment = require("./deployment")(sequelize, Sequelize.DataTypes);
 db.User = require("./user")(sequelize, Sequelize.DataTypes);
+db.serviceConfiguration = require("./ServiceConfiguration")(sequelize, Sequelize.DataTypes);
+
 
 
 module.exports = db;
