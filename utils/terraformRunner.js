@@ -49,18 +49,18 @@ exports.runTerraformApply = (variables) => {
   });
 };
 
-
-exports.runTerraformDestroy = (variables) => {
+exports.runTerraformDestroy = () => {
   return new Promise((resolve, reject) => {
     const tfDir = path.resolve(__dirname, "../terraform");
     const tfvarsPath = path.join(tfDir, "variables.tfvars.json");
 
-    fs.writeFileSync(tfvarsPath, JSON.stringify(variables, null, 2));
+    console.log("📁 [Terraform Destroy] Dossier Terraform :", tfDir);
+    console.log("📄 [Terraform Destroy] Chemin variables.tfvars.json :", tfvarsPath);
 
-    const initCmd = `terraform init -input=false -upgrade=false`;
     const destroyCmd = `terraform destroy -auto-approve -var-file=variables.tfvars.json`;
+    console.log("💣 [Terraform Destroy] Commande exécutée :", destroyCmd);
 
-    exec(`${initCmd} && ${destroyCmd}`, {
+    exec(destroyCmd, {
       cwd: tfDir,
       env: {
         ...process.env,
@@ -71,10 +71,11 @@ exports.runTerraformDestroy = (variables) => {
       const success = !error;
 
       if (!success) {
-        console.error("❌ Erreur Terraform destroy:", stderr);
+        console.error("❌ [Terraform Destroy] Erreur d'exécution:", stderr);
         return reject({ stdout, stderr, success });
       }
 
+      console.log("✅ [Terraform Destroy] Destruction terminée avec succès.");
       return resolve({ stdout, stderr, success });
     });
   });

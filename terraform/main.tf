@@ -20,6 +20,18 @@ provider "proxmox" {
   pm_tls_insecure = true
 }
 
+# 🧠 Calcul dynamique des adresses IP
+locals {
+  ipconfig_map = {
+    for vm in var.vm_names :
+    vm => (
+      var.use_static_ip && contains(keys(var.static_ips), vm)
+        ? "ip=${var.static_ips[vm]}/${var.network_cidr},gw=${var.gateway_ip}"
+        : "ip=dhcp"
+    )
+  }
+}
+
 resource "proxmox_vm_qemu" "vm" {
   for_each    = toset(var.vm_names)
   name        = each.value
@@ -44,8 +56,7 @@ resource "proxmox_vm_qemu" "vm" {
   cipassword = var.cloudinit_password
   sshkeys    = file(var.ssh_public_key_path)
 
-  ipconfig0 = var.use_static_ip && contains(keys(var.static_ips), each.value) ? "ip=${var.static_ips[each.value]}/${var.network_cidr},gw=${var.gateway_ip}" : "ip=dhcp"
-
+  ipconfig0 = local.ipconfig_map[each.value]
 
   disk {
     slot     = "scsi0"
@@ -78,9 +89,9 @@ resource "proxmox_vm_qemu" "vm" {
   }
 }
 
-# Connexion SSH
-resource "null_resource" "dns_install" {
-  for_each = toset(var.vm_names)
+# 🚀 Déploiement distant des scripts init + config pour chaque VM
+resource "null_resource" "configure_service" {
+  for_each = var.service_config_scripts
 
   depends_on = [proxmox_vm_qemu.vm]
 
@@ -97,26 +108,26 @@ resource "null_resource" "dns_install" {
   }
 
   provisioner "file" {
-    source      = var.dns_init_script
-    destination = "/tmp/dns-install.sh"
+    source      = var.init_script
+    destination = "/tmp/init.sh"
   }
 
   provisioner "remote-exec" {
     inline = [
-      "chmod +x /tmp/dns-install.sh",
-      "sudo /tmp/dns-install.sh"
+      "chmod +x /tmp/init.sh",
+      "sudo /tmp/init.sh"
     ]
   }
 
   provisioner "file" {
-    source      = var.dns_config_script
-    destination = "/tmp/dns-configure.sh"
+    source      = each.value
+    destination = "/tmp/config.sh"
   }
 
   provisioner "remote-exec" {
     inline = [
-      "chmod +x /tmp/dns-configure.sh",
-      "sudo /tmp/dns-configure.sh"
+      "chmod +x /tmp/config.sh",
+      "sudo /tmp/config.sh"
     ]
   }
 }
