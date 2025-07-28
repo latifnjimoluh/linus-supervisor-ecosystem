@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { exec } = require("child_process");
+const { execSync, exec } = require("child_process");
 
 exports.runTerraformApply = (variables) => {
   return new Promise((resolve, reject) => {
@@ -32,7 +32,7 @@ exports.runTerraformApply = (variables) => {
       cwd: tfDir,
       env: {
         ...process.env,
-        TF_REGISTRY_CLIENT_TIMEOUT: "0", // Pour éviter les appels réseau inutiles
+        TF_REGISTRY_CLIENT_TIMEOUT: "0",
         TF_LOG: "ERROR"
       }
     }, (error, stdout, stderr) => {
@@ -44,39 +44,26 @@ exports.runTerraformApply = (variables) => {
       }
 
       console.log("✅ [Terraform Runner] Déploiement terminé avec succès.");
-      return resolve({ stdout, stderr, success });
-    });
-  });
-};
 
-exports.runTerraformDestroy = () => {
-  return new Promise((resolve, reject) => {
-    const tfDir = path.resolve(__dirname, "../terraform");
-    const tfvarsPath = path.join(tfDir, "variables.tfvars.json");
-
-    console.log("📁 [Terraform Destroy] Dossier Terraform :", tfDir);
-    console.log("📄 [Terraform Destroy] Chemin variables.tfvars.json :", tfvarsPath);
-
-    const destroyCmd = `terraform destroy -auto-approve -var-file=variables.tfvars.json`;
-    console.log("💣 [Terraform Destroy] Commande exécutée :", destroyCmd);
-
-    exec(destroyCmd, {
-      cwd: tfDir,
-      env: {
-        ...process.env,
-        TF_REGISTRY_CLIENT_TIMEOUT: "0",
-        TF_LOG: "ERROR"
-      }
-    }, (error, stdout, stderr) => {
-      const success = !error;
-
-      if (!success) {
-        console.error("❌ [Terraform Destroy] Erreur d'exécution:", stderr);
-        return reject({ stdout, stderr, success });
+      let outputJson = {};
+      try {
+        const outputBuffer = execSync(`terraform output -json`, { cwd: tfDir });
+        outputJson = JSON.parse(outputBuffer.toString());
+        console.log("📤 [Terraform Runner] Outputs Terraform :", outputJson);
+      } catch (err) {
+        console.warn("⚠️ [Terraform Runner] Échec de récupération des outputs:", err.message);
       }
 
-      console.log("✅ [Terraform Destroy] Destruction terminée avec succès.");
-      return resolve({ stdout, stderr, success });
+      // 📦 Extraction utile
+      const vmInfo = {
+        vm_ips: outputJson?.vm_ips?.value || {},
+        vm_names: outputJson?.vm_names?.value || [],
+        vm_ids: outputJson?.vm_ids?.value || {},
+        ssh_commands: outputJson?.ssh_commands?.value || {},
+        status: outputJson?.status?.value || ""
+      };
+
+      return resolve({ stdout, stderr, success, vmInfo });
     });
   });
 };

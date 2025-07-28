@@ -34,3 +34,12 @@ output "status" {
 %{ endfor ~}
 EOT
 }
+
+output "vm_ids" {
+  description = "IDs des machines virtuelles créées"
+  value = {
+    for vm in proxmox_vm_qemu.vm :
+    vm.name => vm.vmid
+  }
+}
+# 5️⃣ Informations sur les services déployés
