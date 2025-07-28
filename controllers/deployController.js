@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { runTerraformApply } = require("../utils/terraformRunner");
-const { Deployment, ServiceConfiguration, InitScript } = require("../models");
+const { Deployment, ServiceConfiguration, InitScript, MonitoringScript } = require("../models");
 const { getVMStatus, stopVM, deleteVM, getVMInfo, getVMIP } = require("../utils/proxmoxService");
 
 exports.deployInfrastructure = async (req, res) => {
@@ -17,78 +17,84 @@ exports.deployInfrastructure = async (req, res) => {
 
     console.log("🔍 [API] Service demandé :", service_name);
 
-    // 1️⃣ Récupérer la configuration dynamique
-    const configId = payload.config_id;
-    let serviceConfig;
-
-    if (configId) {
-      serviceConfig = await ServiceConfiguration.findByPk(configId);
-      if (!serviceConfig) {
-        return res.status(404).json({
-          message: `Configuration dynamique introuvable pour l'ID '${configId}'`,
-        });
+    // 1️⃣ CONFIGURATION
+    let configScriptPath = "";
+    if (payload.config_id) {
+      const config = await ServiceConfiguration.findByPk(payload.config_id);
+      if (!config) {
+        return res.status(404).json({ message: `Configuration introuvable (ID: ${payload.config_id})` });
       }
-      console.log(`📌 [API] Script config sélectionné (ID: ${configId})`);
+      configScriptPath = config.script_path.replace(/\\/g, "/");
+      console.log(`📌 Script config sélectionné (ID: ${payload.config_id})`);
     } else {
-      serviceConfig = await ServiceConfiguration.findOne({
+      const latestConfig = await ServiceConfiguration.findOne({
         where: { service_type: service_name },
         order: [["created_at", "DESC"]],
       });
-      if (!serviceConfig) {
-        return res.status(404).json({
-          message: `Aucune configuration dynamique trouvée pour le service '${service_name}'`,
-        });
+      if (!latestConfig) {
+        return res.status(404).json({ message: `Aucune configuration dynamique trouvée pour '${service_name}'` });
       }
-      console.log("🧠 [API] Dernière configuration utilisée automatiquement");
+      configScriptPath = latestConfig.script_path.replace(/\\/g, "/");
+      console.log(`📌 Dernière config utilisée automatiquement (ID: ${latestConfig.id})`);
     }
 
-    const configScriptPath = serviceConfig.script_path.replace(/\\/g, "/");
-
-    // 2️⃣ Script d'init si sélectionné
-    let initScriptPath = null;
+    // 2️⃣ INIT
+    let initScriptPath = "";
     if (payload.init_script_id) {
-      const initScript = await InitScript.findByPk(payload.init_script_id);
-      if (!initScript) {
-        return res.status(404).json({
-          message: `Script d'initialisation introuvable pour l'ID '${payload.init_script_id}'`,
-        });
+      const init = await InitScript.findByPk(payload.init_script_id);
+      if (!init) {
+        return res.status(404).json({ message: `Script init introuvable (ID: ${payload.init_script_id})` });
       }
-      initScriptPath = initScript.script_path.replace(/\\/g, "/");
-      console.log(`📌 [API] Script init sélectionné (ID: ${payload.init_script_id})`);
+      initScriptPath = init.script_path.replace(/\\/g, "/");
+      console.log(`⚙️ Script init sélectionné (ID: ${payload.init_script_id})`);
+    } else {
+      const latestInit = await InitScript.findOne({ order: [["created_at", "DESC"]] });
+      if (latestInit) {
+        initScriptPath = latestInit.script_path.replace(/\\/g, "/");
+        console.log(`⚙️ Dernier script init injecté automatiquement (ID: ${latestInit.id})`);
+      } else {
+        console.log("⚠️ Aucun script init disponible");
+      }
     }
 
-    // 2️⃣ Bis : Script de monitoring si sélectionné
+    // 3️⃣ MONITORING
     let monitoringScriptPath = "";
     if (payload.monitoring_script_id) {
-      const monitoringScript = await InitScript.findByPk(payload.monitoring_script_id);
-      if (!monitoringScript) {
-        return res.status(404).json({
-          message: `Script de monitoring introuvable pour l'ID '${payload.monitoring_script_id}'`,
-        });
+      const monitor = await MonitoringScript.findByPk(payload.monitoring_script_id);
+      if (!monitor) {
+        return res.status(404).json({ message: `Script monitoring introuvable (ID: ${payload.monitoring_script_id})` });
       }
-      monitoringScriptPath = monitoringScript.script_path.replace(/\\/g, "/");
-      console.log(`🩺 [API] Script de monitoring sélectionné (ID: ${payload.monitoring_script_id})`);
+      monitoringScriptPath = monitor.script_path.replace(/\\/g, "/");
+      console.log(`🩺 Script monitoring sélectionné (ID: ${payload.monitoring_script_id})`);
+    } else {
+      const latestMonitor = await MonitoringScript.findOne({ order: [["created_at", "DESC"]] });
+      if (latestMonitor) {
+        monitoringScriptPath = latestMonitor.script_path.replace(/\\/g, "/");
+        console.log(`🩺 Dernier script monitoring injecté automatiquement (ID: ${latestMonitor.id})`);
+      } else {
+        console.log("ℹ️ Aucun script monitoring disponible");
+      }
     }
 
-    // 3️⃣ Injecter les chemins dans le payload
-    payload.init_script = initScriptPath || "";
-    payload.monitoring_script = monitoringScriptPath || "";
+    // 4️⃣ Injection payload Terraform
+    payload.init_script = initScriptPath;
+    payload.monitoring_script = monitoringScriptPath;
     payload.service_config_scripts = {
       [service_name]: configScriptPath,
     };
 
-    console.log("🧩 [API] Scripts injectés :");
+    console.log("🧩 Scripts injectés :");
     console.log("   🔧 config       :", configScriptPath);
     console.log("   ⚙️  init         :", initScriptPath);
     console.log("   🩺 monitoring   :", monitoringScriptPath);
 
-    // 4️⃣ Exécuter Terraform
-    console.log("🚀 [API] Lancement de runTerraformApply...");
-    const { stdout, stderr, success, vmInfo } = await runTerraformApply(payload); // vmInfo = outputs
+    // 5️⃣ Terraform
+    console.log("🚀 Lancement Terraform...");
+    const { stdout, stderr, success, vmInfo } = await runTerraformApply(payload);
     const endTime = new Date();
     const duration = (endTime - startTime) / 1000;
 
-    // 5️⃣ Créer un log fichier
+    // 6️⃣ Logs
     const logFilename = `deploy-${startTime.toISOString().replace(/[:.]/g, "-")}-${user.id}.log`;
     const logPath = path.join(__dirname, "..", "logs", logFilename);
     const logContent =
@@ -99,9 +105,8 @@ exports.deployInfrastructure = async (req, res) => {
       `--- STDOUT ---\n${stdout}\n\n` +
       `--- STDERR ---\n${stderr}`;
     fs.writeFileSync(logPath, logContent);
-    console.log("🗂️ [API] Log écrit :", logPath);
 
-    // 6️⃣ Enregistrement BD enrichi avec IP & ID de VM
+    // 7️⃣ BD
     await Deployment.create({
       user_id: user.id,
       user_email: user.email,
@@ -117,7 +122,7 @@ exports.deployInfrastructure = async (req, res) => {
       vm_ip: vmInfo?.vm_ips?.[vmName] || null,
     });
 
-    // 7️⃣ Réponse enrichie avec les infos utiles
+    // 8️⃣ Réponse finale
     res.status(200).json({
       message: "✅ Déploiement réussi",
       output: stdout,
@@ -129,13 +134,14 @@ exports.deployInfrastructure = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Erreur de déploiement:", error);
+    console.error("❌ Erreur :", error);
     res.status(500).json({
       message: "❌ Échec du déploiement",
       error: error.message,
     });
   }
 };
+
 
 exports.deleteVMDirect = async (req, res) => {
   const user = req.user;

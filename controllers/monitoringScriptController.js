@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { InitScript } = require("../models"); // Ou MonitoringScript selon ta structure
+const { MonitoringScript } = require("../models"); // ← Utilisation du bon modèle
 const { v4: uuidv4 } = require("uuid");
 
 exports.generateMonitoringScript = async (req, res) => {
@@ -22,7 +22,7 @@ exports.generateMonitoringScript = async (req, res) => {
       .replace(/{{PORT_RANGE}}/g, port_range);
 
     // 📁 Générer un nom unique
-    const filename = `agent-dns-${zone_name}-${uuidv4()}.sh`;
+    const filename = `monitor-dns-${zone_name}-${uuidv4()}.sh`;
     const outputDir = path.join(__dirname, "../generated-scripts");
     const outputPath = path.join(outputDir, filename);
 
@@ -32,20 +32,20 @@ exports.generateMonitoringScript = async (req, res) => {
     fs.writeFileSync(outputPath, finalContent);
     console.log("✅ Script généré :", outputPath);
 
-    // 🗃️ Enregistrement base de données
-    const savedScript = await InitScript.create({
+    // 🗃️ Enregistrement base de données dans `monitoring_scripts`
+    const savedScript = await MonitoringScript.create({
       name: `Agent DNS - ${zone_name}`,
       script_path: outputPath,
-      service_type: "dns", // ou autre selon usage
+      service_type: "dns",
     });
 
     return res.status(201).json({
-      message: "Script de supervision généré et enregistré avec succès",
+      message: "Script de monitoring généré et sauvegardé",
       script_id: savedScript.id,
       script_path: savedScript.script_path,
     });
   } catch (error) {
-    console.error("❌ Erreur génération script DNS :", error);
-    res.status(500).json({ message: "Erreur interne", error: error.message });
+    console.error("❌ Erreur génération monitoring :", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };

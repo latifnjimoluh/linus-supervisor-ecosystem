@@ -31,6 +31,7 @@ db.Deployment = require("./deployment")(sequelize, Sequelize.DataTypes);
 db.User = require("./user")(sequelize, Sequelize.DataTypes);
 db.InitScript = require("./initScript")(sequelize, Sequelize.DataTypes);
 db.serviceConfiguration = require("./ServiceConfiguration")(sequelize, Sequelize.DataTypes);
+db.MonitoringScript = require("./monitoringScript")(sequelize, Sequelize.DataTypes);
 
 
 
