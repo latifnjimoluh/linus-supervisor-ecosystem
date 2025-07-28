@@ -11,6 +11,48 @@ function getHeaders(tokenId, tokenName, tokenSecret) {
   };
 }
 
+exports.getVMInfo = async ({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret }) => {
+  const url = `${apiUrl}/nodes/${node}/qemu/${vmId}/config`;
+  const headers = getHeaders(tokenId, tokenName, tokenSecret);
+
+  try {
+    const res = await axios.get(url, { httpsAgent, headers });
+    const name = res.data?.data?.name || `vm-${vmId}`;
+    return { name };
+  } catch (error) {
+    throw new Error(`Erreur récupération nom VM : ${error.message}`);
+  }
+};
+
+exports.getVMIP = async ({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret }) => {
+  const url = `${apiUrl}/nodes/${node}/qemu/${vmId}/agent/network-get-interfaces`;
+  const headers = getHeaders(tokenId, tokenName, tokenSecret);
+
+  try {
+    const res = await axios.get(url, { httpsAgent, headers });
+
+    // ✅ Correction ici : on accède à data.result
+    const interfaces = res.data?.data?.result || [];
+
+    for (const iface of interfaces) {
+      if (iface?.["ip-addresses"]) {
+        const ipObj = iface["ip-addresses"].find(ip =>
+          ip?.["ip-address"] &&
+          !ip["ip-address"].startsWith("127.") &&
+          ip["ip-address"].includes(".")
+        );
+        if (ipObj) return ipObj["ip-address"];
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.warn("⚠️ Impossible d’obtenir l’IP (QEMU Agent ?) :", error.message);
+    return null;
+  }
+};
+
+
 // 🔍 Vérifie l'état d'une VM (running / stopped)
 exports.getVMStatus = async ({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret }) => {
   const httpsAgent = new https.Agent({ rejectUnauthorized: false });

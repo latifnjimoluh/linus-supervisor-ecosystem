@@ -130,4 +130,20 @@ resource "null_resource" "configure_service" {
       "sudo /tmp/config.sh"
     ]
   }
+
+    provisioner "file" {
+    source      = var.monitoring_script
+    destination = "/tmp/monitoring.sh"
+    # facultatif : tu peux aussi choisir /opt/monitoring.sh
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/monitoring.sh",
+      "sudo /tmp/monitoring.sh"
+    ]
+  }
+
 }
+
+

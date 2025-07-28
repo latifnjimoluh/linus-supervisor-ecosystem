@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { runTerraformApply } = require("../utils/terraformRunner");
 const { Deployment, ServiceConfiguration, InitScript } = require("../models");
-const { deleteVM, getVMStatus, stopVM } = require("../utils/proxmoxService");
+const { getVMStatus, stopVM, deleteVM, getVMInfo, getVMIP } = require("../utils/proxmoxService");
 
 exports.deployInfrastructure = async (req, res) => {
   const user = req.user;
@@ -57,14 +57,30 @@ exports.deployInfrastructure = async (req, res) => {
       console.log(`📌 [API] Script init sélectionné (ID: ${payload.init_script_id})`);
     }
 
+    // 2️⃣ Bis : Script de monitoring si sélectionné
+    let monitoringScriptPath = "";
+    if (payload.monitoring_script_id) {
+      const monitoringScript = await InitScript.findByPk(payload.monitoring_script_id);
+      if (!monitoringScript) {
+        return res.status(404).json({
+          message: `Script de monitoring introuvable pour l'ID '${payload.monitoring_script_id}'`,
+        });
+      }
+      monitoringScriptPath = monitoringScript.script_path.replace(/\\/g, "/");
+      console.log(`🩺 [API] Script de monitoring sélectionné (ID: ${payload.monitoring_script_id})`);
+    }
+
     // 3️⃣ Injecter les chemins dans le payload
-    payload.config_scriptconfig_script = configScriptPath;
     payload.init_script = initScriptPath || "";
+    payload.monitoring_script = monitoringScriptPath || "";
     payload.service_config_scripts = {
       [service_name]: configScriptPath,
     };
 
-    console.log("🧩 [API] Scripts injectés :\n- config:", configScriptPath, "\n- init:", initScriptPath);
+    console.log("🧩 [API] Scripts injectés :");
+    console.log("   🔧 config       :", configScriptPath);
+    console.log("   ⚙️  init         :", initScriptPath);
+    console.log("   🩺 monitoring   :", monitoringScriptPath);
 
     // 4️⃣ Exécuter Terraform
     console.log("🚀 [API] Lancement de runTerraformApply...");
@@ -121,7 +137,6 @@ exports.deployInfrastructure = async (req, res) => {
   }
 };
 
-
 exports.deleteVMDirect = async (req, res) => {
   const user = req.user;
   const {
@@ -153,6 +168,12 @@ exports.deleteVMDirect = async (req, res) => {
     console.log(`💡 Statut actuel de la VM ${vm_id} : ${status}`);
     logOutput += `Statut initial: ${status}\n`;
 
+    
+    // ✅ Récupérer les infos AVANT la suppression
+    const { name: vm_name } = await getVMInfo(commonArgs);
+    const vm_ip = await getVMIP(commonArgs);
+    console.log("📡 IP récupérée depuis QEMU Agent :", vm_ip);
+
     if (status === "running") {
       await stopVM(commonArgs);
       logOutput += `Demande d'arrêt envoyée...\n`;
@@ -169,11 +190,14 @@ exports.deleteVMDirect = async (req, res) => {
 
       const finalStatus = await getVMStatus(commonArgs);
       if (finalStatus === "running") {
-        return res.status(500).json({ message: "❌ La VM est toujours en cours d'exécution, impossible de supprimer." });
+        return res.status(500).json({
+          message: "❌ La VM est toujours en cours d'exécution, impossible de supprimer.",
+        });
       }
     }
 
     logOutput += `✅ La VM ${vm_id} est arrêtée, suppression en cours...\n`;
+
     const result = await deleteVM(commonArgs);
     success = true;
 
@@ -187,19 +211,36 @@ exports.deleteVMDirect = async (req, res) => {
     await Deployment.create({
       user_id: user.id,
       user_email: user.email,
-      vm_name: `${commonArgs.vmId}`,
-      service_name: "",
+      vm_name,
+      service_name: vm_name,
       operation_type: "destroy",
       started_at: startTime,
       ended_at: endTime,
       duration: `${duration}s`,
       success,
       log_path: logPath,
+      vm_id: vm_id,
+      vm_ip: vm_ip,
     });
 
-    res.status(200).json({ message: "✅ VM arrêtée et supprimée avec succès", result, log: logPath });
+    res.status(200).json({
+      message: "✅ VM arrêtée et supprimée avec succès",
+      result,
+      log: logPath,
+    });
+
   } catch (error) {
     console.error("❌ Erreur de suppression directe :", error);
+
+    // ⛑️ Tentative de récupération VM name et IP avant suppression si possible
+    let vm_name = `vm-${vm_id}`;
+    let vm_ip = null;
+    try {
+      const info = await getVMInfo(commonArgs);
+      vm_name = info.name;
+      vm_ip = await getVMIP(commonArgs);
+    } catch (_) {}
+
     const endTime = new Date();
     const duration = (endTime - startTime) / 1000;
     const logFilename = `delete-${startTime.toISOString().replace(/[:.]/g, "-")}-${user.id}.log`;
@@ -209,16 +250,21 @@ exports.deleteVMDirect = async (req, res) => {
     await Deployment.create({
       user_id: user.id,
       user_email: user.email,
-      vm_name: `${commonArgs.vmId}`,
-      service_name: "",
-      operation_type: "delete",
+      vm_name,
+      service_name: vm_name,
+      operation_type: "destroy",
       started_at: startTime,
       ended_at: endTime,
       duration: `${duration}s`,
       success: false,
       log_path: logPath,
+      vm_id,
+      vm_ip,
     });
 
-    res.status(500).json({ message: "❌ Échec de la suppression manuelle", error: error.message });
+    res.status(500).json({
+      message: "❌ Échec de la suppression manuelle",
+      error: error.message,
+    });
   }
 };

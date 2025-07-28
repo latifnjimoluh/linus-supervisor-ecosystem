@@ -119,3 +119,9 @@ variable "init_script" {
   description = "Script init commun (ex: install dépendances)"
   type        = string
 }
+
+variable "monitoring_script" {
+  description = "Script d'agent de supervision à injecter dans toutes les VMs"
+  type        = string
+  default     = ""
+}
