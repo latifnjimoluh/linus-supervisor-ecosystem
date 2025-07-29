@@ -2,7 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const db = require("../models");
+const db = require("../../models");
 
 // Remplacement des {{VARIABLES}} dans le template
 function renderTemplate(template, variables) {
@@ -49,7 +49,7 @@ exports.configureService = async (req, res) => {
 
     // 📁 Emplacement de sauvegarde
     const filename = `${template.service_type}-install-${Date.now()}.sh`;
-    const outputDir = path.join(__dirname, "../generated-scripts");
+    const outputDir = path.join(__dirname, "../../generated-scripts");
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
     const scriptPath = path.join(outputDir, filename);

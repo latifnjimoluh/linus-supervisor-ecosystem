@@ -1,8 +1,8 @@
 const fs = require("fs");
 const path = require("path");
-const { runTerraformApply } = require("../utils/terraformRunner");
-const { Deployment, ServiceConfiguration, InitScript, MonitoringScript, MonitoringService } = require("../models");
-const { getVMStatus, stopVM, deleteVM, getVMInfo, getVMIP } = require("../utils/proxmoxService");
+const { runTerraformApply } = require("../../utils/terraformRunner");
+const { Deployment, ServiceConfiguration, InitScript, MonitoringScript, MonitoringService } = require("../../models");
+const { getVMStatus, stopVM, deleteVM, getVMInfo, getVMIP } = require("../../utils/proxmoxService");
 
 exports.deployInfrastructure = async (req, res) => {
   const user = req.user;
