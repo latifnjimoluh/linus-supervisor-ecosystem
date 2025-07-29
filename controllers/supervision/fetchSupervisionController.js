@@ -1,8 +1,8 @@
 "use strict";
 
 const fs = require("fs");
-const { getRemoteJSON } = require("../utils/sshClient");
-const { SupervisionStatus, ServiceStatus } = require("../models");
+const { getRemoteJSON } = require("../../utils/sshClient");
+const { SupervisionStatus, ServiceStatus } = require("../../models");
 const path = require("path");
 
 exports.fetchFromDynamicVM = async (req, res) => {

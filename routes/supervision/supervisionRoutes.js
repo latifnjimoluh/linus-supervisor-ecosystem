@@ -1,8 +1,8 @@
 // routes/supervisionRoutes.js
 const express = require("express");
 const router = express.Router();
-const fetchController = require("../controllers/fetchSupervisionController");
-const { SupervisionStatus, ServiceStatus } = require("../models");
+const fetchController = require("../../controllers/supervision/fetchSupervisionController");
+const { SupervisionStatus, ServiceStatus } = require("../../models");
 
 // 📥 Import JSON depuis VM (déjà existant)
 router.post("/fetch", fetchController.fetchFromDynamicVM);

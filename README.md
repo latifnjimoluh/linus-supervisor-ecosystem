@@ -3,14 +3,23 @@
 Ce dépôt contient l'API Node.js de la plateforme **Linusupervisor**. Elle permet l'authentification via JWT, la gestion des utilisateurs et le déclenchement d'opérations Terraform pour provisionner ou détruire des services sur Proxmox. Les informations de déploiement sont enregistrées dans PostgreSQL.
 
 ## Pré-requis
-- Node.js
+- Node.js (>= 18)
 - PostgreSQL
 - Terraform (pour les commandes de déploiement)
+- npm
 
 ## Installation
 ```bash
 npm install
 ```
+
+### Paquets principaux
+
+- **express**, **cors**, **helmet**, **compression**, **morgan** : base serveur et sécurité
+- **sequelize**, **pg**, **pg-hstore** : couche ORM et connexion PostgreSQL
+- **bcrypt** et **jsonwebtoken** : gestion des mots de passe et de l'authentification JWT
+- **ssh2** et **axios** : communication avec Proxmox ou scripts distants
+- **dotenv** et **cookie-parser** : gestion de la configuration et des cookies
 
 Créez ensuite un fichier `.env` à la racine :
 ```dotenv
@@ -74,12 +83,18 @@ Les journaux de déploiement sont stockés dans le dossier `logs/` et dans la ta
 
 ## Structure du projet
 - `app.js` : point d'entrée de l'application.
-- `controllers/` : logique métier (auth et déploiement).
-- `models/` : modèles Sequelize `User` et `Deployment`.
-- `routes/` : définitions des routes.
+- `controllers/` : logique métier organisée par domaine (`auth/`, `deploy/`, `services/`, `scripts/`, `supervision/`).
+- `models/` : sous-dossiers identiques pour les modèles Sequelize (`auth/`, `deploy/`, `services/`, `scripts/`, `supervision/`).
+- `routes/` : routes Express regroupées de la même façon par domaine.
 - `middlewares/` : vérification des JWT et des rôles.
-- `utils/terraformRunner.js` : exécution de Terraform.
+- `utils/` : helpers Proxmox, SSH et exécution de Terraform.
 - `terraform/` : fichiers Terraform utilisés pour le provisionnement.
+
+## Historique
+- 2024 : ajout de l'authentification JWT et du déploiement via Terraform
+- 2024 : prise en charge des scripts d'initialisation et de monitoring
+- 2024 : gestion des services supervisés et journalisation en base
+- 2025 : réorganisation des dossiers (controllers, models, routes)
 
 ## Licence
 Ce projet est distribué sous licence ISC.

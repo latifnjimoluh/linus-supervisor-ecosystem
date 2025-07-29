@@ -1,7 +1,7 @@
 // controllers/supervisionController.js
 "use strict";
 
-const { SupervisionStatus, ServiceStatus } = require("../models");
+const { SupervisionStatus, ServiceStatus } = require("../../models");
 
 exports.saveStatus = async (req, res) => {
   try {

@@ -1,14 +1,14 @@
 const express = require("express");
 const router = express.Router();
 
-const authRoutes = require("./authRoutes");
-const deployRoutes = require("./deployRoutes");
-const configureService = require("./configureRoutes");
-const monitoringRoutes = require("./monitoring");
-const templateRoutes = require("./templateRoutes");
-const monitoringServiceRoutes = require("./monitoringServiceRoutes");
-const initScriptRoutes = require("./initScripts");
-const supervisionRoutes = require("./supervisionRoutes");
+const authRoutes = require("./auth/authRoutes");
+const deployRoutes = require("./deploy/deployRoutes");
+const configureService = require("./services/serviceConfigRoutes");
+const monitoringRoutes = require("./scripts/monitoringScriptRoutes");
+const templateRoutes = require("./services/serviceTemplateRoutes");
+const monitoringServiceRoutes = require("./services/monitoringServiceRoutes");
+const initScriptRoutes = require("./scripts/initScriptRoutes");
+const supervisionRoutes = require("./supervision/supervisionRoutes");
 
 router.use("/auth", authRoutes);
 router.use("/", deployRoutes);

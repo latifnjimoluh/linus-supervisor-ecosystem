@@ -13,29 +13,26 @@ const sequelize = new Sequelize(
   config
 );
 
-// 🔥 Charger tous les modèles
-fs.readdirSync(__dirname)
-  .filter((file) => {
-    return file.indexOf(".") !== 0 && file !== basename && file.slice(-3) === ".js";
-  })
-  .forEach((file) => {
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
-    db[model.name] = model;
+// 🔥 Charger tous les modèles récursivement
+function loadModels(dir) {
+  fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      loadModels(fullPath);
+    } else if (
+      entry.isFile() &&
+      entry.name.endsWith(".js") &&
+      entry.name !== basename
+    ) {
+      const model = require(fullPath)(sequelize, Sequelize.DataTypes);
+      db[model.name] = model;
+    }
   });
+}
+
+loadModels(__dirname);
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
-
-// 🔧 Si le chargement auto ne suffit pas :
-db.Deployment = require("./deployment")(sequelize, Sequelize.DataTypes);
-db.User = require("./user")(sequelize, Sequelize.DataTypes);
-db.InitScript = require("./initScript")(sequelize, Sequelize.DataTypes);
-db.serviceConfiguration = require("./ServiceConfiguration")(sequelize, Sequelize.DataTypes);
-db.MonitoringScript = require("./monitoringScript")(sequelize, Sequelize.DataTypes);
-db.ServiceTemplate = require("./serviceTemplate")(sequelize, Sequelize.DataTypes); 
-db.MonitoringService = require("./monitoringService")(sequelize, Sequelize.DataTypes);
-db.SupervisionStatus = require("./SupervisionStatus")(sequelize, Sequelize.DataTypes);
-db.ServiceStatus = require("./ServiceStatus")(sequelize, Sequelize.DataTypes);
-
 
 module.exports = db;

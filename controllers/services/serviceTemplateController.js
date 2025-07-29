@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { ServiceTemplate } = require("../models");
+const { ServiceTemplate } = require("../../models");
 
 exports.createTemplate = async (req, res) => {
   const { name, service_type, description, template_content } = req.body;
@@ -10,7 +10,7 @@ exports.createTemplate = async (req, res) => {
   }
 
   try {
-    const dir = path.resolve(__dirname, "../generated-templates");
+    const dir = path.resolve(__dirname, "../../generated-templates");
     if (!fs.existsSync(dir)) fs.mkdirSync(dir);
 
     const filename = `${name.replace(/\s+/g, "_").toLowerCase()}.tmpl.sh`;

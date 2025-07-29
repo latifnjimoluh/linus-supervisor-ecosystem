@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { generateMonitoringScript } = require("../controllers/monitoringScriptController");
+const { generateMonitoringScript } = require("../../controllers/scripts/monitoringScriptController");
 
 router.post("/generate", generateMonitoringScript);
 

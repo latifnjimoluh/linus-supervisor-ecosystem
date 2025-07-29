@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { MonitoringScript, ServiceTemplate } = require("../models");
+const { MonitoringScript, ServiceTemplate } = require("../../models");
 const { v4: uuidv4 } = require("uuid");
 
 function renderTemplate(template, variables) {
@@ -41,7 +41,7 @@ exports.generateServiceMonitoringAgent = async (req, res) => {
 
     // Générer le fichier final dans generated-scripts/
     const filename = `agent-services-${uuidv4()}.sh`;
-    const outputDir = path.join(__dirname, "../generated-scripts");
+    const outputDir = path.join(__dirname, "../../generated-scripts");
     const outputPath = path.join(outputDir, filename);
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 

@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
-const User = require("../models").User;
-const { createToken } = require("../middlewares/auth");
+const User = require("../../models").User;
+const { createToken } = require("../../middlewares/auth");
 
 exports.register = async (req, res) => {
   try {
