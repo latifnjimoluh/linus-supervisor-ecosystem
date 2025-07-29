@@ -1,49 +1,66 @@
 const fs = require("fs");
 const path = require("path");
-const { MonitoringScript } = require("../models"); // ← Utilisation du bon modèle
+const { MonitoringScript, ServiceTemplate } = require("../models");
 const { v4: uuidv4 } = require("uuid");
+
+function renderTemplate(template, variables) {
+  return template.replace(/{{(\w+)}}/g, (_, key) => variables[key] || "");
+}
 
 exports.generateMonitoringScript = async (req, res) => {
   try {
-    const { zone_name, check_domain, port_range } = req.body;
+    const { template_id, zone_name, check_domain, ports_to_scan, cron_interval } = req.body;
 
-    if (!zone_name || !check_domain || !port_range) {
-      return res.status(400).json({ message: "Champs requis : zone_name, check_domain, port_range" });
+    if (!template_id || !zone_name || !check_domain || !ports_to_scan || !cron_interval) {
+      return res.status(400).json({
+        message: "Champs requis : template_id, zone_name, check_domain, ports_to_scan, cron_interval"
+      });
     }
 
-    // 📄 Charger le template brut
-    const templatePath = path.join(__dirname, "../templates/dns/agent-superviseur-dns.tmpl.sh");
-    const templateContent = fs.readFileSync(templatePath, "utf8");
+    const template = await ServiceTemplate.findByPk(template_id);
+    if (!template) {
+      return res.status(404).json({ message: "Template de supervision introuvable." });
+    }
 
-    // 🔁 Remplacement des variables
-    const finalContent = templateContent
-      .replace(/{{ZONE_NAME}}/g, zone_name)
-      .replace(/{{CHECK_DOMAIN}}/g, check_domain)
-      .replace(/{{PORT_RANGE}}/g, port_range);
+    const templatePath = template.template_path;
+    if (!fs.existsSync(templatePath)) {
+      return res.status(404).json({ message: "Fichier template manquant sur le disque." });
+    }
 
-    // 📁 Générer un nom unique
-    const filename = `monitor-dns-${zone_name}-${uuidv4()}.sh`;
+    const rawTemplate = fs.readFileSync(templatePath, "utf8");
+
+    const finalContent = renderTemplate(rawTemplate, {
+      ZONE_NAME: zone_name,
+      CHECK_DOMAIN: check_domain,
+      PORTS_TO_SCAN: ports_to_scan,
+      CRON_INTERVAL: cron_interval
+    });
+
+    const filename = `monitor-${template.service_type}-${zone_name}-${uuidv4()}.sh`;
     const outputDir = path.join(__dirname, "../generated-scripts");
     const outputPath = path.join(outputDir, filename);
 
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-
-    // 💾 Écriture du script
     fs.writeFileSync(outputPath, finalContent);
-    console.log("✅ Script généré :", outputPath);
 
-    // 🗃️ Enregistrement base de données dans `monitoring_scripts`
     const savedScript = await MonitoringScript.create({
-      name: `Agent DNS - ${zone_name}`,
+      name: `Agent ${template.service_type.toUpperCase()} - ${zone_name}`,
       script_path: outputPath,
-      service_type: "dns",
+      service_type: template.service_type,
+      config_data: {
+        zone_name,
+        check_domain,
+        ports_to_scan,
+        cron_interval
+      }
     });
 
     return res.status(201).json({
-      message: "Script de monitoring généré et sauvegardé",
+      message: "✅ Script de monitoring généré et sauvegardé.",
       script_id: savedScript.id,
-      script_path: savedScript.script_path,
+      script_path: savedScript.script_path
     });
+
   } catch (error) {
     console.error("❌ Erreur génération monitoring :", error);
     res.status(500).json({ message: "Erreur serveur", error: error.message });

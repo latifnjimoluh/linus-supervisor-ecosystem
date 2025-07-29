@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { runTerraformApply } = require("../utils/terraformRunner");
-const { Deployment, ServiceConfiguration, InitScript, MonitoringScript } = require("../models");
+const { Deployment, ServiceConfiguration, InitScript, MonitoringScript, MonitoringService } = require("../models");
 const { getVMStatus, stopVM, deleteVM, getVMInfo, getVMIP } = require("../utils/proxmoxService");
 
 exports.deployInfrastructure = async (req, res) => {
@@ -76,9 +76,31 @@ exports.deployInfrastructure = async (req, res) => {
       }
     }
 
+    // 4️⃣ MONITORING SERVICES
+    let monitoringServicesScriptPath = "";
+    if (payload.monitoring_services_script_id) {
+      const monitorServices = await MonitoringService.findByPk(payload.monitoring_services_script_id);
+      if (!monitorServices) {
+        return res.status(404).json({ message: `Script monitoring services introuvable (ID: ${payload.monitoring_services_script_id})` });
+      }
+      monitoringServicesScriptPath = monitorServices.script_path.replace(/\\/g, "/");
+      console.log(`🧩 Script services sélectionné (ID: ${monitorServices.id})`);
+    }else {
+      const latestMonitorService = await MonitoringService.findOne({ order: [["created_at", "DESC"]] });
+      if (latestMonitorService) {
+        monitoringServicesScriptPath = latestMonitorService.script_path.replace(/\\/g, "/");
+        console.log(`🧩 Aucun ID fourni → dernier script services injecté (ID: ${latestMonitorService.id})`);
+      } else {
+        console.log("ℹ️ Aucun script de services disponible");
+      }
+    }
+
+
+
     // 4️⃣ Injection payload Terraform
     payload.init_script = initScriptPath;
     payload.monitoring_script = monitoringScriptPath;
+    payload.monitoring_services_script = monitoringServicesScriptPath;
     payload.service_config_scripts = {
       [service_name]: configScriptPath,
     };

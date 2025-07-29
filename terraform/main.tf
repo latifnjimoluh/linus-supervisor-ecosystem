@@ -134,7 +134,6 @@ resource "null_resource" "configure_service" {
     provisioner "file" {
     source      = var.monitoring_script
     destination = "/tmp/monitoring.sh"
-    # facultatif : tu peux aussi choisir /opt/monitoring.sh
   }
 
   provisioner "remote-exec" {
@@ -143,6 +142,20 @@ resource "null_resource" "configure_service" {
       "sudo /tmp/monitoring.sh"
     ]
   }
+
+  # 🎯 Script de détection des services
+  provisioner "file" {
+    source      = var.monitoring_services_script
+    destination = "/tmp/service-detector.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/service-detector.sh",
+      "sudo /tmp/service-detector.sh"
+    ]
+  }
+
 
 }
 

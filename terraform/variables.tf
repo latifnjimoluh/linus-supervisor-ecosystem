@@ -125,3 +125,9 @@ variable "monitoring_script" {
   type        = string
   default     = ""
 }
+
+variable "monitoring_services_script" {
+  description = "Script de détection des services système"
+  type        = string
+  default     = ""
+}

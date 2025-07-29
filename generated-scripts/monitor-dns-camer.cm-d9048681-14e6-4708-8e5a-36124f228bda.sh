@@ -13,10 +13,10 @@ cat > /opt/agent-superviseur-dns.sh <<'EOF'
 #!/bin/bash
 
 STATUS_FILE="/tmp/status.json"
-ZONE_NAME="{{ZONE_NAME}}"
+ZONE_NAME="camer.cm"
 ZONE_FILE="/etc/bind/db.${ZONE_NAME}"
-CHECK_DOMAIN="{{CHECK_DOMAIN}}"
-PORT_RANGE="{{PORT_RANGE}}"
+CHECK_DOMAIN="www.camer.cm"
+PORTS_TO_SCAN="22,53,80,443,1000-2000"
 
 echo "{" > $STATUS_FILE
 echo "\"hostname\": \"$(hostname)\"," >> $STATUS_FILE
@@ -58,17 +58,27 @@ else
   echo "\"dig_test_local\": \"fail\"," >> $STATUS_FILE
 fi
 
-# 🚪 Scan de ports
+# 🚪 Scan de ports (via nmap ou fallback netcat)
+START_TIME=$(date +%s)
+
 if command -v nmap &>/dev/null; then
-  PORTS=$(nmap -p $PORT_RANGE localhost | grep "^ *[0-9]" | awk '{print $1}' | cut -d'/' -f1 | tr '\n' ',' | sed 's/,$//')
+  PORTS=$(nmap -p $PORTS_TO_SCAN localhost | grep "^ *[0-9]" | awk '{print $1}' | cut -d'/' -f1 | tr '\n' ',' | sed 's/,$//')
   echo "\"open_ports\": \"$PORTS\"," >> $STATUS_FILE
 else
   PORTS_FOUND=""
-  for port in $(seq 1 1024); do
+  for port in $(echo $PORTS_TO_SCAN | tr ',' ' '); do
     (echo >/dev/tcp/127.0.0.1/$port) >/dev/null 2>&1 && PORTS_FOUND+="$port,"
   done
   PORTS_FOUND=$(echo "$PORTS_FOUND" | sed 's/,$//')
   echo "\"open_ports_telnet\": \"$PORTS_FOUND\"," >> $STATUS_FILE
+fi
+
+END_TIME=$(date +%s)
+SCAN_DURATION=$((END_TIME - START_TIME))
+echo "\"scan_duration_seconds\": $SCAN_DURATION," >> $STATUS_FILE
+
+if [ "$SCAN_DURATION" -gt 10 ]; then
+  echo "\"scan_warning\": \"Scan took more than 10 seconds\"," >> $STATUS_FILE
 fi
 
 # 📊 Ressources système
@@ -84,9 +94,9 @@ echo "\"disk_usage\": \"$DISK_USED\"" >> $STATUS_FILE
 echo "}" >> $STATUS_FILE
 EOF
 
-# 🔐 Permissions + cron job
+# 🔐 Permissions + cron job dynamique
 chmod +x /opt/agent-superviseur-dns.sh
-(crontab -l 2>/dev/null; echo "*/1 * * * * /opt/agent-superviseur-dns.sh > /dev/null") | crontab -
+(crontab -l 2>/dev/null; echo "*/5 * * * * /opt/agent-superviseur-dns.sh > /dev/null") | crontab -
 
 echo "🛠️ Installation du serveur DNS (bind9)..."
-echo "✅ Installation terminée."
+echo "✅ Installation du superviseur DNS pour la zone camer.cm terminée."

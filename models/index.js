@@ -32,7 +32,8 @@ db.User = require("./user")(sequelize, Sequelize.DataTypes);
 db.InitScript = require("./initScript")(sequelize, Sequelize.DataTypes);
 db.serviceConfiguration = require("./ServiceConfiguration")(sequelize, Sequelize.DataTypes);
 db.MonitoringScript = require("./monitoringScript")(sequelize, Sequelize.DataTypes);
-
+db.ServiceTemplate = require("./serviceTemplate")(sequelize, Sequelize.DataTypes); 
+db.MonitoringService = require("./monitoringService")(sequelize, Sequelize.DataTypes);
 
 
 module.exports = db;
