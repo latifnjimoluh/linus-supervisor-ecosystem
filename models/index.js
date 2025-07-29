@@ -34,6 +34,8 @@ db.serviceConfiguration = require("./ServiceConfiguration")(sequelize, Sequelize
 db.MonitoringScript = require("./monitoringScript")(sequelize, Sequelize.DataTypes);
 db.ServiceTemplate = require("./serviceTemplate")(sequelize, Sequelize.DataTypes); 
 db.MonitoringService = require("./monitoringService")(sequelize, Sequelize.DataTypes);
+db.SupervisionStatus = require("./SupervisionStatus")(sequelize, Sequelize.DataTypes);
+db.ServiceStatus = require("./ServiceStatus")(sequelize, Sequelize.DataTypes);
 
 
 module.exports = db;
