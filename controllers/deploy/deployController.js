@@ -118,7 +118,11 @@ exports.deployInfrastructure = async (req, res) => {
 
     // 6️⃣ Logs
     const logFilename = `deploy-${startTime.toISOString().replace(/[:.]/g, "-")}-${user.id}.log`;
-    const logPath = path.join(__dirname, "..", "logs", logFilename);
+    const logsDir = path.resolve(__dirname, "../../logs");
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir);
+      }
+    const logPath = path.resolve(__dirname, "../../logs", logFilename);
     const logContent =
       `==== DEPLOIEMENT ${service_name.toUpperCase()} PAR ${user.email} ====\n\n` +
       `📅 Début : ${startTime.toISOString()}\n` +
@@ -232,7 +236,12 @@ exports.deleteVMDirect = async (req, res) => {
     const endTime = new Date();
     const duration = (endTime - startTime) / 1000;
     const logFilename = `delete-${startTime.toISOString().replace(/[:.]/g, "-")}-${user.id}.log`;
-    const logPath = path.join(__dirname, "..", "logs", logFilename);
+        const logsDir = path.resolve(__dirname, "../../logs");
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir);
+      }
+    const logPath = path.resolve(__dirname, "../../logs", logFilename);
+    
     fs.writeFileSync(logPath, logOutput);
     console.log("🗂️ [API] Log de suppression écrit :", logPath);
 
