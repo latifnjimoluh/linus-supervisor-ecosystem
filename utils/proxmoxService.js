@@ -105,3 +105,20 @@ exports.deleteVM = async ({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret 
   console.log("✅ Suppression réussie :", response.data);
   return response.data;
 };
+
+// ✅ Vérifie si une VM avec le même nom existe déjà (tous les nœuds)
+exports.checkIfVMNameExists = async ({ apiUrl, tokenId, tokenName, tokenSecret }, vmNameToCheck) => {
+  const headers = getHeaders(tokenId, tokenName, tokenSecret);
+  const url = `${apiUrl}/cluster/resources`;
+  console.log("🌐 Vérification nom VM via :", url);
+  try {
+    const res = await axios.get(url, { httpsAgent, headers });
+    const allVMs = res.data?.data?.filter(r => r.type === "qemu") || [];
+
+    const found = allVMs.find(vm => vm.name === vmNameToCheck);
+    return !!found; // true si le nom est déjà pris
+  } catch (error) {
+    console.error("❌ [checkIfVMNameExists] Erreur:", error.message);
+    return false;
+  }
+};

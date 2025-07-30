@@ -1,8 +1,22 @@
 const fs = require("fs");
 const path = require("path");
+const { v4: uuidv4 } = require("uuid");
 const { runTerraformApply } = require("../../utils/terraformRunner");
-const { Deployment, ServiceConfiguration, InitScript, MonitoringScript, MonitoringService } = require("../../models");
-const { getVMStatus, stopVM, deleteVM, getVMInfo, getVMIP } = require("../../utils/proxmoxService");
+const {
+  Deployment,
+  ServiceConfiguration,
+  InitScript,
+  MonitoringScript,
+  MonitoringService,
+} = require("../../models");
+const {
+  getVMStatus,
+  stopVM,
+  deleteVM,
+  getVMInfo,
+  getVMIP,
+  checkIfVMNameExists,
+} = require("../../utils/proxmoxService");
 
 exports.deployInfrastructure = async (req, res) => {
   const user = req.user;
@@ -12,8 +26,37 @@ exports.deployInfrastructure = async (req, res) => {
 
     const payload = req.body;
     const vmName = payload.vm_names[0];
-    const service_name = vmName;
+    const service_type = payload.service_type;
+    if (!service_type) {
+      return res.status(400).json({ message: "❌ Champ 'service_type' requis pour charger la configuration" });
+    }
+
+    const service_name = service_type;
     const startTime = new Date();
+    const instanceId = uuidv4();
+
+    // 🔐 Vérification si le nom de VM existe déjà dans Proxmox
+    const proxmoxCreds = {
+      apiUrl: payload.proxmox_api_url || process.env.PROXMOX_API_URL,
+      tokenId: payload.proxmox_api_token_id || process.env.PROXMOX_TOKEN_ID,
+      tokenName: payload.proxmox_api_token_name || process.env.PROXMOX_TOKEN_NAME,
+      tokenSecret: payload.proxmox_api_token_secret || process.env.PROXMOX_TOKEN_SECRET
+    };
+
+    console.log("🔑 [Proxmox Auth] Utilisation de ces identifiants :");
+    console.log("   📡 apiUrl      :", proxmoxCreds.apiUrl);
+    console.log("   🔐 tokenId     :", proxmoxCreds.tokenId);
+    console.log("   🆔 tokenName   :", proxmoxCreds.tokenName);
+    // ⚠️ Tu peux commenter cette ligne si tu ne veux pas exposer le secret
+    console.log("   🔑 tokenSecret :", proxmoxCreds.tokenSecret);
+
+
+    const nameAlreadyExists = await checkIfVMNameExists(proxmoxCreds, vmName);
+    if (nameAlreadyExists) {
+      return res.status(400).json({
+        message: `❌ Le nom de VM '${vmName}' existe déjà dans Proxmox. Veuillez choisir un autre nom.`
+      });
+    }
 
     console.log("🔍 [API] Service demandé :", service_name);
 
@@ -28,7 +71,7 @@ exports.deployInfrastructure = async (req, res) => {
       console.log(`📌 Script config sélectionné (ID: ${payload.config_id})`);
     } else {
       const latestConfig = await ServiceConfiguration.findOne({
-        where: { service_type: service_name },
+        where: { service_type },
         order: [["created_at", "DESC"]],
       });
       if (!latestConfig) {
@@ -85,7 +128,7 @@ exports.deployInfrastructure = async (req, res) => {
       }
       monitoringServicesScriptPath = monitorServices.script_path.replace(/\\/g, "/");
       console.log(`🧩 Script services sélectionné (ID: ${monitorServices.id})`);
-    }else {
+    } else {
       const latestMonitorService = await MonitoringService.findOne({ order: [["created_at", "DESC"]] });
       if (latestMonitorService) {
         monitoringServicesScriptPath = latestMonitorService.script_path.replace(/\\/g, "/");
@@ -95,14 +138,13 @@ exports.deployInfrastructure = async (req, res) => {
       }
     }
 
-
-
-    // 4️⃣ Injection payload Terraform
+    // 5️⃣ Préparation pour Terraform
+    payload.instance_id = instanceId;  // injecté dans Terraform
     payload.init_script = initScriptPath;
     payload.monitoring_script = monitoringScriptPath;
     payload.monitoring_services_script = monitoringServicesScriptPath;
     payload.service_config_scripts = {
-      [service_name]: configScriptPath,
+      [vmName]: configScriptPath,
     };
 
     console.log("🧩 Scripts injectés :");
@@ -110,19 +152,19 @@ exports.deployInfrastructure = async (req, res) => {
     console.log("   ⚙️  init         :", initScriptPath);
     console.log("   🩺 monitoring   :", monitoringScriptPath);
 
-    // 5️⃣ Terraform
+    // 6️⃣ Lancement Terraform
     console.log("🚀 Lancement Terraform...");
-    const { stdout, stderr, success, vmInfo } = await runTerraformApply(payload);
+    const { stdout, stderr, success, vmInfo } = await runTerraformApply(instanceId, payload);
     const endTime = new Date();
     const duration = (endTime - startTime) / 1000;
 
-    // 6️⃣ Logs
+    // 7️⃣ Journalisation
     const logFilename = `deploy-${startTime.toISOString().replace(/[:.]/g, "-")}-${user.id}.log`;
     const logsDir = path.resolve(__dirname, "../../logs");
-      if (!fs.existsSync(logsDir)) {
-        fs.mkdirSync(logsDir);
-      }
-    const logPath = path.resolve(__dirname, "../../logs", logFilename);
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir);
+    }
+    const logPath = path.resolve(logsDir, logFilename);
     const logContent =
       `==== DEPLOIEMENT ${service_name.toUpperCase()} PAR ${user.email} ====\n\n` +
       `📅 Début : ${startTime.toISOString()}\n` +
@@ -132,7 +174,21 @@ exports.deployInfrastructure = async (req, res) => {
       `--- STDERR ---\n${stderr}`;
     fs.writeFileSync(logPath, logContent);
 
-    // 7️⃣ BD
+    const injectedFiles = [
+      initScriptPath,
+      monitoringScriptPath,
+      monitoringServicesScriptPath,
+      configScriptPath
+    ].filter(Boolean);
+
+    const vmSpecs = {
+      template_name: payload.template_name || "ubuntu-template",
+      memory_mb: payload.memory_mb || 2048,
+      vcpu_cores: payload.vcpu_cores || 2,
+      vcpu_sockets: payload.vcpu_sockets || 1,
+      disk_size: payload.disk_size || "20G"
+    };
+
     await Deployment.create({
       user_id: user.id,
       user_email: user.email,
@@ -146,9 +202,12 @@ exports.deployInfrastructure = async (req, res) => {
       log_path: logPath,
       vm_id: vmInfo?.vm_ids?.[vmName] || null,
       vm_ip: vmInfo?.vm_ips?.[vmName] || null,
+      instance_id: instanceId,
+      injected_files: injectedFiles,
+      vm_specs: vmSpecs,
+      status: "deployed"
     });
 
-    // 8️⃣ Réponse finale
     res.status(200).json({
       message: "✅ Déploiement réussi",
       output: stdout,
@@ -167,6 +226,7 @@ exports.deployInfrastructure = async (req, res) => {
     });
   }
 };
+
 
 
 exports.deleteVMDirect = async (req, res) => {

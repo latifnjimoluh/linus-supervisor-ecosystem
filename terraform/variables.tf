@@ -131,3 +131,8 @@ variable "monitoring_services_script" {
   type        = string
   default     = ""
 }
+
+variable "instance_id" {
+  type = string
+}
+

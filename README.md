@@ -98,3 +98,17 @@ Les journaux de déploiement sont stockés dans le dossier `logs/` et dans la ta
 
 ## Licence
 Ce projet est distribué sous licence ISC.
+
+Save
+pg_dump -U postgres -d linusupervision -f "D:\backup.sql"
+"C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -U postgres -d linusupervision -f "D:\Keyce_B3\Soutenance\linusupervisor-backend\linusupervisor-backend\sql\linusupervision_backup.sql"
+
+📌 Cas 1 : Tu as un fichier .sql (export normal)
+Commande pour restaurer à vide dans une base existante :
+
+psql -U postgres -d linusupervision -f "D:\linusupervision_backup.sql"
+Si la base linusupervision n’existe pas encore :
+
+createdb -U postgres linusupervision
+psql -U postgres -d linusupervision -f "D:\linusupervision_backup.sql"
+

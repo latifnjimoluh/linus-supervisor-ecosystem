@@ -2,38 +2,82 @@
 
 module.exports = (sequelize, DataTypes) => {
   const Deployment = sequelize.define("Deployment", {
-    user_id: DataTypes.INTEGER,
-    user_email: DataTypes.STRING,
-    vm_name: DataTypes.STRING,
-    service_name: DataTypes.STRING,
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    user_email: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    vm_name: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    service_name: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
     operation_type: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        isIn: [["apply", "destroy"]], // facultatif mais conseillé
+        isIn: [["apply", "destroy"]]
       }
     },
-    started_at: DataTypes.DATE,
-    ended_at: DataTypes.DATE,
-    duration: DataTypes.STRING,
-    success: DataTypes.BOOLEAN,
-    log_path: DataTypes.STRING,
-
-    // 🔥 Champs ajoutés
+    started_at: {
+      type: DataTypes.DATE,
+      allowNull: false
+    },
+    ended_at: {
+      type: DataTypes.DATE,
+      allowNull: false
+    },
+    duration: {
+      type: DataTypes.STRING
+    },
+    success: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    log_path: {
+      type: DataTypes.STRING
+    },
     vm_id: {
       type: DataTypes.INTEGER,
-      allowNull: true,
+      allowNull: true
     },
     vm_ip: {
       type: DataTypes.STRING(50),
-      allowNull: true,
+      allowNull: true
     },
+
+    instance_id: {
+      type: DataTypes.UUID,
+      allowNull: false
+    },
+    injected_files: {
+      type: DataTypes.JSONB,
+      allowNull: true
+    },
+    vm_specs: {
+      type: DataTypes.JSONB,
+      allowNull: true
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "deployed",
+      validate: {
+        isIn: [["deployed", "destroyed"]]
+      }
+    }
 
   }, {
     tableName: "deployments",
     timestamps: true,
     createdAt: "created_at",
-    updatedAt: "updated_at",
+    updatedAt: "updated_at"
   });
 
   return Deployment;

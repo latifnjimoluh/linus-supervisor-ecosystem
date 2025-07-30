@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# 📌 Instance ID injecté par Terraform
+INSTANCE_ID="${instance_id}"
+
+# 💾 Sauvegarde localement
+echo "INSTANCE_ID=$INSTANCE_ID" | sudo tee /etc/instance-info.conf > /dev/null
+
+# 🔧 Export pour tous les services système
+echo "export INSTANCE_ID=$INSTANCE_ID" | sudo tee -a /etc/profile.d/instance_id.sh > /dev/null
+chmod +x /etc/profile.d/instance_id.sh
+
 echo "🔧 Initialisation de la supervision des services..."
 
 # Liste des services à injecter
