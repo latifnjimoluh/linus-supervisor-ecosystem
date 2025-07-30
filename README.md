@@ -90,6 +90,116 @@ Les journaux de déploiement sont stockés dans le dossier `logs/` et dans la ta
 - `utils/` : helpers Proxmox, SSH et exécution de Terraform.
 - `terraform/` : fichiers Terraform utilisés pour le provisionnement.
 
+## Arborescence du projet
+```text
+.
+├── README.md
+├── app.js
+├── config
+│   ├── config.json
+│   └── db.js
+├── controllers
+│   ├── auth
+│   ├── deploy
+│   ├── scripts
+│   ├── services
+│   ├── supervision
+│   ├── template
+│   └── vm
+├── generated-scripts
+│   ├── detect-services-470a1191-819e-4c90-85d1-990dc3c80c46.sh
+│   ├── detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh
+│   ├── dns-install-1753794976726.sh
+│   ├── dns-install-1753801451031.sh
+│   ├── dns-install-1753832252525.sh
+│   ├── dns_config
+│   ├── init-Init_Sécurité_Linux_Universel-33a7c859-7acc-4782-9341-5efae2079b0a.sh
+│   ├── init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh
+│   ├── monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh
+│   └── monitor-dns-camer.cm-d9048681-14e6-4708-8e5a-36124f228bda.sh
+├── generated-templates
+│   ├── dns_config
+│   ├── monitoring_dns
+│   └── monitoring_services
+├── middlewares
+│   └── auth.js
+├── models
+│   ├── auth
+│   ├── deploy
+│   ├── index.js
+│   ├── scripts
+│   ├── services
+│   ├── supervision
+│   ├── template
+│   └── vm
+├── nodemon.json
+├── package-lock.json
+├── package.json
+├── routes
+│   ├── auth
+│   ├── deploy
+│   ├── index.js
+│   ├── scripts
+│   ├── services
+│   ├── supervision
+│   ├── template
+│   └── vm
+├── sql
+│   └── linusupervision_backup.sql
+├── terraform
+│   ├── Scripts
+│   ├── main.tf
+│   ├── outputs.tf
+│   ├── terraform.tfstate
+│   ├── terraform.tfvars
+│   ├── variables.tf
+│   └── variables.tfvars.json
+└── utils
+    ├── proxmoxService.js
+    ├── sshClient.js
+    └── terraformRunner.js
+
+37 directories, 29 files
+```
+
+## Description détaillée des fichiers
+- `app.js` : démarre l'application Express et charge les routes.
+- `config/config.json` : configuration Sequelize pour l'environnement de développement.
+- `config/db.js` : initialisation de la connexion PostgreSQL.
+- `controllers/auth/authController.js` : inscription et connexion des utilisateurs.
+- `controllers/deploy/deployController.js` : lance les déploiements Terraform.
+- `controllers/scripts/initScriptController.js` : gestion des scripts d'initialisation.
+- `controllers/scripts/monitoringScriptController.js` : gestion des scripts de monitoring.
+- `controllers/services/configTemplateServiceController.js` : gère les modèles de configuration de service.
+- `controllers/services/monitoringServiceController.js` : enregistre les services supervisés.
+- `controllers/services/generateServiceMonitoringAgent.js` : génère les agents de supervision.
+- `controllers/supervision/fetchSupervisionController.js` : récupère les données de supervision des VMs.
+- `controllers/supervision/supervisionController.js` : stocke et renvoie les instantanés d'état.
+- `controllers/template/configTemplateController.js` : CRUD des modèles de configuration.
+- `controllers/vm/deleteVMController.js` : supprime une machine virtuelle.
+- `generated-scripts/` : scripts générés automatiquement lors des déploiements.
+- `generated-templates/` : modèles de script générés pour la configuration et la supervision.
+- `middlewares/auth.js` : création et validation des JWT ainsi que vérification des rôles.
+- `models/auth/User.js` : modèle utilisateur.
+- `models/deploy/Deployment.js` : journal des déploiements Terraform.
+- `models/scripts/InitScript.js` : modèle des scripts d'initialisation.
+- `models/scripts/MonitoringScript.js` : modèle des scripts de monitoring.
+- `models/services/MonitoringService.js` : décrit un service supervisé.
+- `models/services/ServiceStatus.js` : état d'un service supervisé.
+- `models/services/configTemplateService.js` : lien entre service et modèle de configuration.
+- `models/supervision/statusSnapshot.js` : instantané global de supervision.
+- `models/supervision/vmInstance.js` : décrit une VM créée.
+- `models/template/configTemplate.js` : modèle de configuration générique.
+- `models/vm/deleteVm.js` : traces de suppression de VM.
+- `routes/` : fichiers définissant l'ensemble des endpoints REST de l'API.
+- `utils/proxmoxService.js` : appels à l'API Proxmox pour gérer les VMs.
+- `utils/sshClient.js` : fonctions utilitaires pour lire des fichiers via SSH.
+- `utils/terraformRunner.js` : exécution des commandes Terraform.
+- `terraform/` : scripts Terraform utilisés lors des déploiements.
+- `sql/linusupervision_backup.sql` : sauvegarde de la base PostgreSQL.
+- `nodemon.json` : configuration de Nodemon pour le mode développement.
+- `package.json` et `package-lock.json` : dépendances Node.js et scripts npm.
+- `README.md` : documentation du projet.
 ## Historique
 - 2024 : ajout de l'authentification JWT et du déploiement via Terraform
 - 2024 : prise en charge des scripts d'initialisation et de monitoring
