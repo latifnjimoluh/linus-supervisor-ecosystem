@@ -22,6 +22,25 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: deletes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.deletes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    instance_id uuid,
+    vm_id integer,
+    vm_name character varying(255),
+    vm_ip character varying(100),
+    log_path text,
+    user_id integer,
+    user_email character varying(255),
+    deleted_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.deletes OWNER TO postgres;
+
+--
 -- Name: deployments; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -231,13 +250,12 @@ ALTER SEQUENCE public.service_configurations_id_seq OWNED BY public.service_conf
 
 CREATE TABLE public.service_statuses (
     id uuid NOT NULL,
-    hostname character varying(255) NOT NULL,
-    "timestamp" timestamp with time zone NOT NULL,
-    name character varying(255) NOT NULL,
-    enabled character varying(255),
-    active character varying(255),
-    "createdAt" timestamp with time zone NOT NULL,
-    "updatedAt" timestamp with time zone NOT NULL
+    hostname character varying(255),
+    "timestamp" timestamp with time zone,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    instance_id uuid,
+    formatted_data jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 
 
@@ -283,29 +301,21 @@ ALTER SEQUENCE public.service_templates_id_seq OWNED BY public.service_templates
 
 
 --
--- Name: supervision_statuses; Type: TABLE; Schema: public; Owner: postgres
+-- Name: status_snapshots; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.supervision_statuses (
+CREATE TABLE public.status_snapshots (
     id uuid NOT NULL,
+    instance_id uuid,
     hostname character varying(255),
     "timestamp" timestamp with time zone,
-    bind9_status character varying(255),
-    port_53 character varying(255),
-    named_checkconf character varying(255),
-    zone_check character varying(255),
-    dig_test_local character varying(255),
-    open_ports character varying(255),
-    scan_duration_seconds integer,
-    cpu_load character varying(255),
-    ram_usage character varying(255),
-    disk_usage character varying(255),
-    "createdAt" timestamp with time zone NOT NULL,
-    "updatedAt" timestamp with time zone NOT NULL
+    "createdAt" timestamp with time zone DEFAULT now(),
+    "updatedAt" timestamp with time zone DEFAULT now(),
+    formatted_data jsonb
 );
 
 
-ALTER TABLE public.supervision_statuses OWNER TO postgres;
+ALTER TABLE public.status_snapshots OWNER TO postgres;
 
 --
 -- Name: users; Type: TABLE; Schema: public; Owner: postgres
@@ -348,6 +358,21 @@ ALTER SEQUENCE public.users_id_seq OWNER TO postgres;
 
 ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
+
+--
+-- Name: vm_instances; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.vm_instances (
+    id uuid NOT NULL,
+    instance_id uuid,
+    hostname character varying,
+    ip_address character varying,
+    fetched_at timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.vm_instances OWNER TO postgres;
 
 --
 -- Name: deployments id; Type: DEFAULT; Schema: public; Owner: postgres
@@ -399,6 +424,15 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 
 
 --
+-- Data for Name: deletes; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.deletes (id, instance_id, vm_id, vm_name, vm_ip, log_path, user_id, user_email, deleted_at) FROM stdin;
+84a1189f-98e5-457e-9dac-1ee6b4bd7f01	90627c3a-b2e5-4f3f-9243-c11b902b6ad4	104	jbfsdhfds	192.168.24.26	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-07-30T16-45-45-365Z-1.log	1	admin@bunec.cm	2025-07-30 16:45:47.979
+\.
+
+
+--
 -- Data for Name: deployments; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -410,6 +444,11 @@ COPY public.deployments (id, user_id, user_email, vm_name, service_name, operati
 5	1	admin@bunec.cm	nexu	web	apply	2025-07-30 14:54:16.173+01	2025-07-30 14:57:16.504+01	00:03:00.331	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-30T13-54-16-173Z-1.log	103	192.168.24.19	2025-07-30 14:57:16.509+01	2025-07-30 14:57:16.509+01	f5ae6e0f-1766-40b4-a78c-8614e497af30	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns-install-1753832252525.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
 6	1	admin@bunec.cm	nexu	web	apply	2025-07-30 15:09:26.958+01	2025-07-30 15:11:06.462+01	00:01:39.504	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-30T14-09-26-958Z-1.log	103	192.168.24.19	2025-07-30 15:11:06.468+01	2025-07-30 15:11:06.468+01	acf524f3-08eb-4572-a578-862253092c6b	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns-install-1753832252525.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
 7	1	admin@bunec.cm	nexuws	web	apply	2025-07-30 15:16:15.245+01	2025-07-30 15:19:04.86+01	00:02:49.615	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-30T14-16-15-245Z-1.log	104	192.168.24.20	2025-07-30 15:19:04.863+01	2025-07-30 15:19:04.863+01	6fd1a8ec-10ad-45ea-9348-5acda170a4d8	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns-install-1753832252525.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
+8	1	admin@bunec.cm	testid	web	destroy	2025-07-30 15:36:18.957+01	2025-07-30 15:39:11.697+01	00:02:52.74	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-30T14-36-18-957Z-1.log	101	192.168.24.21	2025-07-30 15:39:11.702+01	2025-07-30 17:26:41.334+01	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns-install-1753832252525.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
+11	1	admin@bunec.cm	test1	web	apply	2025-07-30 17:37:22.892+01	2025-07-30 17:40:14.209+01	00:02:51.317	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-30T16-37-22-892Z-1.log	103	192.168.24.25	2025-07-30 17:40:14.21+01	2025-07-30 17:40:14.21+01	e8f7bd3a-6f36-41eb-a0e7-69eedad262cb	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns-install-1753832252525.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
+9	1	admin@bunec.cm	testid	web	destroy	2025-07-30 17:27:07.041+01	2025-07-30 17:30:03.981+01	00:02:56.94	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-30T16-27-07-041Z-1.log	101	192.168.24.22	2025-07-30 17:30:03.983+01	2025-07-30 17:33:46.395+01	f27fdf99-e765-4f3e-88f5-d836728d0c3d	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns-install-1753832252525.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
+10	1	admin@bunec.cm	oiuf	web	destroy	2025-07-30 17:30:27.015+01	2025-07-30 17:33:22.91+01	00:02:55.895	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-30T16-30-27-015Z-1.log	103	192.168.24.23	2025-07-30 17:33:22.912+01	2025-07-30 17:36:50.08+01	f440c70d-5ad2-4e52-9ee7-bc4e87ee0d24	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns-install-1753832252525.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
+12	1	admin@bunec.cm	jbfsdhfds	web	destroy	2025-07-30 17:40:31.964+01	2025-07-30 17:43:30.404+01	00:02:58.44	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-30T16-40-31-964Z-1.log	104	192.168.24.26	2025-07-30 17:43:30.406+01	2025-07-30 17:45:47.832+01	90627c3a-b2e5-4f3f-9243-c11b902b6ad4	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns-install-1753832252525.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
 \.
 
 
@@ -454,15 +493,8 @@ COPY public.service_configurations (id, service_type, config_data, script_path, 
 -- Data for Name: service_statuses; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.service_statuses (id, hostname, "timestamp", name, enabled, active, "createdAt", "updatedAt") FROM stdin;
-349e4d9a-a069-48a9-b7bd-0127e55e5977	dns	2025-07-29 17:13:01+01	sshd	alias	active	2025-07-29 17:13:42.363+01	2025-07-29 17:13:42.363+01
-112b6b0d-479b-4a8e-a52f-cc356fcd67e6	dns	2025-07-29 17:13:01+01	bind9	alias	active	2025-07-29 17:13:42.363+01	2025-07-29 17:13:42.363+01
-000871d3-a4c2-49c0-bd7d-d721b3ddd48e	dns	2025-07-29 17:31:01+01	sshd	alias	active	2025-07-29 17:31:09.438+01	2025-07-29 17:31:09.438+01
-d83ad7ce-c934-416b-a2bb-c88e53f1f119	dns	2025-07-29 17:31:01+01	bind9	alias	active	2025-07-29 17:31:09.439+01	2025-07-29 17:31:09.439+01
-462ec56c-3349-4b2e-b8d2-709e5ec155c2	dns	2025-07-30 00:40:01+01	sshd	alias	active	2025-07-30 00:40:17.147+01	2025-07-30 00:40:17.147+01
-033e5ed9-e7be-4170-96e9-3df3cc8d4881	dns	2025-07-30 00:40:01+01	bind9	alias	active	2025-07-30 00:40:17.147+01	2025-07-30 00:40:17.147+01
-4a5b8482-8120-43c6-9c9a-f6e28ec50ecb	dns	2025-07-30 13:33:01+01	sshd	alias	active	2025-07-30 13:33:44.316+01	2025-07-30 13:33:44.316+01
-8fcfb977-0d13-4e1c-865a-eace9f0bb92d	dns	2025-07-30 13:33:01+01	bind9	alias	active	2025-07-30 13:33:44.316+01	2025-07-30 13:33:44.316+01
+COPY public.service_statuses (id, hostname, "timestamp", created_at, updated_at, instance_id, formatted_data) FROM stdin;
+0c5a470e-fb82-42f5-b306-bc827110b25e	testid	2025-07-30 17:01:01+01	2025-07-30 16:01:14.256	2025-07-30 16:01:14.256	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	[{"name": "sshd", "active": "active", "enabled": "alias"}, {"name": "bind9", "active": "active", "enabled": "alias"}]
 \.
 
 
@@ -476,12 +508,11 @@ COPY public.service_templates (id, name, service_type, description, template_pat
 
 
 --
--- Data for Name: supervision_statuses; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: status_snapshots; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.supervision_statuses (id, hostname, "timestamp", bind9_status, port_53, named_checkconf, zone_check, dig_test_local, open_ports, scan_duration_seconds, cpu_load, ram_usage, disk_usage, "createdAt", "updatedAt") FROM stdin;
-259db4b4-9236-43ba-9fae-0e7e612607c6	dns	2025-07-29 17:10:01+01	active	listening	ok	ok	success	22,53	0	5.9	15%	56%	2025-07-29 17:13:48.783+01	2025-07-29 17:13:48.783+01
-72ad5efd-6254-496a-8354-d6f9791b2ff5	dns	2025-07-30 13:30:01+01	active	listening	ok	ok	success	22,53	0	3.1	11%	62%	2025-07-30 13:33:57.166+01	2025-07-30 13:33:57.166+01
+COPY public.status_snapshots (id, instance_id, hostname, "timestamp", "createdAt", "updatedAt", formatted_data) FROM stdin;
+34f76e96-c437-4882-9baf-14f0055367cb	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	testid	2025-07-30 17:00:02+01	2025-07-30 17:01:13.987+01	2025-07-30 17:01:13.987+01	[{"label": "bind9_status", "value": "active"}, {"label": "port_53", "value": "listening"}, {"label": "named_checkconf", "value": "ok"}, {"label": "zone_check", "value": "ok"}, {"label": "dig_test_local", "value": "success"}, {"label": "open_ports", "value": "22,53"}, {"label": "scan_duration_seconds", "value": 0}, {"label": "cpu_load", "value": "6"}, {"label": "ram_usage", "value": "12%"}, {"label": "disk_usage", "value": "62%"}]
 \.
 
 
@@ -495,10 +526,22 @@ COPY public.users (id, first_name, last_name, email, phone, password, role, stat
 
 
 --
+-- Data for Name: vm_instances; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.vm_instances (id, instance_id, hostname, ip_address, fetched_at) FROM stdin;
+dbd9ea2e-9a64-4f86-b0ba-e28c08569cca	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	testid	192.168.24.21	2025-07-30 15:48:05.434
+c6dd04fa-2b42-43e8-9ce5-4dc2cd2453cd	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	testid	192.168.24.21	2025-07-30 15:51:08.039
+32efa064-9eca-4026-84eb-27635cabf20e	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	testid	192.168.24.21	2025-07-30 15:57:04.016
+6430b289-db02-4653-a975-fbeb0235aab1	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	testid	192.168.24.21	2025-07-30 16:01:14.315
+\.
+
+
+--
 -- Name: deployments_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.deployments_id_seq', 7, true);
+SELECT pg_catalog.setval('public.deployments_id_seq', 12, true);
 
 
 --
@@ -541,6 +584,14 @@ SELECT pg_catalog.setval('public.service_templates_id_seq', 12, true);
 --
 
 SELECT pg_catalog.setval('public.users_id_seq', 1, true);
+
+
+--
+-- Name: deletes deletes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.deletes
+    ADD CONSTRAINT deletes_pkey PRIMARY KEY (id);
 
 
 --
@@ -616,11 +667,11 @@ ALTER TABLE ONLY public.service_templates
 
 
 --
--- Name: supervision_statuses supervision_statuses_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: status_snapshots status_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.supervision_statuses
-    ADD CONSTRAINT supervision_statuses_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.status_snapshots
+    ADD CONSTRAINT status_snapshots_pkey PRIMARY KEY (id);
 
 
 --
@@ -645,6 +696,14 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: vm_instances vm_instances_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vm_instances
+    ADD CONSTRAINT vm_instances_pkey PRIMARY KEY (id);
 
 
 --

@@ -1,69 +1,108 @@
 "use strict";
 
 const fs = require("fs");
-const { getRemoteJSON } = require("../../utils/sshClient");
-const { SupervisionStatus, ServiceStatus } = require("../../models");
 const path = require("path");
+const { getRemoteJSON, getRemoteFileContent } = require("../../utils/sshClient");
+const { StatusSnapshot, ServiceStatus, VMInstance } = require("../../models");
+require("dotenv").config();
 
 exports.fetchFromDynamicVM = async (req, res) => {
   try {
-    const { host, username, privateKeyPath, type } = req.body;
+    const {
+      host,
+      username,
+      privateKeyPath,
+      statusPath: bodyStatusPath,
+      servicesPath: bodyServicesPath,
+      instanceInfoPath: bodyInstanceInfoPath
+    } = req.body;
 
-    if (!host || !username || !privateKeyPath || !type) {
+    if (!host || !username || !privateKeyPath) {
       return res.status(400).json({
-        message: "Champs requis : host, username, privateKeyPath, type (status/services)."
+        message: "Champs requis : host, username, privateKeyPath."
       });
     }
-
-    if (!["status", "services"].includes(type)) {
-      return res.status(400).json({ message: "Type invalide. Utiliser status ou services." });
-    }
-
-    const filePath = type === "status"
-      ? "/tmp/status.json"
-      : "/tmp/services_status.json";
 
     const privateKey = fs.readFileSync(path.resolve(privateKeyPath));
 
-    const jsonData = await getRemoteJSON({
-      host,
-      username,
-      privateKey,
-      filePath
-    });
+    // 📌 Chemins dynamiques avec fallback .env
+    const statusPath = bodyStatusPath || process.env.STATUS_JSON_PATH || "/tmp/status.json";
+    const servicesPath = bodyServicesPath || process.env.SERVICES_JSON_PATH || "/tmp/services_status.json";
+    const instanceInfoPath = bodyInstanceInfoPath || process.env.INSTANCE_INFO_PATH || "/etc/instance-info.conf";
 
-    if (type === "status") {
-      const record = await SupervisionStatus.create({
-        hostname: jsonData.hostname,
-        timestamp: jsonData.timestamp,
-        bind9_status: jsonData.bind9_status,
-        port_53: jsonData.port_53,
-        named_checkconf: jsonData.named_checkconf,
-        zone_check: jsonData.zone_check,
-        dig_test_local: jsonData.dig_test_local,
-        open_ports: jsonData.open_ports,
-        scan_duration_seconds: jsonData.scan_duration_seconds,
-        cpu_load: jsonData.cpu_load,
-        ram_usage: jsonData.ram_usage,
-        disk_usage: jsonData.disk_usage,
+    // 🔍 Récupérer instance ID
+    let instanceId = null;
+    try {
+      const confContent = await getRemoteFileContent({
+        host,
+        username,
+        privateKey,
+        filePath: instanceInfoPath
       });
 
-      return res.status(201).json({ message: "✅ Status importé", id: record.id });
-    } else {
-      const services = jsonData.services || [];
+      const match = confContent.match(/^INSTANCE_ID=(.*)$/m);
+      instanceId = match ? match[1].trim() : null;
 
-      const inserted = await Promise.all(
-        services.map(s => ServiceStatus.create({
-          hostname: jsonData.hostname,
-          timestamp: jsonData.timestamp,
-          name: s.name,
-          enabled: s.enabled,
-          active: s.active,
-        }))
-      );
-
-      return res.status(201).json({ message: `✅ ${inserted.length} services importés.` });
+      if (!instanceId) {
+        console.warn("⚠️ Impossible de récupérer l'INSTANCE_ID");
+      }
+    } catch (e) {
+      console.warn("⚠️ Erreur lors de la lecture de instance-info.conf :", e.message);
     }
+
+    // 📦 Récupérer les 2 fichiers JSON
+    const [statusJSON, servicesJSON] = await Promise.all([
+      getRemoteJSON({ host, username, privateKey, filePath: statusPath }),
+      getRemoteJSON({ host, username, privateKey, filePath: servicesPath })
+    ]);
+
+    const { hostname, timestamp, ...statusData } = statusJSON;
+
+    // ✅ Formater status
+    const formatted_status = Object.entries(statusData).map(([key, value]) => ({
+      label: key,
+      value: value
+    }));
+
+    // 💾 Enregistrer status
+    await StatusSnapshot.create({
+      hostname,
+      timestamp,
+      data: statusData,
+      formatted_data: formatted_status,
+      instance_id: instanceId || null
+    });
+
+    // ✅ Formater services
+    const services = servicesJSON.services || [];
+
+    const formatted_services = services.map(s => ({
+      name: s.name,
+      enabled: s.enabled,
+      active: s.active
+    }));
+
+    // 💾 Enregistrer services
+    await ServiceStatus.create({
+      hostname: servicesJSON.hostname,
+      timestamp: servicesJSON.timestamp,
+      formatted_data: formatted_services,
+      instance_id: instanceId || null
+    });
+
+    // 🧾 Historique VM
+    await VMInstance.create({
+      instance_id: instanceId || null,
+      hostname: hostname || servicesJSON.hostname || "unknown",
+      ip_address: host,
+      fetched_at: new Date()
+    });
+
+    return res.status(201).json({
+      message: "✅ Données status et services importées avec historique",
+      hostname,
+      services_count: services.length
+    });
 
   } catch (err) {
     console.error("❌ Erreur SSH dynamique:", err);

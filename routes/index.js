@@ -9,6 +9,7 @@ const templateRoutes = require("./services/serviceTemplateRoutes");
 const monitoringServiceRoutes = require("./services/monitoringServiceRoutes");
 const initScriptRoutes = require("./scripts/initScriptRoutes");
 const supervisionRoutes = require("./supervision/supervisionRoutes");
+const deleteVMDirect = require("./vm/deleteVm");
 
 router.use("/auth", authRoutes);
 router.use("/", deployRoutes);
@@ -18,6 +19,7 @@ router.use("/templates", templateRoutes);
 router.use("/", monitoringServiceRoutes);
 router.use("/init-scripts", initScriptRoutes);
 router.use("/supervision", supervisionRoutes);
+router.use("/vm", deleteVMDirect);
 
 
 

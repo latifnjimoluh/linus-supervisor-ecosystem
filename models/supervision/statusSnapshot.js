@@ -1,12 +1,11 @@
-// models/serviceStatus.js
 "use strict";
 const { Model, DataTypes } = require("sequelize");
 const { v4: uuidv4 } = require("uuid");
 
 module.exports = (sequelize) => {
-  class ServiceStatus extends Model {}
+  class StatusSnapshot extends Model {}
 
-  ServiceStatus.init(
+  StatusSnapshot.init(
     {
       id: {
         type: DataTypes.UUID,
@@ -26,12 +25,11 @@ module.exports = (sequelize) => {
     },
     {
       sequelize,
-      modelName: "ServiceStatus",
-      tableName: "service_statuses",
-      underscored: true,
+      modelName: "StatusSnapshot",
+      tableName: "status_snapshots",
       timestamps: true
     }
   );
 
-  return ServiceStatus;
+  return StatusSnapshot;
 };

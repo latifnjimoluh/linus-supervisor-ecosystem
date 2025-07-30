@@ -2,47 +2,51 @@
 const { Client } = require("ssh2");
 
 /**
- * Récupère un fichier JSON distant via SSH
+ * Récupère le contenu brut d'un fichier distant via SSH
  * @param {Object} options
- * @param {string} options.host - IP ou hostname de la VM
- * @param {string} options.username - utilisateur SSH
- * @param {string} [options.password] - mot de passe SSH (optionnel si privateKey)
- * @param {string} [options.privateKey] - chemin ou contenu de la clé privée
- * @param {string} options.filePath - chemin absolu du fichier JSON à lire
- * @returns {Promise<Object>} - JSON parsé depuis la VM
+ * @param {string} options.host
+ * @param {string} options.username
+ * @param {string} options.privateKey
+ * @param {string} options.filePath
+ * @returns {Promise<string>}
  */
-function getRemoteJSON({ host, username, password, privateKey, filePath }) {
+const getRemoteFileContent = async ({ host, username, privateKey, filePath }) => {
   return new Promise((resolve, reject) => {
     const conn = new Client();
-
     conn
       .on("ready", () => {
-        conn.exec(`cat ${filePath}`, (err, stream) => {
+        conn.sftp((err, sftp) => {
           if (err) return reject(err);
-
-          let data = "";
-          stream
-            .on("data", (chunk) => (data += chunk))
-            .on("close", (code, signal) => {
-              conn.end();
-              try {
-                const json = JSON.parse(data);
-                resolve(json);
-              } catch (parseError) {
-                reject(new Error("Erreur parsing JSON distant: " + parseError.message));
-              }
-            });
+          const stream = sftp.createReadStream(filePath);
+          let content = "";
+          stream.on("data", chunk => (content += chunk));
+          stream.on("end", () => {
+            conn.end();
+            resolve(content);
+          });
+          stream.on("error", reject);
         });
       })
       .on("error", reject)
-      .connect({
-        host,
-        port: 22,
-        username,
-        password,
-        privateKey,
-      });
+      .connect({ host, username, privateKey });
   });
-}
+};
 
-module.exports = { getRemoteJSON };
+/**
+ * Récupère un fichier JSON distant et le parse
+ * @param {Object} options
+ * @param {string} options.host
+ * @param {string} options.username
+ * @param {string} options.privateKey
+ * @param {string} options.filePath
+ * @returns {Promise<Object>}
+ */
+const getRemoteJSON = async ({ host, username, privateKey, filePath }) => {
+  const raw = await getRemoteFileContent({ host, username, privateKey, filePath });
+  return JSON.parse(raw);
+};
+
+module.exports = {
+  getRemoteFileContent,
+  getRemoteJSON
+};
