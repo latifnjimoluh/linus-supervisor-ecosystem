@@ -1,8 +1,8 @@
 "use strict";
 
 module.exports = (sequelize, DataTypes) => {
-  const ServiceConfiguration = sequelize.define(
-    "ServiceConfiguration",
+  const ConfigTemplateService = sequelize.define(
+    "ConfigTemplateService",
     {
       service_type: {
         type: DataTypes.STRING,
@@ -18,12 +18,12 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: "service_configurations",
+      tableName: "config_template_services", // ✅ nom explicite
       timestamps: true,
       createdAt: "created_at",
       updatedAt: "updated_at",
     }
   );
 
-  return ServiceConfiguration;
+  return ConfigTemplateService;
 };

@@ -1,7 +1,7 @@
 "use strict";
 
 module.exports = (sequelize, DataTypes) => {
-  const ServiceTemplate = sequelize.define("ServiceTemplate", {
+  const ConfigTemplate = sequelize.define("ConfigTemplate", {
     name: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -10,6 +10,11 @@ module.exports = (sequelize, DataTypes) => {
     service_type: {
       type: DataTypes.STRING,
       allowNull: false
+    },
+    category: {
+      type: DataTypes.ENUM("configuration", "monitoring"),
+      allowNull: false,
+      defaultValue: "configuration"
     },
     description: {
       type: DataTypes.TEXT,
@@ -20,11 +25,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     }
   }, {
-    tableName: "service_templates",
+    tableName: "config_templates",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
   });
 
-  return ServiceTemplate;
+  return ConfigTemplate;
 };

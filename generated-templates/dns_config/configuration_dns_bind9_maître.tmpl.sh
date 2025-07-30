@@ -33,7 +33,7 @@ EOF
 
 # 4. Création du fichier de zone
 cat > /etc/bind/db.{{ZONE_NAME}} <<EOF
-\$TTL 604800
+$TTL 604800
 @   IN  SOA {{FQDN_NS}} {{ADMIN_EMAIL}} (
         {{SERIAL}} ; Serial
         604800     ; Refresh
@@ -52,10 +52,8 @@ named-checkconf
 named-checkzone {{ZONE_NAME}} /etc/bind/db.{{ZONE_NAME}}
 
 # 6. Redémarrage du service
-
 systemctl restart bind9
 systemctl status bind9 --no-pager
-
 
 # 7. Résultat
 echo "✅ Serveur DNS Bind9 configuré pour {{ZONE_NAME}} avec succès"
