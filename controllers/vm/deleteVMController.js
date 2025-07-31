@@ -35,12 +35,20 @@ exports.deleteVMDirect = async (req, res) => {
   let vm_ip = null;
 
   try {
-    const status = await getVMStatus(commonArgs);
-    logOutput += `Statut initial: ${status}\n`;
-
+    // ✅ Vérification préalable : est-ce que la VM existe ?
     const vmInfo = await getVMInfo(commonArgs);
+    console.log("📦 VM Info récupérée :", vmInfo); 
+    if (!vmInfo || !vmInfo.name) {
+      return res.status(404).json({
+        message: `❌ La VM ID ${vm_id} n'existe pas sur le nœud ${node} dans Proxmox.`,
+      });
+    }
+
     vm_name = vmInfo.name;
     vm_ip = await getVMIP(commonArgs);
+
+    const status = await getVMStatus(commonArgs);
+    logOutput += `Statut initial: ${status}\n`;
 
     if (status === "running") {
       await stopVM(commonArgs);

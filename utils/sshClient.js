@@ -33,6 +33,44 @@ const getRemoteFileContent = async ({ host, username, privateKey, filePath }) =>
 };
 
 /**
+ * Exécute une commande distante via SSH
+ * @param {Object} options
+ * @param {string} options.host
+ * @param {string} options.username
+ * @param {string} options.privateKey
+ * @param {string} options.command
+ * @returns {Promise<{ stdout: string, stderr: string }>}
+ */
+
+const execSSHCommand = ({ host, username, privateKey, command }) => {
+  return new Promise((resolve, reject) => {
+    const conn = new Client();
+    let output = "";
+
+    conn
+      .on("ready", () => {
+        conn.exec(command, (err, stream) => {
+          if (err) return reject(err);
+          stream
+            .on("data", (data) => {
+              output += data.toString();
+            })
+            .on("close", () => {
+              conn.end();
+              resolve(output.trim());
+            })
+            .stderr.on("data", (data) => {
+              output += data.toString(); // capture stderr aussi
+            });
+        });
+      })
+      .on("error", reject)
+      .connect({ host, username, privateKey });
+  });
+};
+
+
+/**
  * Récupère un fichier JSON distant et le parse
  * @param {Object} options
  * @param {string} options.host
@@ -48,5 +86,6 @@ const getRemoteJSON = async ({ host, username, privateKey, filePath }) => {
 
 module.exports = {
   getRemoteFileContent,
-  getRemoteJSON
+  getRemoteJSON,
+  execSSHCommand
 };

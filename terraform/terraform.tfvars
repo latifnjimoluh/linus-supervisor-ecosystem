@@ -1,6 +1,6 @@
 proxmox_api_url           = "https://192.168.24.134:8006/api2/json"
-proxmox_api_token_id      = "root@pam"
-proxmox_api_token_secret  = "Nexus2023."  # ou mieux : utiliser une variable d'environnement
+# proxmox_api_token_id      = "root@pam"
+# proxmox_api_token_secret  = "Nexus2023."  # ou mieux : utiliser une variable d'environnement
 proxmox_node              = "pve"
 template_name             = "ubuntu-template"
 vm_storage                = "local-lvm"

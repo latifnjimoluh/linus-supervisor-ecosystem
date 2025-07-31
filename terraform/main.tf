@@ -15,8 +15,8 @@ terraform {
 
 provider "proxmox" {
   pm_api_url      = var.proxmox_api_url
-  pm_user         = var.proxmox_api_token_id
-  pm_password     = var.proxmox_api_token_secret
+  pm_user         = var.pm_user
+  pm_password     = var.pm_password
   pm_tls_insecure = true
 }
 
@@ -114,8 +114,10 @@ resource "null_resource" "configure_service" {
 
   provisioner "remote-exec" {
     inline = [
+      "echo '🔧 Execution INIT SCRIPT...'",
       "chmod +x /tmp/init.sh",
-      "sudo /tmp/init.sh"
+      "sudo /tmp/init.sh",
+      "echo '✅ Fin INIT SCRIPT'"
     ]
   }
 
@@ -126,8 +128,10 @@ resource "null_resource" "configure_service" {
 
   provisioner "remote-exec" {
     inline = [
+      "echo '🔧 Execution CONFIG SCRIPT...'",
       "chmod +x /tmp/config.sh",
-      "sudo /tmp/config.sh"
+      "sudo /tmp/config.sh",
+      "echo '✅ Fin INIT SCRIPT'"
     ]
   }
 
@@ -138,8 +142,10 @@ resource "null_resource" "configure_service" {
 
   provisioner "remote-exec" {
     inline = [
+      "echo '🔧 Execution monitoring SCRIPT...'",
       "chmod +x /tmp/monitoring.sh",
-      "sudo /tmp/monitoring.sh"
+      "sudo /tmp/monitoring.sh",
+      "echo '✅ Fin INIT SCRIPT'"
     ]
   }
 
@@ -151,8 +157,10 @@ resource "null_resource" "configure_service" {
 
   provisioner "remote-exec" {
     inline = [
+      "echo '🔧 Execution service-detector SCRIPT...'",
       "chmod +x /tmp/service-detector.sh",
-      "sudo /tmp/service-detector.sh"
+      "sudo /tmp/service-detector.sh",
+      "echo '✅ Fin INIT SCRIPT'"
     ]
   }
 

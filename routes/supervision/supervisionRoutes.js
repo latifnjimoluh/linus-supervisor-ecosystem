@@ -3,10 +3,10 @@ const express = require("express");
 const router = express.Router();
 const fetchController = require("../../controllers/supervision/fetchSupervisionController");
 const { SupervisionStatus, ServiceStatus } = require("../../models");
+const { verifyToken } = require("../../middlewares/auth"); // ✅ ajouter l'import
 
-// 📥 Import JSON depuis VM (déjà existant)
-router.post("/fetch", fetchController.fetchFromDynamicVM);
-
+// 📥 Import JSON depuis VM (auth obligatoire)
+router.post("/fetch", verifyToken, fetchController.fetchFromDynamicVM); // ✅ sécurisé
 
 // 📄 Récupérer tous les statuts enregistrés
 router.get("/status", async (req, res) => {

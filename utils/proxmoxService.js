@@ -106,19 +106,28 @@ exports.deleteVM = async ({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret 
   return response.data;
 };
 
-// ✅ Vérifie si une VM avec le même nom existe déjà (tous les nœuds)
 exports.checkIfVMNameExists = async ({ apiUrl, tokenId, tokenName, tokenSecret }, vmNameToCheck) => {
   const headers = getHeaders(tokenId, tokenName, tokenSecret);
   const url = `${apiUrl}/cluster/resources`;
-  console.log("🌐 Vérification nom VM via :", url);
+
+  console.log("🌐 [checkIfVMNameExists] URL Proxmox :", url);
+  console.log("🔐 [checkIfVMNameExists] Headers :", headers);
+
   try {
     const res = await axios.get(url, { httpsAgent, headers });
     const allVMs = res.data?.data?.filter(r => r.type === "qemu") || [];
 
     const found = allVMs.find(vm => vm.name === vmNameToCheck);
-    return !!found; // true si le nom est déjà pris
+    console.log("📋 [checkIfVMNameExists] Liste des VM :", allVMs.map(v => v.name));
+    console.log("🔍 [checkIfVMNameExists] Nom trouvé :", found?.name || "non trouvé");
+
+    return !!found;
   } catch (error) {
-    console.error("❌ [checkIfVMNameExists] Erreur:", error.message);
+    console.error("❌ [checkIfVMNameExists] Erreur Axios :", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
     return false;
   }
 };
