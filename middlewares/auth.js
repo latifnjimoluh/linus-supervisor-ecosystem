@@ -1,11 +1,11 @@
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
-const { Role } = require("../models");
+const { Role, Permission, RolePermission } = require("../models");
 
 const secret = process.env.JWT_SECRET;
 
 /**
- * 🔐 Génération du token avec l'id, l'email et le role_id
+ * 🔐 Création du token
  */
 const createToken = (user, expiresIn = process.env.JWT_EXPIRES_IN || "1h") => {
   console.log("🎫 Création du token avec:", user);
@@ -16,51 +16,55 @@ const createToken = (user, expiresIn = process.env.JWT_EXPIRES_IN || "1h") => {
   }, secret, { expiresIn });
 };
 
-
 /**
- * 🔒 Middleware pour vérifier le token et injecter les infos utilisateur + rôle depuis la base
+ * 🔒 Vérification du token et injection du rôle + permissions dans req.user
  */
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    console.log("🚫 Token absent ou invalide dans l'en-tête");
+    console.log("🚫 Token absent ou invalide");
     return res.status(401).json({ message: "Token manquant ou invalide." });
   }
 
   const token = authHeader.split(" ")[1];
+
   jwt.verify(token, secret, async (err, decoded) => {
     if (err) {
       console.log("❌ Token invalide:", err);
       return res.status(403).json({ message: "Token invalide." });
     }
 
-    console.log("🔍 Décodé depuis JWT:", decoded);
-
     try {
-      const role = await Role.findByPk(decoded.role_id);
+      const role = await Role.findByPk(decoded.role_id, {
+        include: [{ model: Permission, as: "permissions" }]
+      });
+
       if (!role || role.status !== "actif") {
-        console.log("⛔ Rôle inactif ou introuvable dans verifyToken:", decoded.role_id);
+        console.log("⛔ Rôle inactif ou introuvable:", decoded.role_id);
         return res.status(403).json({ message: "Rôle invalide ou inactif." });
       }
+
+      const permissions = role.permissions.map(p => p.name);
 
       req.user = {
         id: decoded.id,
         email: decoded.email,
         role_id: decoded.role_id,
         role: role.name,
+        permissions, // ⬅️ Injection des permissions
       };
 
-      console.log("✅ Token validé. Utilisateur injecté:", req.user);
+      console.log("✅ Authentifié avec rôle + permissions:", req.user);
       next();
     } catch (error) {
-      console.error("🔥 Erreur lors de la vérification du rôle:", error);
-      return res.status(500).json({ message: "Erreur serveur lors de la vérification du rôle." });
+      console.error("🔥 Erreur verifyToken:", error);
+      return res.status(500).json({ message: "Erreur serveur." });
     }
   });
 };
 
 /**
- * 🧱 Middleware de contrôle d'accès par rôle
+ * 🧱 Vérifie si l'utilisateur a au moins un des rôles donnés
  */
 const checkRole = (authorizedRoles = []) => {
   return (req, res, next) => {
@@ -72,7 +76,46 @@ const checkRole = (authorizedRoles = []) => {
 };
 
 /**
- * 🛡️ Middleware spécifique pour superadmin uniquement
+ * ✅ Vérifie si l'utilisateur a une permission donnée (ex: "template.create")
+ */
+/**
+ * 🔐 Middleware dynamique basé sur la permission stockée en BDD
+ * @param {string} permissionKey - ex: "vm.deploy"
+ */
+const checkPermission = (permissionKey) => {
+  return async (req, res, next) => {
+    try {
+      const roleId = req.user?.role_id;
+      if (!roleId) {
+        return res.status(403).json({ message: "⛔ Rôle utilisateur introuvable." });
+      }
+
+      const permission = await Permission.findOne({ where: { name: permissionKey } });
+      if (!permission) {
+        return res.status(403).json({ message: `⛔ Permission '${permissionKey}' non trouvée.` });
+      }
+
+      const rolePermission = await RolePermission.findOne({
+        where: {
+          role_id: roleId,
+          permission_id: permission.id,
+        },
+      });
+
+      if (!rolePermission) {
+        return res.status(403).json({ message: `⛔ Accès refusé : permission '${permissionKey}' non accordée.` });
+      }
+
+      next();
+    } catch (error) {
+      console.error("Erreur middleware checkPermission:", error);
+      return res.status(500).json({ message: "Erreur interne serveur (permission)." });
+    }
+  };
+};
+
+/**
+ * 🛡️ Vérifie que l'utilisateur est superadmin
  */
 const isSuperAdmin = (req, res, next) => {
   if (req.user?.role !== "superadmin") {
@@ -85,5 +128,6 @@ module.exports = {
   createToken,
   verifyToken,
   checkRole,
+  checkPermission, // ✅ nouveau middleware
   isSuperAdmin,
 };

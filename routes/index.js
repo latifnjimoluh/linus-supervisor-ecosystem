@@ -3,38 +3,43 @@ const router = express.Router();
 
 const userAuthRoutes = require("./user/userAuthRoutes");
 const deployRoutes = require("./vm/deployVm");
-const configureService = require("./services/serviceConfigRoutes");
-const monitoringRoutes = require("./scripts/monitoringScriptRoutes");
-const templateRoutes = require("./template/configTemplateRoutes");
-const monitoringServiceRoutes = require("./services/monitoringServiceRoutes");
+const deleteVMRoutes = require("./vm/deleteVm");
+const checkVMStatusRoutes = require("./vm/statusVm");
+const configureServiceRoutes = require("./services/serviceConfigRoutes");
+const monitoringScriptRoutes = require("./scripts/monitoringScriptRoutes");
 const initScriptRoutes = require("./scripts/initScriptRoutes");
-const supervisionRoutes = require("./supervision/supervisionRoutes");
-const deleteVMDirect = require("./vm/deleteVm");
-const settingsRoutes = require("./user/userSettingsRoutes");
+const monitoringServiceRoutes = require("./services/monitoringServiceRoutes");
+const templateConfigRoutes = require("./template/configTemplateRoutes");
 const convertTemplateRoutes = require("./templateRoutes");
-const statusVmRoutes = require("./vm/statusVm");
-const userroles = require("./user/userRoleRoutes");
+const supervisionRoutes = require("./supervision/supervisionRoutes");
+const settingsRoutes = require("./user/userSettingsRoutes");
+const userRoleRoutes = require("./user/userRoleRoutes");
 const userRoutes = require("./user/userRoutes");
+const userPermissionRoutes = require("./user/userPermissionRoutes");
 
+// Permissions
 
-
-
+// Routes principales
 router.use("/auth", userAuthRoutes);
-router.use("/", deployRoutes);
-router.use("/services", configureService);
-router.use("/monitoring", monitoringRoutes);
-router.use("/templates", templateRoutes);
-router.use("/", monitoringServiceRoutes);
-router.use("/init-scripts", initScriptRoutes);
-router.use("/supervision", supervisionRoutes);
-router.use("/vm", deleteVMDirect);
-router.use("/settings", settingsRoutes);
-router.use("/convert-template", convertTemplateRoutes);
-router.use("/status-vm", statusVmRoutes);
-router.use("/user-roles", userroles);
 router.use("/users", userRoutes);
+router.use("/permissions", userPermissionRoutes);
+router.use("/user-roles", userRoleRoutes);
+router.use("/settings", settingsRoutes);
 
+// VM management
+router.use("/vm", deleteVMRoutes);
+router.use("/vm", deployRoutes);
+router.use("/vm", checkVMStatusRoutes);
 
+// Services & Scripts
+router.use("/services", configureServiceRoutes);
+router.use("/monitoring", monitoringScriptRoutes);
+router.use("/monitoring", monitoringServiceRoutes);
+router.use("/init-scripts", initScriptRoutes);
 
+// Supervision & Template
+router.use("/supervision", supervisionRoutes);
+router.use("/templates", templateConfigRoutes);
+router.use("/convert-template", convertTemplateRoutes);
 
 module.exports = router;

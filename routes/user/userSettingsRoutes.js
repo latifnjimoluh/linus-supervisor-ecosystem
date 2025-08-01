@@ -1,11 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const userSettingsController = require("../../controllers/user/userSettingsController");
+const { verifyToken, checkPermission } = require("../../middlewares/auth");
 
-const { verifyToken, checkRole } = require("../../middlewares/auth");
 
-router.get("/", verifyToken, userSettingsController.getUserSettings);
-router.patch("/", verifyToken, userSettingsController.updateUserSettings);
-router.post("/", verifyToken, userSettingsController.createUserSettings);
+router.get("/", verifyToken, checkPermission("userSettings.read"), userSettingsController.getUserSettings);
+router.patch("/", verifyToken, checkPermission("userSettings.update"), userSettingsController.updateUserSettings);
+router.post("/", verifyToken, checkPermission("userSettings.create"), userSettingsController.createUserSettings);
 
 module.exports = router;

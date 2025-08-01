@@ -1,8 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const { convertToTemplate } = require("../controllers/templateController");
-const { verifyToken } = require("../middlewares/auth");
+const { verifyToken, checkPermission } = require("../middlewares/auth");
 
-router.post("/convert", verifyToken, convertToTemplate);
+router.post(
+  "/convert",
+  verifyToken,
+  checkPermission("template.convert"),
+  convertToTemplate
+);
 
 module.exports = router;

@@ -1,9 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const { checkVMStatus } = require("../../controllers/vm/checkVMStatusController");
-const { verifyToken, checkRole } = require("../../middlewares/auth");
+const { verifyToken, checkPermission } = require("../../middlewares/auth");
 
-router.post("/check-vm-status", verifyToken, checkRole(["technicien", "superadmin"]), checkVMStatus);
 
+router.post(
+  "/check-vm-status",
+  verifyToken,
+  checkPermission("vm.status"),
+  checkVMStatus
+);
 
 module.exports = router;

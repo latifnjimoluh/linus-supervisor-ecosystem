@@ -1,8 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const { createTemplate } = require("../../controllers/template/configTemplateController");
-const { verifyToken, checkRole } = require("../../middlewares/auth");
+const { verifyToken, checkPermission } = require("../../middlewares/auth");
 
-router.post("/Create", verifyToken, checkRole(["superadmin"]), createTemplate);
+
+router.post("/create", verifyToken, checkPermission("configTemplate.create"), createTemplate);
 
 module.exports = router;

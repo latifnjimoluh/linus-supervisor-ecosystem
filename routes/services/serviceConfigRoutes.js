@@ -1,9 +1,14 @@
-// 📁 routes/services/serviceConfigRoutes.js
 const express = require("express");
 const router = express.Router();
 const { configureService } = require("../../controllers/services/configTemplateServiceController");
-const { verifyToken, checkRole } = require("../../middlewares/auth");
+const { verifyToken, checkPermission } = require("../../middlewares/auth");
 
-router.post("/config-template", verifyToken, checkRole(["technicien", "superadmin"]), configureService);
+
+router.post(
+  "/config-template",
+  verifyToken,
+  checkPermission("serviceConfig.configure"),
+  configureService
+);
 
 module.exports = router;
