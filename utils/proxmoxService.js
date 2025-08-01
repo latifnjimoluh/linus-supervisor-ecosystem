@@ -93,6 +93,21 @@ exports.stopVM = async ({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret })
   }
 };
 
+// ▶️ Démarre la VM
+exports.startVM = async ({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret }) => {
+  const url = `${apiUrl}/nodes/${node}/qemu/${vmId}/status/start`;
+  const headers = getHeaders(tokenId, tokenName, tokenSecret);
+
+  try {
+    const res = await axios.post(url, null, { httpsAgent, headers });
+    console.log("▶️ Démarrage de la VM demandé :", res.data);
+    return res.data;
+  } catch (error) {
+    const message = error.response?.data?.message || error.message;
+    throw new Error(`Erreur démarrage VM : ${message}`);
+  }
+};
+
 // 🗑️ Supprime la VM
 exports.deleteVM = async ({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret }) => {
   const headers = getHeaders(tokenId, tokenName, tokenSecret);

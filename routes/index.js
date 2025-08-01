@@ -5,6 +5,8 @@ const userAuthRoutes = require("./user/userAuthRoutes");
 const deployRoutes = require("./vm/deployVm");
 const deleteVMRoutes = require("./vm/deleteVm");
 const checkVMStatusRoutes = require("./vm/statusVm");
+const startVMRoutes = require("./vm/startVm");
+const stopVMRoutes = require("./vm/stopVm");
 const configureServiceRoutes = require("./services/serviceConfigRoutes");
 const monitoringScriptRoutes = require("./scripts/monitoringScriptRoutes");
 const initScriptRoutes = require("./scripts/initScriptRoutes");
@@ -30,6 +32,8 @@ router.use("/settings", settingsRoutes);
 router.use("/vm", deleteVMRoutes);
 router.use("/vm", deployRoutes);
 router.use("/vm", checkVMStatusRoutes);
+router.use("/vm", startVMRoutes);
+router.use("/vm", stopVMRoutes);
 
 // Services & Scripts
 router.use("/services", configureServiceRoutes);

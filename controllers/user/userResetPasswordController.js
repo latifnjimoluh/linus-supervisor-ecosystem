@@ -1,7 +1,7 @@
 const db = require("../../models");
 const User = db.User;
 const bcrypt = require("bcrypt");
-const { sendResetCode } = require("../../utils/mailer");
+const { sendResetCode } = require("../../utils/configMail");
 const logUserAction = require("../../middlewares/logUserAction");
 
 exports.requestReset = async (req, res) => {
