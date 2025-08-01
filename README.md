@@ -168,14 +168,14 @@ Les journaux de déploiement sont stockés dans le dossier `logs/` et dans la ta
 - `config/db.js` : initialisation de la connexion PostgreSQL.
 - `controllers/auth/userAuthController.js` : inscription et connexion des utilisateurs.
 - `controllers/deploy/deployController.js` : lance les déploiements Terraform.
-- `controllers/scripts/initScriptController.js` : gestion des scripts d'initialisation.
-- `controllers/scripts/monitoringScriptController.js` : gestion des scripts de monitoring.
-- `controllers/services/configTemplateServiceController.js` : gère les modèles de configuration de service.
-- `controllers/services/monitoringServiceController.js` : enregistre les services supervisés.
-- `controllers/services/generateServiceMonitoringAgent.js` : génère les agents de supervision.
-- `controllers/supervision/fetchSupervisionController.js` : récupère les données de supervision des VMs.
-- `controllers/supervision/supervisionController.js` : stocke et renvoie les instantanés d'état.
+- `controllers/generate/generateInitScriptController.js` : gestion des scripts d'initialisation.
+- `controllers/generate/generateMonitoringDNSController.js` : gestion des scripts de monitoring.
+- `controllers/template/templateServixeController.js` : gère les modèles de configuration de service.
+- `controllers/generate/generateMonitoringServiceController.js` : enregistre les services supervisés.
+- `controllers/generate/generateAgentController.js` : génère les agents de supervision.
+- `controllers/supervision/supervisionFetchController.js` : récupère et enregistre les données de supervision des VMs.
 - `controllers/template/configTemplateController.js` : CRUD des modèles de configuration.
+- `controllers/templateVMController.js` : conversion d'une VM en template Cloud-Init.
 - `controllers/vm/deleteVMController.js` : supprime une machine virtuelle.
 - `generated-scripts/` : scripts générés automatiquement lors des déploiements.
 - `generated-templates/` : modèles de script générés pour la configuration et la supervision.

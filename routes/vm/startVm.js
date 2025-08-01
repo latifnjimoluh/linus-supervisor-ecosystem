@@ -1,14 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const { configureService } = require("../../controllers/template/templateServixeController");
+const { startVM } = require("../../controllers/vm/startVMController");
 const { verifyToken, checkPermission } = require("../../middlewares/auth");
 
-
 router.post(
-  "/config-template",
+  "/start",
   verifyToken,
-  checkPermission("serviceConfig.configure"),
-  configureService
+  checkPermission("vm.start"),
+  startVM
 );
 
 module.exports = router;
