@@ -13,7 +13,6 @@ const sequelize = new Sequelize(
   config
 );
 
-// 🔥 Charger tous les modèles récursivement
 function loadModels(dir) {
   fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
     const fullPath = path.join(dir, entry.name);
@@ -31,6 +30,12 @@ function loadModels(dir) {
 }
 
 loadModels(__dirname);
+
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;

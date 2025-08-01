@@ -1,14 +1,19 @@
 const fs = require("fs");
 const path = require("path");
-const { getVMStatus, stopVM, deleteVM, getVMInfo, getVMIP } = require("../../utils/proxmoxService");
-const { Deployment, Delete } = require("../../models");
+const {
+  getVMStatus,
+  stopVM,
+  deleteVM,
+  getVMInfo,
+  getVMIP,
+} = require("../../utils/proxmoxService");
+const { Deployment, Delete, UserSetting } = require("../../models");
 
 exports.deleteVMDirect = async (req, res) => {
   const user = req.user;
-
   const {
     vm_id,
-    node,
+    node: bodyNode,
     instance_id,
     proxmox_api_url,
     proxmox_api_token_id,
@@ -16,15 +21,41 @@ exports.deleteVMDirect = async (req, res) => {
     proxmox_api_token_secret,
   } = req.body;
 
-  console.log(`🧨 Suppression de la VM ID ${vm_id} (instance: ${instance_id}) par ${user.email}...`);
+  if (!vm_id || !instance_id) {
+    return res.status(400).json({
+      message: "❌ Champs requis : vm_id et instance_id",
+    });
+  }
+
+  const settings = await UserSetting.findOne({ where: { user_id: user.id } });
+
+  const node = bodyNode || settings?.proxmox_node;
+  const apiUrl = proxmox_api_url || settings?.proxmox_api_url;
+  const tokenId = proxmox_api_token_id || settings?.proxmox_api_token_id;
+  const tokenName = proxmox_api_token_name || settings?.proxmox_api_token_name;
+  const tokenSecret = proxmox_api_token_secret || settings?.proxmox_api_token_secret;
+
+  if (!node || !apiUrl || !tokenId || !tokenName || !tokenSecret) {
+    return res.status(400).json({
+      message: "❌ Informations Proxmox incomplètes (node, url, token id, nom ou secret)",
+    });
+  }
+
+  console.log(`🧨 Suppression VM ${vm_id} (instance ${instance_id}) déclenchée par ${user.email}`);
+  console.log("🔧 Paramètres utilisés :");
+  console.log("- node           :", node);
+  console.log("- apiUrl         :", apiUrl);
+  console.log("- tokenId        :", tokenId);
+  console.log("- tokenName      :", tokenName);
+  console.log("- tokenSecret... :", tokenSecret?.slice(0, 8) + "...");
 
   const commonArgs = {
     vmId: vm_id,
     node,
-    apiUrl: proxmox_api_url,
-    tokenId: proxmox_api_token_id,
-    tokenName: proxmox_api_token_name,
-    tokenSecret: proxmox_api_token_secret,
+    apiUrl,
+    tokenId,
+    tokenName,
+    tokenSecret,
   };
 
   const startTime = new Date();
@@ -35,12 +66,10 @@ exports.deleteVMDirect = async (req, res) => {
   let vm_ip = null;
 
   try {
-    // ✅ Vérification préalable : est-ce que la VM existe ?
     const vmInfo = await getVMInfo(commonArgs);
-    console.log("📦 VM Info récupérée :", vmInfo); 
     if (!vmInfo || !vmInfo.name) {
       return res.status(404).json({
-        message: `❌ La VM ID ${vm_id} n'existe pas sur le nœud ${node} dans Proxmox.`,
+        message: `❌ La VM ${vm_id} n'existe pas sur ${node}.`,
       });
     }
 
@@ -52,15 +81,14 @@ exports.deleteVMDirect = async (req, res) => {
 
     if (status === "running") {
       await stopVM(commonArgs);
-      logOutput += `Arrêt demandé...\n`;
+      logOutput += `🛑 Arrêt demandé...\n`;
 
-      // 🔁 Attendre l'arrêt
       let attempts = 0;
       const maxAttempts = 5;
       while (attempts < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await new Promise((r) => setTimeout(r, 2000));
         const currentStatus = await getVMStatus(commonArgs);
-        logOutput += `Tentative ${attempts + 1}: statut = ${currentStatus}\n`;
+        logOutput += `⏳ Tentative ${attempts + 1}: statut = ${currentStatus}\n`;
         if (currentStatus !== "running") break;
         attempts++;
       }
@@ -68,7 +96,7 @@ exports.deleteVMDirect = async (req, res) => {
       const finalStatus = await getVMStatus(commonArgs);
       if (finalStatus === "running") {
         return res.status(500).json({
-          message: "❌ La VM est toujours en cours d'exécution, suppression impossible.",
+          message: "❌ La VM est toujours active après plusieurs tentatives d'arrêt.",
         });
       }
     }
@@ -79,28 +107,20 @@ exports.deleteVMDirect = async (req, res) => {
     success = true;
 
     const endTime = new Date();
-    const duration = (endTime - startTime) / 1000;
     const logFilename = `delete-${startTime.toISOString().replace(/[:.]/g, "-")}-${user.id}.log`;
     const logsDir = path.resolve(__dirname, "../../logs");
     if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir);
     const logPath = path.join(logsDir, logFilename);
     fs.writeFileSync(logPath, logOutput);
 
-    // 📌 MAJ Déploiement
     await Deployment.update(
       { operation_type: "destroy" },
-      {
-        where: {
-          vm_id,
-          instance_id: instance_id || null,
-        },
-      }
+      { where: { vm_id, instance_id } }
     );
 
-    // 🗑️ Ajout dans Delete
     await Delete.create({
       vm_id,
-      instance_id: instance_id || null,
+      instance_id,
       vm_name,
       vm_ip,
       log_path: logPath,
@@ -117,26 +137,18 @@ exports.deleteVMDirect = async (req, res) => {
   } catch (error) {
     console.error("❌ Erreur suppression VM :", error.message);
 
-    const endTime = new Date();
-    const duration = (endTime - startTime) / 1000;
     const logFilename = `delete-${startTime.toISOString().replace(/[:.]/g, "-")}-${user.id}.log`;
     const logPath = path.join(__dirname, "../../logs", logFilename);
     fs.writeFileSync(logPath, logOutput + `\nErreur : ${error.message}`);
 
-    // Sauvegarde partielle malgré l’échec
     await Deployment.update(
       { operation_type: "destroy" },
-      {
-        where: {
-          vm_id,
-          instance_id: instance_id || null,
-        },
-      }
+      { where: { vm_id, instance_id } }
     );
 
     await Delete.create({
       vm_id,
-      instance_id: instance_id || null,
+      instance_id,
       vm_name,
       vm_ip,
       log_path: logPath,

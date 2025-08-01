@@ -17,6 +17,20 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -241,6 +255,118 @@ ALTER SEQUENCE public.monitoring_services_id_seq OWNED BY public.monitoring_serv
 
 
 --
+-- Name: permissions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.permissions (
+    id integer NOT NULL,
+    name character varying(100) NOT NULL,
+    description text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.permissions OWNER TO postgres;
+
+--
+-- Name: permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.permissions_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.permissions_id_seq OWNER TO postgres;
+
+--
+-- Name: permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.permissions_id_seq OWNED BY public.permissions.id;
+
+
+--
+-- Name: role_permissions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.role_permissions (
+    id integer NOT NULL,
+    role_id integer NOT NULL,
+    permission_id integer NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.role_permissions OWNER TO postgres;
+
+--
+-- Name: role_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.role_permissions_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.role_permissions_id_seq OWNER TO postgres;
+
+--
+-- Name: role_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.role_permissions_id_seq OWNED BY public.role_permissions.id;
+
+
+--
+-- Name: roles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.roles (
+    id integer NOT NULL,
+    name character varying(50) NOT NULL,
+    description text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    status character varying(10) DEFAULT 'actif'::character varying NOT NULL
+);
+
+
+ALTER TABLE public.roles OWNER TO postgres;
+
+--
+-- Name: roles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.roles_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.roles_id_seq OWNER TO postgres;
+
+--
+-- Name: roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.roles_id_seq OWNED BY public.roles.id;
+
+
+--
 -- Name: service_configurations_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -319,6 +445,21 @@ CREATE TABLE public.status_snapshots (
 ALTER TABLE public.status_snapshots OWNER TO postgres;
 
 --
+-- Name: user_action_logs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.user_action_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id integer NOT NULL,
+    action character varying(255) NOT NULL,
+    details text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.user_action_logs OWNER TO postgres;
+
+--
 -- Name: user_settings; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -386,7 +527,11 @@ CREATE TABLE public.users (
     role character varying(30) DEFAULT 'technicien'::character varying NOT NULL,
     status character varying(20) DEFAULT 'active'::character varying,
     created_at timestamp with time zone NOT NULL,
-    updated_at timestamp with time zone NOT NULL
+    updated_at timestamp with time zone NOT NULL,
+    role_id integer,
+    reset_token character varying,
+    reset_expires_at timestamp without time zone,
+    last_password_reset_at timestamp without time zone
 );
 
 
@@ -472,6 +617,27 @@ ALTER TABLE ONLY public.monitoring_services ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: permissions id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.permissions ALTER COLUMN id SET DEFAULT nextval('public.permissions_id_seq'::regclass);
+
+
+--
+-- Name: role_permissions id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.role_permissions ALTER COLUMN id SET DEFAULT nextval('public.role_permissions_id_seq'::regclass);
+
+
+--
+-- Name: roles id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.roles ALTER COLUMN id SET DEFAULT nextval('public.roles_id_seq'::regclass);
+
+
+--
 -- Name: user_settings id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -516,6 +682,14 @@ COPY public.deletes (id, instance_id, vm_id, vm_name, vm_ip, log_path, user_id, 
 cb061868-3bcc-4e0b-b142-d15416f9f64f	90627c3a-b2e5-4f3f-9243-c11b902b6ad4	104	testjeudi	192.168.24.29	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-07-31T12-40-12-357Z-1.log	1	admin@bunec.cm	2025-07-31 12:40:14.992
 848a1d70-0657-49e9-81e0-1487693dcf47	90627c3a-b2e5-4f3f-9243-c11b902b6ad4	104	vm-104	\N	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-07-31T12-40-22-557Z-1.log	1	admin@bunec.cm	2025-07-31 12:40:22.589
 ff33673d-8418-49e8-8da5-9cf97e970f20	43881a0e-317e-4d19-bf59-1a6fad9dc1a6	101	testvm1	192.168.24.30	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-07-31T12-52-06-138Z-1.log	1	admin@bunec.cm	2025-07-31 12:52:08.802
+3ce94694-38ef-44e1-ad92-9b4e04660f15	43881a0e-317e-4d19-bf59-1a6fad9dc1a6	101	yedg	\N	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-08-01T12-14-39-279Z-1.log	1	admin@bunec.cm	2025-08-01 12:14:42.352
+60b4dd12-faea-49d1-98a9-5dee4ca8df44	07a9ec64-9b34-4f5f-b06d-e2e6b6989d99	101	yedg	\N	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-08-01T12-15-50-108Z-1.log	1	admin@bunec.cm	2025-08-01 12:15:53.068
+5856def1-f075-41f3-8056-3d538d5bcaee	07a9ec64-9b34-4f5f-b06d-e2e6b6989d99	101	yedg	\N	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-08-01T12-16-56-998Z-1.log	1	admin@bunec.cm	2025-08-01 12:16:57.226
+015f6e0b-3645-42c8-b9e4-c95682414542	07a9ec64-9b34-4f5f-b06d-e2e6b6989d99	103	ydsbs	\N	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-08-01T12-17-21-463Z-1.log	1	admin@bunec.cm	2025-08-01 12:17:21.634
+a47fa63f-ec94-40fe-999c-f365de21be8f	07a9ec64-9b34-4f5f-b06d-e2e6b6989d99	104	eskfn	\N	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-08-01T12-18-13-307Z-1.log	1	admin@bunec.cm	2025-08-01 12:18:13.484
+d6cb65d2-0833-4a28-a575-e14902f557e2	361371c5-cef8-4fa4-819a-82b8cfddfdab	104	vm-104	\N	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-08-01T12-26-02-640Z-1.log	1	admin@bunec.cm	2025-08-01 12:26:02.727
+e75ca618-858d-4f0b-aebd-2a8831113b93	361371c5-cef8-4fa4-819a-82b8cfddfdab	101	eskfn	192.168.24.49	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-08-01T12-26-31-326Z-1.log	1	admin@bunec.cm	2025-08-01 12:26:33.731
+fe1c807d-248a-4839-b53c-2eac5e297775	3662cca0-129c-4af0-8e59-f65f87cdc6d8	101	test1	192.168.24.50	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\delete-2025-08-01T12-34-49-121Z-1.log	1	admin@bunec.cm	2025-08-01 12:34:51.559
 \.
 
 
@@ -528,9 +702,12 @@ COPY public.deployments (id, user_id, user_email, vm_name, service_name, operati
 16	1	admin@bunec.cm	testvm7	dns	apply	2025-07-31 15:18:47.766+01	2025-07-31 15:21:13.372+01	00:02:25.606	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-31T14-18-47-766Z-1.log	103	192.168.24.38	2025-07-31 15:21:13.376+01	2025-07-31 15:21:13.376+01	1f17200b-0465-4d93-88b5-df7573649fde	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns_config/config-dns-configuration-dns-bind9-maître-1753899748146.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
 17	1	admin@bunec.cm	wqer	dns	apply	2025-07-31 15:58:35.372+01	2025-07-31 16:00:59.951+01	00:02:24.579	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-31T14-58-35-372Z-1.log	104	192.168.24.42	2025-07-31 16:00:59.954+01	2025-07-31 16:00:59.954+01	fbcbccc5-6819-4838-bf9b-e9a72c2e1112	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns_config/config-dns-configuration-dns-bind9-maître-1753899748146.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
 18	1	admin@bunec.cm	khjg	dns	apply	2025-07-31 17:15:09.946+01	2025-07-31 17:17:24.906+01	00:02:14.96	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-31T16-15-09-946Z-1.log	101	192.168.24.45	2025-07-31 17:17:24.908+01	2025-07-31 17:17:24.908+01	fceeb525-5ec5-4a19-8172-2fa627828881	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns_config/config-dns-configuration-dns-bind9-maître-1753899748146.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
-19	1	admin@bunec.cm	yedg	dns	apply	2025-07-31 17:19:43.924+01	2025-07-31 17:22:08.127+01	00:02:24.203	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-31T16-19-43-924Z-1.log	101	192.168.24.46	2025-07-31 17:22:08.131+01	2025-07-31 17:22:08.131+01	07a9ec64-9b34-4f5f-b06d-e2e6b6989d99	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns_config/config-dns-configuration-dns-bind9-maître-1753899748146.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
 20	1	admin@bunec.cm	ydsbs	dns	apply	2025-07-31 17:34:36.908+01	2025-07-31 17:37:16.84+01	00:02:39.932	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-31T16-34-36-908Z-1.log	103	192.168.24.47	2025-07-31 17:37:16.844+01	2025-07-31 17:37:16.844+01	9dd888e9-b932-49d4-bbd0-9a74a8bd072e	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns_config/config-dns-configuration-dns-bind9-maître-1753899748146.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
 21	1	admin@bunec.cm	eskfn	dns	apply	2025-07-31 17:41:22.242+01	2025-07-31 17:44:01.689+01	00:02:39.447	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-31T16-41-22-242Z-1.log	104	192.168.24.48	2025-07-31 17:44:01.694+01	2025-07-31 17:44:01.694+01	f2810f12-a837-47d7-a674-19046da07610	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns_config/config-dns-configuration-dns-bind9-maître-1753899748146.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
+19	1	admin@bunec.cm	yedg	dns	destroy	2025-07-31 17:19:43.924+01	2025-07-31 17:22:08.127+01	00:02:24.203	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-07-31T16-19-43-924Z-1.log	101	192.168.24.46	2025-07-31 17:22:08.131+01	2025-08-01 13:16:57.136+01	07a9ec64-9b34-4f5f-b06d-e2e6b6989d99	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns_config/config-dns-configuration-dns-bind9-maître-1753899748146.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
+22	1	admin@bunec.cm	eskfn	dns	destroy	2025-08-01 13:20:41.685+01	2025-08-01 13:23:43.882+01	00:03:02.197	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-08-01T12-20-41-685Z-1.log	101	192.168.24.49	2025-08-01 13:23:43.885+01	2025-08-01 13:26:33.723+01	361371c5-cef8-4fa4-819a-82b8cfddfdab	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns_config/config-dns-configuration-dns-bind9-maître-1753899748146.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
+23	1	admin@bunec.cm	test1	dns	destroy	2025-08-01 13:27:35.781+01	2025-08-01 13:30:27.683+01	00:02:51.902	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-08-01T12-27-35-781Z-1.log	101	192.168.24.50	2025-08-01 13:30:27.685+01	2025-08-01 13:34:51.545+01	3662cca0-129c-4af0-8e59-f65f87cdc6d8	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns_config/config-dns-configuration-dns-bind9-maître-1753899748146.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
+24	1	admin@bunec.cm	test1	dns	apply	2025-08-01 13:35:14.849+01	2025-08-01 13:38:27.878+01	00:03:13.029	t	D:\\Keyce_B3\\Soutenance\\linusupervisor-backend\\linusupervisor-backend\\logs\\deploy-2025-08-01T12-35-14-849Z-1.log	101	192.168.24.51	2025-08-01 13:38:27.881+01	2025-08-01 13:38:27.881+01	9de92183-fb40-4595-999e-071e041f88f7	["D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/init-Init_Sécurité_Linux_Universel-d202dbc4-686f-40db-9205-6fba5b1f046e.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/monitor-dns-camer.cm-2925a4e4-20ca-4868-8ce3-43ab8f755fa4.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/detect-services-9e8277c1-7d33-40cf-af8b-604038d0cfc0.sh", "D:/Keyce_B3/Soutenance/linusupervisor-backend/linusupervisor-backend/generated-scripts/dns_config/config-dns-configuration-dns-bind9-maître-1753899748146.sh"]	{"disk_size": "20G", "memory_mb": 2048, "vcpu_cores": 2, "vcpu_sockets": 1, "template_name": "ubuntu-template"}	deployed
 \.
 
 
@@ -562,11 +739,48 @@ COPY public.monitoring_services (id, name, service_type, config_data, script_pat
 
 
 --
+-- Data for Name: permissions; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.permissions (id, name, description, created_at, updated_at) FROM stdin;
+1	template.create	Cr‚er un template de configuration	2025-08-01 17:28:16.869854	2025-08-01 17:28:16.869854
+2	template.view	Voir les templates	2025-08-01 17:28:16.869854	2025-08-01 17:28:16.869854
+3	template.update	Modifier un template	2025-08-01 17:28:16.869854	2025-08-01 17:28:16.869854
+4	template.delete	Supprimer un template	2025-08-01 17:28:16.869854	2025-08-01 17:28:16.869854
+\.
+
+
+--
+-- Data for Name: role_permissions; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.role_permissions (id, role_id, permission_id, created_at, updated_at) FROM stdin;
+1	1	1	2025-08-01 17:28:17.024337	2025-08-01 17:28:17.024337
+2	1	2	2025-08-01 17:28:17.024337	2025-08-01 17:28:17.024337
+3	1	3	2025-08-01 17:28:17.024337	2025-08-01 17:28:17.024337
+4	1	4	2025-08-01 17:28:17.024337	2025-08-01 17:28:17.024337
+\.
+
+
+--
+-- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.roles (id, name, description, created_at, updated_at, status) FROM stdin;
+1	superadmin	AccŠs complet … toutes les fonctionnalit‚s	2025-08-01 13:46:09.684567	2025-08-01 13:46:09.684567	actif
+4	observateur	AccŠs en lecture seule aux donn‚es	2025-08-01 13:46:09.684567	2025-08-01 13:46:09.684567	actif
+5	analyste	Peut consulter les données et générer des rapports	2025-08-01 12:59:31.454	2025-08-01 12:59:31.454	actif
+3	technicien	Ex‚cution et supervision des services	2025-08-01 13:46:09.684567	2025-08-01 13:04:46.584	actif
+\.
+
+
+--
 -- Data for Name: service_statuses; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.service_statuses (id, hostname, "timestamp", created_at, updated_at, instance_id, formatted_data) FROM stdin;
 0c5a470e-fb82-42f5-b306-bc827110b25e	testid	2025-07-30 17:01:01+01	2025-07-30 16:01:14.256	2025-07-30 16:01:14.256	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	[{"name": "sshd", "active": "active", "enabled": "alias"}, {"name": "bind9", "active": "active", "enabled": "alias"}]
+a4e1d18e-6e2e-429a-b2c9-4c9930dd15f3	yedg	2025-07-31 17:53:01+01	2025-07-31 16:53:10.821	2025-07-31 16:53:10.821	07a9ec64-9b34-4f5f-b06d-e2e6b6989d99	[{"name": "sshd", "active": "active", "enabled": "alias"}, {"name": "bind9", "active": "active", "enabled": "alias"}]
 \.
 
 
@@ -576,6 +790,20 @@ COPY public.service_statuses (id, hostname, "timestamp", created_at, updated_at,
 
 COPY public.status_snapshots (id, instance_id, hostname, "timestamp", "createdAt", "updatedAt", formatted_data) FROM stdin;
 34f76e96-c437-4882-9baf-14f0055367cb	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	testid	2025-07-30 17:00:02+01	2025-07-30 17:01:13.987+01	2025-07-30 17:01:13.987+01	[{"label": "bind9_status", "value": "active"}, {"label": "port_53", "value": "listening"}, {"label": "named_checkconf", "value": "ok"}, {"label": "zone_check", "value": "ok"}, {"label": "dig_test_local", "value": "success"}, {"label": "open_ports", "value": "22,53"}, {"label": "scan_duration_seconds", "value": 0}, {"label": "cpu_load", "value": "6"}, {"label": "ram_usage", "value": "12%"}, {"label": "disk_usage", "value": "62%"}]
+12ee688d-333b-4504-8ef7-da85b29fb9ee	07a9ec64-9b34-4f5f-b06d-e2e6b6989d99	yedg	2025-07-31 17:50:01+01	2025-07-31 17:53:10.811+01	2025-07-31 17:53:10.811+01	[{"label": "bind9_status", "value": "active"}, {"label": "port_53", "value": "listening"}, {"label": "named_checkconf", "value": "ok"}, {"label": "zone_check", "value": "fail"}, {"label": "dig_test_local", "value": "fail"}, {"label": "open_ports", "value": "22,53"}, {"label": "scan_duration_seconds", "value": 0}, {"label": "cpu_load", "value": "3.1"}, {"label": "ram_usage", "value": "10%"}, {"label": "disk_usage", "value": "62%"}]
+\.
+
+
+--
+-- Data for Name: user_action_logs; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.user_action_logs (id, user_id, action, details, created_at) FROM stdin;
+908a1101-ef18-4c9c-805f-035c3bb30a9d	1	Demande de réinitialisation		2025-08-01 16:15:43.662
+5eab5087-b405-4057-b109-91be8bd676de	1	Réinitialisation de mot de passe		2025-08-01 16:16:31.997
+b52bf973-2886-4885-83f1-de87d4453584	1	Consultation de l’historique des réinitialisations		2025-08-01 16:18:53.103
+e1a2b8d9-0e65-4b82-930e-0bd593ff7a52	1	Demande de réinitialisation		2025-08-01 16:24:15.951
+6ebf0924-6c2e-44df-8f2d-1d74e32a8365	1	Demande de réinitialisation		2025-08-01 16:26:45.735
 \.
 
 
@@ -593,9 +821,11 @@ COPY public.user_settings (id, user_id, cloudinit_user, cloudinit_password, prox
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.users (id, first_name, last_name, email, phone, password, role, status, created_at, updated_at) FROM stdin;
-1	Super	Admin	admin@bunec.cm	000000000	$2b$10$2ntFW.kEPKJLm8psncrVNeCIRh5l32TIQ2AsbZaj9ufrSZeJtNkKW	superadmin	active	2025-07-22 22:47:42.169+01	2025-07-22 22:47:42.169+01
-2	Super2	Admin2	admin2@bunec.cm	22222222	$2b$10$6J46r01.75D5FN7eZXWGrOKQj2nDcL16UWJwBbWzhcdzDKGhAOSZ6	superadmin	active	2025-07-31 15:23:32.2+01	2025-07-31 15:23:32.2+01
+COPY public.users (id, first_name, last_name, email, phone, password, role, status, created_at, updated_at, role_id, reset_token, reset_expires_at, last_password_reset_at) FROM stdin;
+2	Super2	Admin2	admin2@bunec.cm	22222222	$2b$10$6J46r01.75D5FN7eZXWGrOKQj2nDcL16UWJwBbWzhcdzDKGhAOSZ6	superadmin	active	2025-07-31 15:23:32.2+01	2025-07-31 15:23:32.2+01	1	\N	\N	\N
+3	Nina	Diatta	leo.kameni@bunec.cm	+237690000000	$2b$10$IY6Axd2YUoY6KX5bzG1SmuZMIXb6lZZwhVQ8bCWFNou77LrB18.ja	technicien	active	2025-08-01 15:20:48.512+01	2025-08-01 15:39:55.192+01	5	\N	\N	\N
+4	Léo	Kameni	leo.kakljhmeni@bunec.cm	+237690000000	$2b$10$PtfcKZ/xfvO13XvzjtwQBun614M4QYy26NBBKHiNbxp3zIIZ434Lq	technicien	inactif	2025-08-01 15:25:28.048+01	2025-08-01 15:40:39.552+01	5	\N	\N	\N
+1	Super	Admin	latifnjimoluh@gmail.com	000000000	$2b$10$Fvrn6piXY5cYR9xJ0gVXE..vf1HCxeF1ohQA4BijhE3k7NnSIlP0a	superadmin	active	2025-07-22 22:47:42.169+01	2025-08-01 17:26:42.371+01	1	679341	2025-08-01 16:41:42.37	2025-08-01 16:16:31.992
 \.
 
 
@@ -608,6 +838,7 @@ dbd9ea2e-9a64-4f86-b0ba-e28c08569cca	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	testid
 c6dd04fa-2b42-43e8-9ce5-4dc2cd2453cd	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	testid	192.168.24.21	2025-07-30 15:51:08.039
 32efa064-9eca-4026-84eb-27635cabf20e	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	testid	192.168.24.21	2025-07-30 15:57:04.016
 6430b289-db02-4653-a975-fbeb0235aab1	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	testid	192.168.24.21	2025-07-30 16:01:14.315
+db8ecbc0-6807-4843-abbd-80687bdec8dc	07a9ec64-9b34-4f5f-b06d-e2e6b6989d99	yedg	192.168.24.46	2025-07-31 16:53:10.826
 \.
 
 
@@ -615,7 +846,7 @@ c6dd04fa-2b42-43e8-9ce5-4dc2cd2453cd	a45ae0f3-82c1-436d-b324-d5d3fc7d00bb	testid
 -- Name: deployments_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.deployments_id_seq', 21, true);
+SELECT pg_catalog.setval('public.deployments_id_seq', 24, true);
 
 
 --
@@ -637,6 +868,27 @@ SELECT pg_catalog.setval('public.monitoring_scripts_id_seq', 13, true);
 --
 
 SELECT pg_catalog.setval('public.monitoring_services_id_seq', 3, true);
+
+
+--
+-- Name: permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.permissions_id_seq', 4, true);
+
+
+--
+-- Name: role_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.role_permissions_id_seq', 4, true);
+
+
+--
+-- Name: roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.roles_id_seq', 5, true);
 
 
 --
@@ -664,7 +916,7 @@ SELECT pg_catalog.setval('public.user_settings_id_seq', 2, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 2, true);
+SELECT pg_catalog.setval('public.users_id_seq', 4, true);
 
 
 --
@@ -705,6 +957,54 @@ ALTER TABLE ONLY public.monitoring_scripts
 
 ALTER TABLE ONLY public.monitoring_services
     ADD CONSTRAINT monitoring_services_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: permissions permissions_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.permissions
+    ADD CONSTRAINT permissions_name_key UNIQUE (name);
+
+
+--
+-- Name: permissions permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.permissions
+    ADD CONSTRAINT permissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: role_permissions role_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.role_permissions
+    ADD CONSTRAINT role_permissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: role_permissions role_permissions_role_id_permission_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.role_permissions
+    ADD CONSTRAINT role_permissions_role_id_permission_id_key UNIQUE (role_id, permission_id);
+
+
+--
+-- Name: roles roles_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_name_key UNIQUE (name);
+
+
+--
+-- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_pkey PRIMARY KEY (id);
 
 
 --
@@ -756,6 +1056,14 @@ ALTER TABLE ONLY public.status_snapshots
 
 
 --
+-- Name: user_action_logs user_action_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_action_logs
+    ADD CONSTRAINT user_action_logs_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: user_settings user_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -803,11 +1111,35 @@ CREATE UNIQUE INDEX idx_users_email ON public.users USING btree (email);
 
 
 --
+-- Name: role_permissions role_permissions_permission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.role_permissions
+    ADD CONSTRAINT role_permissions_permission_id_fkey FOREIGN KEY (permission_id) REFERENCES public.permissions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: role_permissions role_permissions_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.role_permissions
+    ADD CONSTRAINT role_permissions_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_settings user_settings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.user_settings
     ADD CONSTRAINT user_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: users users_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id);
 
 
 --

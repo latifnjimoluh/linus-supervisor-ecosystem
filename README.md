@@ -166,7 +166,7 @@ Les journaux de déploiement sont stockés dans le dossier `logs/` et dans la ta
 - `app.js` : démarre l'application Express et charge les routes.
 - `config/config.json` : configuration Sequelize pour l'environnement de développement.
 - `config/db.js` : initialisation de la connexion PostgreSQL.
-- `controllers/auth/authController.js` : inscription et connexion des utilisateurs.
+- `controllers/auth/userAuthController.js` : inscription et connexion des utilisateurs.
 - `controllers/deploy/deployController.js` : lance les déploiements Terraform.
 - `controllers/scripts/initScriptController.js` : gestion des scripts d'initialisation.
 - `controllers/scripts/monitoringScriptController.js` : gestion des scripts de monitoring.

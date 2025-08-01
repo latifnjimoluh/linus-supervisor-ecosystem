@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const authRoutes = require("./auth/authRoutes");
+const userAuthRoutes = require("./user/userAuthRoutes");
 const deployRoutes = require("./vm/deployVm");
 const configureService = require("./services/serviceConfigRoutes");
 const monitoringRoutes = require("./scripts/monitoringScriptRoutes");
@@ -13,9 +13,13 @@ const deleteVMDirect = require("./vm/deleteVm");
 const settingsRoutes = require("./user/userSettingsRoutes");
 const convertTemplateRoutes = require("./templateRoutes");
 const statusVmRoutes = require("./vm/statusVm");
+const userroles = require("./user/userRoleRoutes");
+const userRoutes = require("./user/userRoutes");
 
 
-router.use("/auth", authRoutes);
+
+
+router.use("/auth", userAuthRoutes);
 router.use("/", deployRoutes);
 router.use("/services", configureService);
 router.use("/monitoring", monitoringRoutes);
@@ -27,6 +31,8 @@ router.use("/vm", deleteVMDirect);
 router.use("/settings", settingsRoutes);
 router.use("/convert-template", convertTemplateRoutes);
 router.use("/status-vm", statusVmRoutes);
+router.use("/user-roles", userroles);
+router.use("/users", userRoutes);
 
 
 
