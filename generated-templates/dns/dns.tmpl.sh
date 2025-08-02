@@ -4,10 +4,7 @@ echo "🔧 Initialisation de la supervision des services..."
 
 # Liste des services à injecter
 cat > /opt/services-to-watch.txt <<EOF
-sshd
-bind9
-postgresql
-nginx
+{{SERVICES}}
 EOF
 
 # Script de détection
@@ -57,6 +54,6 @@ EOF
 chmod +x /opt/detect-services.sh
 
 # Planifier avec cron
-(crontab -l 2>/dev/null; echo "*/1 * * * * /opt/detect-services.sh > /dev/null 2>&1") | crontab -
+(crontab -l 2>/dev/null; echo "*/{{CRON_INTERVAL}} * * * * /opt/detect-services.sh > /dev/null 2>&1") | crontab -
 
-echo "✅ Agent de supervision des services installé et planifié toutes les 1 minutes."
+echo "✅ Agent de supervision des services installé et planifié toutes les {{CRON_INTERVAL}} minutes."

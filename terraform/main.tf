@@ -166,5 +166,3 @@ resource "null_resource" "configure_service" {
 
 
 }
-
-
