@@ -11,6 +11,20 @@ exports.getAllPermissions = async (req, res) => {
   }
 };
 
+exports.getPermissionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const permission = await Permission.findByPk(id);
+    if (!permission) {
+      return res.status(404).json({ message: "Permission non trouvée" });
+    }
+    res.json(permission);
+  } catch (error) {
+    console.error("Erreur getPermissionById:", error);
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+};
+
 exports.createPermission = async (req, res) => {
   try {
     let permissions = req.body;
@@ -45,6 +59,39 @@ exports.createPermission = async (req, res) => {
   } catch (error) {
     console.error("Erreur createPermission:", error);
     res.status(500).json({ message: "Erreur serveur lors de l'enregistrement des permissions." });
+  }
+};
+
+exports.updatePermission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    const permission = await Permission.findByPk(id);
+    if (!permission) {
+      return res.status(404).json({ message: "Permission non trouvée" });
+    }
+    if (name) permission.name = name;
+    if (description) permission.description = description;
+    await permission.save();
+    res.json({ message: "Permission mise à jour", permission });
+  } catch (error) {
+    console.error("Erreur updatePermission:", error);
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+};
+
+exports.deletePermission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const permission = await Permission.findByPk(id);
+    if (!permission) {
+      return res.status(404).json({ message: "Permission non trouvée" });
+    }
+    await permission.destroy();
+    res.json({ message: "Permission supprimée" });
+  } catch (error) {
+    console.error("Erreur deletePermission:", error);
+    res.status(500).json({ message: "Erreur serveur." });
   }
 };
 
@@ -90,5 +137,21 @@ exports.getPermissionsByRole = async (req, res) => {
   } catch (error) {
     console.error("Erreur getPermissionsByRole:", error);
     res.status(500).json({ message: "Erreur serveur." });
+  }
+};
+
+exports.unassignPermissionsFromRole = async (req, res) => {
+  try {
+    const { role_id, permission_ids } = req.body;
+    if (!role_id || !Array.isArray(permission_ids)) {
+      return res.status(400).json({ message: "role_id ou permission_ids manquants ou invalides." });
+    }
+    await RolePermission.destroy({
+      where: { role_id, permission_id: permission_ids },
+    });
+    res.json({ message: "Permissions retirées avec succès." });
+  } catch (error) {
+    console.error("Erreur unassignPermissionsFromRole:", error);
+    res.status(500).json({ message: "Erreur serveur lors du retrait des permissions." });
   }
 };
