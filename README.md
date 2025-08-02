@@ -70,6 +70,13 @@ npm run dev
 ```
 L'API écoute par défaut sur `http://localhost:5000`.
 
+## Gestion des scripts Terraform sous Windows
+Avant de lancer un déploiement depuis un poste Windows, assurez-vous que les fichiers shell utilisent des fins de ligne Unix :
+
+```bash
+dos2unix init.sh config.sh monitoring.sh service-detector.sh
+```
+
 ## Configuration de l'environnement
 Créer un fichier `.env` à la racine :
 ```dotenv
