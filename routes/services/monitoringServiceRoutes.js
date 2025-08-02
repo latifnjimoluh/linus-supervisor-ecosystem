@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const controller = require("../../controllers/monitoring/monitoringServiceController");
+const controller = require("../../controllers/generate/generateMonitoringServiceController");
 const { verifyToken, checkPermission } = require("../../middlewares/auth");
 
 

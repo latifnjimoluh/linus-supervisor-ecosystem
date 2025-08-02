@@ -83,6 +83,68 @@ SMTP_USER=exemple@gmail.com
 SMTP_PASS=motdepasseSMTP
 PORT=5000
 ```
-
+codex/rename-and-restructure-backend-controllers
 ## Architecture dynamique
 Les scripts d'initialisation et de supervision sont générés à partir de templates stockés en base puis injectés automatiquement dans les VMs via SSH. Les actions de démarrage/arrêt et de collecte de supervision communiquent avec l'API Proxmox. Les déploiements d'infrastructure utilisent Terraform et les journaux sont sauvegardés en base PostgreSQL.
+=======
+## Description détaillée des fichiers
+- `app.js` : démarre l'application Express et charge les routes.
+- `config/config.json` : configuration Sequelize pour l'environnement de développement.
+- `config/db.js` : initialisation de la connexion PostgreSQL.
+- `controllers/auth/userAuthController.js` : inscription et connexion des utilisateurs.
+- `controllers/deploy/deployController.js` : lance les déploiements Terraform.
+- `controllers/generate/generateInitScriptController.js` : gestion des scripts d'initialisation.
+- `controllers/generate/generateMonitoringDNSController.js` : gestion des scripts de monitoring.
+- `controllers/template/templateServixeController.js` : gère les modèles de configuration de service.
+- `controllers/generate/generateMonitoringServiceController.js` : enregistre les services supervisés.
+- `controllers/generate/generateAgentController.js` : génère les agents de supervision.
+- `controllers/supervision/supervisionFetchController.js` : récupère et enregistre les données de supervision des VMs.
+- `controllers/template/configTemplateController.js` : CRUD des modèles de configuration.
+- `controllers/templateVMController.js` : conversion d'une VM en template Cloud-Init.
+- `controllers/vm/deleteVMController.js` : supprime une machine virtuelle.
+- `generated-scripts/` : scripts générés automatiquement lors des déploiements.
+- `generated-templates/` : modèles de script générés pour la configuration et la supervision.
+- `middlewares/auth.js` : création et validation des JWT ainsi que vérification des rôles.
+- `models/auth/User.js` : modèle utilisateur.
+- `models/deploy/Deployment.js` : journal des déploiements Terraform.
+- `models/scripts/InitScript.js` : modèle des scripts d'initialisation.
+- `models/scripts/MonitoringScript.js` : modèle des scripts de monitoring.
+- `models/services/MonitoringService.js` : décrit un service supervisé.
+- `models/services/ServiceStatus.js` : état d'un service supervisé.
+- `models/services/configTemplateService.js` : lien entre service et modèle de configuration.
+- `models/supervision/statusSnapshot.js` : instantané global de supervision.
+- `models/supervision/vmInstance.js` : décrit une VM créée.
+- `models/template/configTemplate.js` : modèle de configuration générique.
+- `models/vm/deleteVm.js` : traces de suppression de VM.
+- `routes/` : fichiers définissant l'ensemble des endpoints REST de l'API.
+- `utils/proxmoxService.js` : appels à l'API Proxmox pour gérer les VMs.
+- `utils/sshClient.js` : fonctions utilitaires pour lire des fichiers via SSH.
+- `utils/terraformRunner.js` : exécution des commandes Terraform.
+- `terraform/` : scripts Terraform utilisés lors des déploiements.
+- `sql/linusupervision_backup.sql` : sauvegarde de la base PostgreSQL.
+- `nodemon.json` : configuration de Nodemon pour le mode développement.
+- `package.json` et `package-lock.json` : dépendances Node.js et scripts npm.
+- `README.md` : documentation du projet.
+## Historique
+- 2024 : ajout de l'authentification JWT et du déploiement via Terraform
+- 2024 : prise en charge des scripts d'initialisation et de monitoring
+- 2024 : gestion des services supervisés et journalisation en base
+- 2025 : réorganisation des dossiers (controllers, models, routes)
+
+## Licence
+Ce projet est distribué sous licence ISC.
+
+Save
+pg_dump -U postgres -d linusupervision -f "D:\backup.sql"
+"C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -U postgres -d linusupervision -f "D:\Keyce_B3\Soutenance\linusupervisor-backend\linusupervisor-backend\sql\linusupervision_backup.sql"
+
+📌 Cas 1 : Tu as un fichier .sql (export normal)
+Commande pour restaurer à vide dans une base existante :
+
+psql -U postgres -d linusupervision -f "D:\linusupervision_backup.sql"
+Si la base linusupervision n’existe pas encore :
+
+createdb -U postgres linusupervision
+psql -U postgres -d linusupervision -f "D:\linusupervision_backup.sql"
+
+main
