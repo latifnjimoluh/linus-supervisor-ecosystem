@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { getRemoteJSON, getRemoteFileContent } = require("../../utils/sshClient");
-const { StatusSnapshot, ServiceStatus, VMInstance, UserSetting } = require("../../models");
+const { StatusSnapshot, ServiceStatus, SupervisionStatus, VMInstance, UserSetting } = require("../../models");
 require("dotenv").config();
 
 exports.fetchFromDynamicVM = async (req, res) => {
@@ -81,7 +81,6 @@ exports.fetchFromDynamicVM = async (req, res) => {
     await StatusSnapshot.create({
       hostname,
       timestamp,
-      data: statusData,
       formatted_data: formatted_status,
       instance_id: instanceId || null
     });

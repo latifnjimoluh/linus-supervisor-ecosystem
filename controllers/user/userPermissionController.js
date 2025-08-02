@@ -87,8 +87,10 @@ exports.deletePermission = async (req, res) => {
     if (!permission) {
       return res.status(404).json({ message: "Permission non trouvée" });
     }
-    await permission.destroy();
-    res.json({ message: "Permission supprimée" });
+    // Soft delete: mark permission as inactive instead of removing it
+    permission.status = "inactif";
+    await permission.save();
+    res.json({ message: "Permission désactivée" });
   } catch (error) {
     console.error("Erreur deletePermission:", error);
     res.status(500).json({ message: "Erreur serveur." });
@@ -103,18 +105,23 @@ exports.assignPermissionsToRole = async (req, res) => {
       const { role_id, permission_ids } = assign;
 
       if (!role_id || !Array.isArray(permission_ids)) {
-        return res.status(400).json({ message: "role_id ou permission_ids manquants ou invalides." });
+        return res
+          .status(400)
+          .json({ message: "role_id ou permission_ids manquants ou invalides." });
       }
 
-      // Supprimer les anciennes permissions
-      await RolePermission.destroy({ where: { role_id } });
+      // Récupérer les permissions déjà attribuées
+      const existing = await RolePermission.findAll({ where: { role_id } });
+      const existingIds = new Set(existing.map((rp) => rp.permission_id));
 
-      // Ajouter les nouvelles permissions
-      const bulkInsert = permission_ids.map(pid => ({
-        role_id,
-        permission_id: pid,
-      }));
-      await RolePermission.bulkCreate(bulkInsert);
+      // Ne créer que les nouvelles associations
+      const toInsert = permission_ids
+        .filter((pid) => !existingIds.has(pid))
+        .map((pid) => ({ role_id, permission_id: pid }));
+
+      if (toInsert.length) {
+        await RolePermission.bulkCreate(toInsert);
+      }
     }
 
     res.json({ message: "Permissions attribuées avec succès." });

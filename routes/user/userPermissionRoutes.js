@@ -11,7 +11,8 @@ router.post("/", verifyToken, isSuperAdmin, permissionController.createPermissio
 router.post("/assign", verifyToken, isSuperAdmin, permissionController.assignPermissionsToRole);
 router.get("/role/:role_id", verifyToken, permissionController.getPermissionsByRole);
 router.put("/:id", verifyToken, isSuperAdmin, permissionController.updatePermission);
-router.delete("/:id", verifyToken, isSuperAdmin, permissionController.deletePermission);
+// place more specific route before generic :id route to avoid misinterpretation
 router.delete("/unassign", verifyToken, isSuperAdmin, permissionController.unassignPermissionsFromRole);
+router.delete("/:id", verifyToken, isSuperAdmin, permissionController.deletePermission);
 
 module.exports = router;
