@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
-const { execSSHCommand } = require("../utils/sshClient");
-const { UserSetting } = require("../models");
+const { execSSHCommand } = require("../../utils/sshClient");
+const { UserSetting } = require("../../models");
 
 exports.convertToTemplate = async (req, res) => {
   const user = req.user;

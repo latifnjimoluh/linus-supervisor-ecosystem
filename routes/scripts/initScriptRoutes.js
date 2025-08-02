@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const initScriptController = require("../../controllers/scripts/initScriptController");
+const initScriptController = require("../../controllers/generate/generateInitScriptController");
 const { verifyToken, checkPermission } = require("../../middlewares/auth");
 
 

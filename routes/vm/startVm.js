@@ -1,14 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const { generateMonitoringScript } = require("../../controllers/generate/generateMonitoringDNSController");
+const { startVM } = require("../../controllers/vm/startVMController");
 const { verifyToken, checkPermission } = require("../../middlewares/auth");
 
-
 router.post(
-  "/generate",
+  "/start",
   verifyToken,
-  checkPermission("monitoringScript.generate"),
-  generateMonitoringScript
+  checkPermission("vm.start"),
+  startVM
 );
 
 module.exports = router;

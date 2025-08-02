@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { configureService } = require("../../controllers/services/configTemplateServiceController");
+const { configureService } = require("../../controllers/template/templateServiceController");
 const { verifyToken, checkPermission } = require("../../middlewares/auth");
 
 
