@@ -6,6 +6,7 @@ module.exports = (sequelize, DataTypes) => {
       unique: true,
     },
     description: DataTypes.TEXT,
+    status: { type: DataTypes.STRING(10), defaultValue: "actif" },
   }, {
     tableName: "permissions",
     timestamps: true,

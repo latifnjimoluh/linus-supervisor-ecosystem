@@ -1,7 +1,9 @@
 const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
-const { MonitoringService, ServiceTemplate } = require("../../models");
+const db = require("../../models");
+const { MonitoringService } = db;
+const ServiceTemplate = db.ServiceTemplate;
 
 function renderTemplate(template, variables) {
   return template.replace(/{{(\w+)}}/g, (_, key) => variables[key] || "");
@@ -13,6 +15,10 @@ exports.generateMonitoringServiceScript = async (req, res) => {
 
     if (!template_id || !Array.isArray(services) || !cron_interval) {
       return res.status(400).json({ message: "Champs requis : template_id, services (array), cron_interval" });
+    }
+
+    if (!ServiceTemplate) {
+      return res.status(500).json({ message: "Modèle de service non chargé" });
     }
 
     const template = await ServiceTemplate.findByPk(template_id);
