@@ -18,12 +18,14 @@ const settingsRoutes = require("./user/userSettingsRoutes");
 const userRoleRoutes = require("./user/userRoleRoutes");
 const userRoutes = require("./user/userRoutes");
 const userPermissionRoutes = require("./user/userPermissionRoutes");
+const userActionLogRoutes = require("./user/userActionLogRoutes");
 
 // Permissions
 
 // Routes principales
 router.use("/auth", userAuthRoutes);
 router.use("/users", userRoutes);
+router.use("/user-logs", userActionLogRoutes);
 router.use("/permissions", userPermissionRoutes);
 router.use("/user-roles", userRoleRoutes);
 router.use("/settings", settingsRoutes);
