@@ -13,4 +13,25 @@ router.post(
   initScriptController.generateInitScript
 );
 
+router.get(
+  "/generate",
+  verifyToken,
+  checkPermission("initScript.list"),
+  initScriptController.listInitScripts
+);
+
+router.put(
+  "/generate/:id",
+  verifyToken,
+  checkPermission("initScript.update"),
+  initScriptController.updateInitScript
+);
+
+router.delete(
+  "/generate/:id",
+  verifyToken,
+  checkPermission("initScript.delete"),
+  initScriptController.deleteInitScript
+);
+
 module.exports = router;

@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const db = require("../../models");
+const { Op } = require("sequelize");
 const { getNextSequence } = require("../../utils/sequence");
 const { MonitoringService } = db;
 const ServiceTemplate = db.ServiceTemplate;
@@ -61,5 +62,70 @@ exports.generateMonitoringServiceScript = async (req, res) => {
   } catch (err) {
     console.error("❌ Erreur génération services:", err);
     return res.status(500).json({ message: "Erreur serveur", error: err.message });
+  }
+};
+
+exports.listMonitoringServiceScripts = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const sort = req.query.sort || "created_at";
+    const direction = req.query.order === "asc" ? "ASC" : "DESC";
+    const where = {};
+    if (req.query.q) {
+      const q = req.query.q;
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${q}%` } },
+        { service_type: { [Op.iLike]: `%${q}%` } },
+      ];
+    }
+    const { count, rows } = await MonitoringService.findAndCountAll({
+      where,
+      order: [[sort, direction]],
+      limit,
+      offset,
+    });
+    res.json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        pages: Math.ceil(count / limit),
+        limit,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Erreur list monitoring services:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+exports.updateMonitoringServiceScript = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const record = await MonitoringService.findByPk(id);
+    if (!record) return res.status(404).json({ message: "Script introuvable" });
+    const { name, config_data } = req.body;
+    if (name) record.name = name;
+    if (config_data) record.config_data = config_data;
+    await record.save();
+    res.json({ message: "Script mis à jour", record });
+  } catch (err) {
+    console.error("❌ Erreur update monitoring service:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+exports.deleteMonitoringServiceScript = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const record = await MonitoringService.findByPk(id);
+    if (!record) return res.status(404).json({ message: "Script introuvable" });
+    await record.destroy();
+    res.json({ message: "Script supprimé" });
+  } catch (err) {
+    console.error("❌ Erreur delete monitoring service:", err);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
