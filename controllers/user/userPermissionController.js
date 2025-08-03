@@ -1,10 +1,37 @@
 // 📁 controllers/permissions/permissionController.js
 const { Permission, Role, RolePermission } = require("../../models");
+const { Op } = require("sequelize");
 
 exports.getAllPermissions = async (req, res) => {
   try {
-    const permissions = await Permission.findAll();
-    res.json(permissions);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const sort = req.query.sort || "name";
+    const direction = req.query.order === "desc" ? "DESC" : "ASC";
+    const where = {};
+    if (req.query.q) {
+      const q = req.query.q;
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${q}%` } },
+        { description: { [Op.iLike]: `%${q}%` } },
+      ];
+    }
+    const { count, rows } = await Permission.findAndCountAll({
+      where,
+      order: [[sort, direction]],
+      limit,
+      offset,
+    });
+    res.json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        pages: Math.ceil(count / limit),
+        limit,
+      },
+    });
   } catch (error) {
     console.error("Erreur getAllPermissions:", error);
     res.status(500).json({ message: "Erreur serveur." });

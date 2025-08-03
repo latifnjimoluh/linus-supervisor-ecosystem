@@ -988,40 +988,64 @@
 					},
 					"response": []
 				},
-				{
-					"name": "Update Settings",
-					"request": {
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"theme\": \"light\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/settings",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"settings"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
+                                {
+                                        "name": "Update Settings",
+                                        "request": {
+                                                "method": "PATCH",
+                                                "header": [
+                                                        {
+                                                                "key": "Authorization",
+                                                                "value": "Bearer {{authToken}}"
+                                                        }
+                                                ],
+                                                "body": {
+                                                        "mode": "raw",
+                                                        "raw": "{\n  \"theme\": \"light\"\n}",
+                                                        "options": {
+                                                                "raw": {
+                                                                        "language": "json"
+                                                                }
+                                                        }
+                                                },
+                                                "url": {
+                                                        "raw": "{{base_url}}/api/settings",
+                                                        "host": [
+                                                                "{{base_url}}"
+                                                        ],
+                                                        "path": [
+                                                                "api",
+                                                                "settings"
+                                                        ]
+                                                }
+                                        },
+                                        "response": []
+                                },
+                                {
+                                        "name": "List All Settings",
+                                        "request": {
+                                                "method": "GET",
+                                                "header": [
+                                                        {
+                                                                "key": "Authorization",
+                                                                "value": "Bearer {{authToken}}"
+                                                        }
+                                                ],
+                                                "url": {
+                                                        "raw": "{{base_url}}/api/settings/all",
+                                                        "host": [
+                                                                "{{base_url}}"
+                                                        ],
+                                                        "path": [
+                                                                "api",
+                                                                "settings",
+                                                                "all"
+                                                        ]
+                                                }
+                                        },
+                                        "response": []
+                                }
+                        ]
+                },
 		{
 			"name": "VM",
 			"item": [
@@ -1157,48 +1181,96 @@
 					},
 					"response": []
 				},
-				{
-					"name": "Delete VM",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"vm_id\": 101,\n  \"instance_id\": \"8af66a2e-273c-4208-86fc-7265428871f8\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/vm/delete-vm",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"vm",
-								"delete-vm"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
+                                {
+                                        "name": "Delete VM",
+                                        "request": {
+                                                "method": "POST",
+                                                "header": [
+                                                        {
+                                                                "key": "Authorization",
+                                                                "value": "Bearer {{authToken}}"
+                                                        }
+                                                ],
+                                                "body": {
+                                                        "mode": "raw",
+                                                        "raw": "{\n  \"vm_id\": 101,\n  \"instance_id\": \"8af66a2e-273c-4208-86fc-7265428871f8\"\n}",
+                                                        "options": {
+                                                                "raw": {
+                                                                        "language": "json"
+                                                                }
+                                                        }
+                                                },
+                                                "url": {
+                                                        "raw": "{{base_url}}/api/vm/delete-vm",
+                                                        "host": [
+                                                                "{{base_url}}"
+                                                        ],
+                                                        "path": [
+                                                                "api",
+                                                                "vm",
+                                                                "delete-vm"
+                                                        ]
+                                                }
+                                        },
+                                        "response": []
+                                },
+                                {
+                                        "name": "List Deployed VMs",
+                                        "request": {
+                                                "method": "GET",
+                                                "header": [
+                                                        {
+                                                                "key": "Authorization",
+                                                                "value": "Bearer {{authToken}}"
+                                                        }
+                                                ],
+                                                "url": {
+                                                        "raw": "{{base_url}}/api/vm/deployed",
+                                                        "host": [
+                                                                "{{base_url}}"
+                                                        ],
+                                                        "path": [
+                                                                "api",
+                                                                "vm",
+                                                                "deployed"
+                                                        ]
+                                                }
+                                        },
+                                        "response": []
+                                },
+                                {
+                                        "name": "List Destroyed VMs",
+                                        "request": {
+                                                "method": "GET",
+                                                "header": [
+                                                        {
+                                                                "key": "Authorization",
+                                                                "value": "Bearer {{authToken}}"
+                                                        }
+                                                ],
+                                                "url": {
+                                                        "raw": "{{base_url}}/api/vm/destroyed",
+                                                        "host": [
+                                                                "{{base_url}}"
+                                                        ],
+                                                        "path": [
+                                                                "api",
+                                                                "vm",
+                                                                "destroyed"
+                                                        ]
+                                                }
+                                        },
+                                        "response": []
+                                }
+                        ]
+                },
 		{
 			"name": "Services",
 			"item": [
-				{
-					"name": "Configure Service",
-					"request": {
-						"method": "POST",
+                                {
+                                        "name": "Configure Service",
+                                        "request": {
+                                                "method": "POST",
 						"header": [
 							{
 								"key": "Authorization",
@@ -1224,12 +1296,95 @@
 								"services",
 								"config-template"
 							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
+                                                }
+                                        },
+                                        "response": []
+                                },
+                                {
+                                        "name": "List Config Templates",
+                                        "request": {
+                                                "method": "GET",
+                                                "header": [
+                                                        {
+                                                                "key": "Authorization",
+                                                                "value": "Bearer {{authToken}}"
+                                                        }
+                                                ],
+                                                "url": {
+                                                        "raw": "{{base_url}}/api/services/config-template",
+                                                        "host": [
+                                                                "{{base_url}}"
+                                                        ],
+                                                        "path": [
+                                                                "api",
+                                                                "services",
+                                                                "config-template"
+                                                        ]
+                                                }
+                                        },
+                                        "response": []
+                                },
+                                {
+                                        "name": "Update Config Template",
+                                        "request": {
+                                                "method": "PUT",
+                                                "header": [
+                                                        {
+                                                                "key": "Authorization",
+                                                                "value": "Bearer {{authToken}}"
+                                                        }
+                                                ],
+                                                "body": {
+                                                        "mode": "raw",
+                                                        "raw": "{\n  \"config_data\": {\n    \"example\": \"value\"\n  }\n}",
+                                                        "options": {
+                                                                "raw": {
+                                                                        "language": "json"
+                                                                }
+                                                        }
+                                                },
+                                                "url": {
+                                                        "raw": "{{base_url}}/api/services/config-template/1",
+                                                        "host": [
+                                                                "{{base_url}}"
+                                                        ],
+                                                        "path": [
+                                                                "api",
+                                                                "services",
+                                                                "config-template",
+                                                                "1"
+                                                        ]
+                                                }
+                                        },
+                                        "response": []
+                                },
+                                {
+                                        "name": "Delete Config Template",
+                                        "request": {
+                                                "method": "DELETE",
+                                                "header": [
+                                                        {
+                                                                "key": "Authorization",
+                                                                "value": "Bearer {{authToken}}"
+                                                        }
+                                                ],
+                                                "url": {
+                                                        "raw": "{{base_url}}/api/services/config-template/1",
+                                                        "host": [
+                                                                "{{base_url}}"
+                                                        ],
+                                                        "path": [
+                                                                "api",
+                                                                "services",
+                                                                "config-template",
+                                                                "1"
+                                                        ]
+                                                }
+                                        },
+                                        "response": []
+                                }
+                        ]
+                },
 		{
 			"name": "Monitoring",
 			"item": [
@@ -1376,10 +1531,10 @@
 					},
 					"response": []
 				},
-				{
-					"name": "Convert To Template",
-					"request": {
-						"method": "POST",
+                                {
+                                        "name": "Convert To Template",
+                                        "request": {
+                                                "method": "POST",
 						"header": [
 							{
 								"key": "Authorization",
@@ -1406,11 +1561,35 @@
 								"convert"
 							]
 						}
-					},
-					"response": []
-				}
-			]
-		},
+                                        },
+                                        "response": []
+                                },
+                                {
+                                        "name": "Conversion History",
+                                        "request": {
+                                                "method": "GET",
+                                                "header": [
+                                                        {
+                                                                "key": "Authorization",
+                                                                "value": "Bearer {{authToken}}"
+                                                        }
+                                                ],
+                                                "url": {
+                                                        "raw": "{{base_url}}/api/convert-template/history",
+                                                        "host": [
+                                                                "{{base_url}}"
+                                                        ],
+                                                        "path": [
+                                                                "api",
+                                                                "convert-template",
+                                                                "history"
+                                                        ]
+                                                }
+                                        },
+                                        "response": []
+                                }
+                        ]
+                },
 		{
 			"name": "Supervision",
 			"item": [

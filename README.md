@@ -117,7 +117,7 @@ Les scripts d'initialisation et de supervision sont générés à partir de temp
 - `models/scripts/InitScript.js` : modèle des scripts d'initialisation.
 - `models/scripts/MonitoringScript.js` : modèle des scripts de monitoring.
 - `models/services/MonitoringService.js` : décrit un service supervisé.
-- `models/services/ServiceStatus.js` : état d'un service supervisé.
+- `models/supervision/serviceStatus.js` : état d'un service supervisé.
 - `models/services/configTemplateService.js` : lien entre service et modèle de configuration.
 - `models/supervision/statusSnapshot.js` : instantané global de supervision.
 - `models/supervision/vmInstance.js` : décrit une VM créée.

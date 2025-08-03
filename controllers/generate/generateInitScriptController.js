@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { InitScript } = require("../../models");
-const { v4: uuidv4 } = require("uuid");
+const { getNextSequence } = require("../../utils/sequence");
 
 exports.generateInitScript = async (req, res) => {
   try {
@@ -14,8 +14,9 @@ exports.generateInitScript = async (req, res) => {
     }
 
     // Générer un nom unique pour le fichier
-    const filename = `init-${name.replace(/\s+/g, "_")}-${uuidv4()}.sh`;
     const outputDir = path.join(__dirname, "../../generated-scripts");
+    const seq = getNextSequence(outputDir, "init-", ".sh");
+    const filename = `init-${seq}.sh`;
     const outputPath = path.join(outputDir, filename);
 
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });

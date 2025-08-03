@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { MonitoringScript, ServiceTemplate } = require("../../models");
-const { v4: uuidv4 } = require("uuid");
+const { getNextSequence } = require("../../utils/sequence");
 
 function renderTemplate(template, variables) {
   return template.replace(/{{(\w+)}}/g, (_, key) => variables[key] || "");
@@ -36,8 +36,9 @@ exports.generateMonitoringScript = async (req, res) => {
       CRON_INTERVAL: cron_interval
     });
 
-    const filename = `monitor-${template.service_type}-${zone_name}-${uuidv4()}.sh`;
     const outputDir = path.join(__dirname, "../../generated-scripts");
+    const seq = getNextSequence(outputDir, `monitor-${template.service_type}-`, ".sh");
+    const filename = `monitor-${template.service_type}-${seq}.sh`;
     const outputPath = path.join(outputDir, filename);
 
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });

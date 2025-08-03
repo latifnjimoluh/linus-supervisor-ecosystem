@@ -1,7 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 const { execSSHCommand } = require("../../utils/sshClient");
-const { UserSetting } = require("../../models");
+const { UserSetting, ConvertedVm, User } = require("../../models");
+const { Op } = require("sequelize");
 
 exports.convertToTemplate = async (req, res) => {
   const user = req.user;
@@ -58,6 +59,9 @@ exports.convertToTemplate = async (req, res) => {
 
     fs.writeFileSync(logPath, outputLog);
 
+    const vm_name = req.body.vm_name || `vm_${vm_id}`;
+    await ConvertedVm.create({ vm_name, vm_id, user_id: userId });
+
     return res.status(200).json({
       message: `✅ VM ${vm_id} convertie en template Cloud-Init`,
       output: outputLog,
@@ -79,5 +83,42 @@ exports.convertToTemplate = async (req, res) => {
       error: error.message || error,
       log: logPath
     });
+  }
+};
+
+exports.getConversionHistory = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const sort = req.query.sort || "created_at";
+    const direction = req.query.order === "asc" ? "ASC" : "DESC";
+    const where = {};
+    if (req.query.q) {
+      const q = req.query.q;
+      where[Op.or] = [
+        { vm_name: { [Op.iLike]: `%${q}%` } },
+        { "$user.email$": { [Op.iLike]: `%${q}%` } },
+      ];
+    }
+    const { count, rows } = await ConvertedVm.findAndCountAll({
+      where,
+      include: [{ model: User, as: "user", attributes: ["id", "email"] }],
+      order: [[sort, direction]],
+      limit,
+      offset,
+    });
+    res.json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        pages: Math.ceil(count / limit),
+        limit,
+      },
+    });
+  } catch (err) {
+    console.error("Erreur history:", err);
+    res.status(500).json({ message: "Erreur serveur." });
   }
 };

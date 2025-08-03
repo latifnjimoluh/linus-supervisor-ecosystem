@@ -8,6 +8,7 @@ const compression = require("compression")
 const cookieParser = require("cookie-parser")
 const db = require("./config/db")
 const routes = require("./routes")
+const logAllActions = require("./middlewares/logAllActions")
 
 const app = express()
 
@@ -18,6 +19,7 @@ app.use(helmet())
 app.use(compression())
 app.use(express.json())
 app.use(cookieParser())
+app.use(logAllActions)
 
 // Routes API
 app.use("/api", routes)

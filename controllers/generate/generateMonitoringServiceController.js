@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
-const { v4: uuidv4 } = require("uuid");
 const db = require("../../models");
+const { getNextSequence } = require("../../utils/sequence");
 const { MonitoringService } = db;
 const ServiceTemplate = db.ServiceTemplate;
 
@@ -34,15 +34,16 @@ exports.generateMonitoringServiceScript = async (req, res) => {
       CRON_INTERVAL: cron_interval
     });
 
-    const filename = `detect-services-${uuidv4()}.sh`;
     const outputDir = path.join(__dirname, "../../generated-scripts");
+    const seq = getNextSequence(outputDir, "detect-services-", ".sh");
+    const filename = `detect-services-${seq}.sh`;
     const outputPath = path.join(outputDir, filename);
 
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(outputPath, rendered);
 
     const saved = await MonitoringService.create({
-      name: `Service Watcher - ${uuidv4().slice(0, 8)}`,
+      name: `Service Watcher - ${seq}`,
       service_type: "services",
       script_path: outputPath,
       config_data: {

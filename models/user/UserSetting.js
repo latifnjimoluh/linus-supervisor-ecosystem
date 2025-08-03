@@ -82,6 +82,8 @@ module.exports = (sequelize, DataTypes) => {
     createdAt: "created_at",
     updatedAt: "updated_at",
   });
-
+  UserSetting.associate = (models) => {
+    UserSetting.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
+  };
   return UserSetting;
 };

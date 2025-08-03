@@ -2,12 +2,16 @@ const fs = require("fs");
 const path = require("path");
 const { execSync, exec } = require("child_process");
 const fse = require("fs-extra");
+const { getNextSequence } = require("./sequence");
 
 exports.runTerraformApply = (instanceId, variables) => {
   return new Promise((resolve, reject) => {
     const baseDir = path.resolve(__dirname, "../terraform");
-    const deployDir = path.join(baseDir, "deployments", instanceId);
-    const stateDir = path.join(baseDir, "states", instanceId);
+    const deployBase = path.join(baseDir, "deployments");
+    const stateBase = path.join(baseDir, "states");
+    const runId = getNextSequence(deployBase);
+    const deployDir = path.join(deployBase, runId);
+    const stateDir = path.join(stateBase, runId);
     const tfvarsPath = path.join(deployDir, "variables.tfvars.json");
 
     if (!fs.existsSync(deployDir)) fse.mkdirpSync(deployDir);
