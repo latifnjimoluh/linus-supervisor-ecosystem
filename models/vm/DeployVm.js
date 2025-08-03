@@ -18,6 +18,14 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false
     },
+    zone: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "LAN",
+      validate: {
+        isIn: [["LAN", "DMZ", "WAN"]]
+      }
+    },
     operation_type: {
       type: DataTypes.STRING,
       allowNull: false,

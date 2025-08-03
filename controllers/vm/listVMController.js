@@ -10,6 +10,9 @@ function buildLister(status) {
       const sort = req.query.sort || "created_at";
       const direction = req.query.order === "asc" ? "ASC" : "DESC";
       const where = { status };
+      if (req.query.zone) {
+        where.zone = req.query.zone;
+      }
       if (req.query.q) {
         const q = req.query.q;
         where[Op.or] = [
@@ -17,6 +20,7 @@ function buildLister(status) {
           { vm_ip: { [Op.iLike]: `%${q}%` } },
           { service_name: { [Op.iLike]: `%${q}%` } },
           { user_email: { [Op.iLike]: `%${q}%` } },
+          { zone: { [Op.iLike]: `%${q}%` } },
         ];
       }
       const { count, rows } = await Deployment.findAndCountAll({

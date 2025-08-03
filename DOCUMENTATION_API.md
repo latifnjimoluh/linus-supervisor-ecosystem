@@ -414,9 +414,12 @@ Authorization: Bearer <token>
 ```json
 {
   "vm_names": ["web1"],
-  "service_type": "web"
+  "service_type": "web",
+  "zone": "LAN"
 }
 ```
+
+- `zone` : optionnel, par défaut "LAN". Valeurs acceptées : `LAN`, `DMZ`, `WAN`.
 
 #### `POST /api/vm/delete-vm`
 **Description** : Arrête et supprime une VM.
