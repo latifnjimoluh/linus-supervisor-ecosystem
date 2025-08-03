@@ -107,18 +107,10 @@ resource "null_resource" "configure_service" {
     timeout     = "2m"
   }
 
+  # 📄 Transfert des scripts
   provisioner "file" {
     source      = var.init_script
     destination = "/tmp/init.sh"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "echo '🔧 Execution INIT SCRIPT...'",
-      "chmod +x /tmp/init.sh",
-      "sudo /tmp/init.sh",
-      "echo '✅ Fin INIT SCRIPT'"
-    ]
   }
 
   provisioner "file" {
@@ -126,27 +118,9 @@ resource "null_resource" "configure_service" {
     destination = "/tmp/config.sh"
   }
 
-  provisioner "remote-exec" {
-    inline = [
-      "echo '🔧 Execution CONFIG SCRIPT...'",
-      "chmod +x /tmp/config.sh",
-      "sudo /tmp/config.sh",
-      "echo '✅ Fin INIT SCRIPT'"
-    ]
-  }
-
-    provisioner "file" {
+  provisioner "file" {
     source      = var.monitoring_script
     destination = "/tmp/monitoring.sh"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "echo '🔧 Execution monitoring SCRIPT...'",
-      "chmod +x /tmp/monitoring.sh",
-      "sudo /tmp/monitoring.sh",
-      "echo '✅ Fin INIT SCRIPT'"
-    ]
   }
 
   # 🎯 Script de détection des services
@@ -155,14 +129,20 @@ resource "null_resource" "configure_service" {
     destination = "/tmp/service-detector.sh"
   }
 
+  # 🛠️ Conversion CRLF -> LF et exécution des scripts
   provisioner "remote-exec" {
     inline = [
+      "for f in init.sh config.sh monitoring.sh service-detector.sh; do tr -d '\\r' < /tmp/$f > /tmp/$f.tmp && mv /tmp/$f.tmp /tmp/$f; chmod +x /tmp/$f; done",
+      "echo '🔧 Execution INIT SCRIPT...'",
+      "sudo /tmp/init.sh",
+      "echo '🔧 Execution CONFIG SCRIPT...'",
+      "sudo /tmp/config.sh",
+      "echo '🔧 Execution monitoring SCRIPT...'",
+      "sudo /tmp/monitoring.sh",
       "echo '🔧 Execution service-detector SCRIPT...'",
-      "chmod +x /tmp/service-detector.sh",
       "sudo /tmp/service-detector.sh",
-      "echo '✅ Fin INIT SCRIPT'"
+      "echo '✅ Fin des scripts'"
     ]
   }
-
 
 }
