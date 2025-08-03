@@ -1,7 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 const { InitScript } = require("../../models");
-const { v4: uuidv4 } = require("uuid");
+const { Op } = require("sequelize");
+const { getNextSequence } = require("../../utils/sequence");
 
 exports.generateInitScript = async (req, res) => {
   try {
@@ -14,8 +15,9 @@ exports.generateInitScript = async (req, res) => {
     }
 
     // Générer un nom unique pour le fichier
-    const filename = `init-${name.replace(/\s+/g, "_")}-${uuidv4()}.sh`;
     const outputDir = path.join(__dirname, "../../generated-scripts");
+    const seq = getNextSequence(outputDir, "init-", ".sh");
+    const filename = `init-${seq}.sh`;
     const outputPath = path.join(outputDir, filename);
 
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
@@ -39,5 +41,70 @@ exports.generateInitScript = async (req, res) => {
   } catch (error) {
     console.error("❌ Erreur génération init script :", error);
     res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+exports.listInitScripts = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const sort = req.query.sort || "created_at";
+    const direction = req.query.order === "asc" ? "ASC" : "DESC";
+    const where = {};
+    if (req.query.q) {
+      const q = req.query.q;
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${q}%` } },
+        { service_type: { [Op.iLike]: `%${q}%` } },
+      ];
+    }
+    const { count, rows } = await InitScript.findAndCountAll({
+      where,
+      order: [[sort, direction]],
+      limit,
+      offset,
+    });
+    res.json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        pages: Math.ceil(count / limit),
+        limit,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Erreur list init scripts:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+exports.updateInitScript = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const record = await InitScript.findByPk(id);
+    if (!record) return res.status(404).json({ message: "Script introuvable" });
+    const { name, description } = req.body;
+    if (name) record.name = name;
+    if (description) record.description = description;
+    await record.save();
+    res.json({ message: "Script mis à jour", record });
+  } catch (err) {
+    console.error("❌ Erreur update init script:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+exports.deleteInitScript = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const record = await InitScript.findByPk(id);
+    if (!record) return res.status(404).json({ message: "Script introuvable" });
+    await record.destroy();
+    res.json({ message: "Script supprimé" });
+  } catch (err) {
+    console.error("❌ Erreur delete init script:", err);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };

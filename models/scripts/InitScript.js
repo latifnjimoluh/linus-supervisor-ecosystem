@@ -13,6 +13,10 @@ module.exports = (sequelize, DataTypes) => {
     service_type: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     }
   }, {
     tableName: "init_scripts",

@@ -16,6 +16,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(50),
         allowNull: false,
       },
+      config_data: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+      },
     },
     {
       tableName: "monitoring_scripts",

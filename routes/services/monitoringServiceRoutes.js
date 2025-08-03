@@ -11,4 +11,25 @@ router.post(
   controller.generateMonitoringServiceScript
 );
 
+router.get(
+  "/monitoring-services/generate",
+  verifyToken,
+  checkPermission("monitoringService.list"),
+  controller.listMonitoringServiceScripts
+);
+
+router.put(
+  "/monitoring-services/generate/:id",
+  verifyToken,
+  checkPermission("monitoringService.update"),
+  controller.updateMonitoringServiceScript
+);
+
+router.delete(
+  "/monitoring-services/generate/:id",
+  verifyToken,
+  checkPermission("monitoringService.delete"),
+  controller.deleteMonitoringServiceScript
+);
+
 module.exports = router;

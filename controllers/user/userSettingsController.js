@@ -1,4 +1,5 @@
-const { UserSetting } = require("../../models");
+const { UserSetting, User } = require("../../models");
+const { Op } = require("sequelize");
 
 exports.getUserSettings = async (req, res) => {
   const userId = req.user?.id;
@@ -52,6 +53,47 @@ exports.createUserSettings = async (req, res) => {
     return res.status(201).json({ message: "Paramètres créés avec succès", settings });
   } catch (err) {
     console.error("❌ Erreur lors de la création des paramètres :", err);
+    return res.status(500).json({ message: "Erreur serveur." });
+  }
+};
+
+exports.listAllSettings = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const sort = req.query.sort || "created_at";
+    const direction = req.query.order === "asc" ? "ASC" : "DESC";
+    const where = {};
+    if (req.query.q) {
+      const q = req.query.q;
+      where[Op.or] = [
+        { cloudinit_user: { [Op.iLike]: `%${q}%` } },
+        { proxmox_api_url: { [Op.iLike]: `%${q}%` } },
+        { proxmox_api_token_id: { [Op.iLike]: `%${q}%` } },
+        { proxmox_api_token_name: { [Op.iLike]: `%${q}%` } },
+        { pm_user: { [Op.iLike]: `%${q}%` } },
+        { proxmox_node: { [Op.iLike]: `%${q}%` } },
+      ];
+    }
+    const { count, rows } = await UserSetting.findAndCountAll({
+      where,
+      include: [{ model: User, as: "user", attributes: ["id", "email"] }],
+      order: [[sort, direction]],
+      limit,
+      offset,
+    });
+    return res.status(200).json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        pages: Math.ceil(count / limit),
+        limit,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Erreur listing settings :", err);
     return res.status(500).json({ message: "Erreur serveur." });
   }
 };

@@ -1,9 +1,37 @@
+const { Op } = require("sequelize");
 const { Role } = require("../../models");
 
 exports.getAllRoles = async (req, res) => {
   try {
-    const roles = await Role.findAll({ order: [["name", "ASC"]] });
-    res.status(200).json(roles);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const sort = req.query.sort || "name";
+    const direction = req.query.order === "desc" ? "DESC" : "ASC";
+    const where = {};
+    if (req.query.status) where.status = req.query.status;
+    if (req.query.q) {
+      const q = req.query.q;
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${q}%` } },
+        { description: { [Op.iLike]: `%${q}%` } },
+      ];
+    }
+    const { count, rows } = await Role.findAndCountAll({
+      where,
+      order: [[sort, direction]],
+      limit,
+      offset,
+    });
+    res.status(200).json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        pages: Math.ceil(count / limit),
+        limit,
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: "Erreur lors de la récupération des rôles", error: err.message });
   }
