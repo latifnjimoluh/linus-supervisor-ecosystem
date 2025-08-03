@@ -1,6 +1,5 @@
 const { UserActionLog } = require("../models");
 const { v4: uuidv4 } = require("uuid");
-
 const ACTIONS = [
   { method: "GET", path: /^\/api\/user-logs/, label: "Consultation des journaux utilisateur" },
   { method: "GET", path: /^\/api\/services\/config-template/, label: "Consultation des services configurés" },
@@ -29,7 +28,6 @@ function describeAction(req) {
   const entry = ACTIONS.find(a => a.method === req.method && a.path.test(req.originalUrl));
   return entry ? entry.label : `${req.method} ${req.originalUrl}`;
 }
-
 module.exports = (req, res, next) => {
   res.on("finish", async () => {
     try {
@@ -49,7 +47,7 @@ module.exports = (req, res, next) => {
         id: uuidv4(),
         user_id: user.id,
         action: actionLabel,
-        details,
+        details
       });
     } catch (err) {
       console.error("❌ Erreur logAllActions:", err.message);
