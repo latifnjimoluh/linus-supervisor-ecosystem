@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { MonitoringScript, ServiceTemplate } = require("../../models");
+const { MonitoringScript, ScriptTemplate } = require("../../models");
 const { getNextSequence } = require("../../utils/sequence");
 
 function renderTemplate(template, variables) {
@@ -18,7 +18,7 @@ exports.generateServiceMonitoringAgent = async (req, res) => {
     }
 
     // Récupérer le template depuis la base
-    const template = await ServiceTemplate.findByPk(template_id);
+    const template = await ScriptTemplate.findByPk(template_id);
     if (!template) {
       return res.status(404).json({ message: "Template introuvable." });
     }

@@ -1,7 +1,7 @@
 "use strict";
 
 module.exports = (sequelize, DataTypes) => {
-  const InitScript = sequelize.define("InitScript", {
+  const InitializationScript = sequelize.define("InitializationScript", {
     name: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -19,11 +19,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     }
   }, {
-    tableName: "init_scripts",
+    tableName: "initialization_scripts",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
   });
 
-  return InitScript;
+  return InitializationScript;
 };

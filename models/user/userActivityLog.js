@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-  const UserActionLog = sequelize.define("UserActionLog", {
+  const UserActivityLog = sequelize.define("UserActivityLog", {
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
@@ -22,16 +22,16 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.NOW,
     },
   }, {
-    tableName: "user_action_logs",
+    tableName: "user_activity_logs",
     timestamps: false,
   });
 
-  UserActionLog.associate = models => {
-    UserActionLog.belongsTo(models.User, {
+  UserActivityLog.associate = models => {
+    UserActivityLog.belongsTo(models.User, {
       foreignKey: "user_id",
       as: "user",
     });
   };
 
-  return UserActionLog;
+  return UserActivityLog;
 };

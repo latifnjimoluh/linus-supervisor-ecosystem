@@ -1,6 +1,6 @@
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
-const { Role, Permission, RolePermission } = require("../models");
+const { Role, Permission, AssignedPermission } = require("../models");
 
 const secret = process.env.JWT_SECRET;
 
@@ -95,7 +95,7 @@ const checkPermission = (permissionKey) => {
         return res.status(403).json({ message: `⛔ Permission '${permissionKey}' non trouvée.` });
       }
 
-      const rolePermission = await RolePermission.findOne({
+      const rolePermission = await AssignedPermission.findOne({
         where: {
           role_id: roleId,
           permission_id: permission.id,

@@ -1,6 +1,6 @@
 const db = require("../../models");
 const { Op } = require("sequelize");
-const { UserActionLog, User } = db;
+const { UserActivityLog, User } = db;
 
 exports.getAllLogs = async (req, res) => {
   try {
@@ -17,7 +17,7 @@ exports.getAllLogs = async (req, res) => {
       ];
     }
 
-    const { count, rows } = await UserActionLog.findAndCountAll({
+    const { count, rows } = await UserActivityLog.findAndCountAll({
       where,
       include: [{ model: User, as: "user", attributes: ["first_name", "last_name", "email"] }],
       order: [["created_at", "DESC"]],
@@ -37,7 +37,7 @@ exports.getAllLogs = async (req, res) => {
 
 exports.getLogsByUser = async (req, res) => {
   try {
-    const logs = await UserActionLog.findAll({
+    const logs = await UserActivityLog.findAll({
       where: { user_id: req.params.id },
       include: [{ model: User, as: "user", attributes: ["first_name", "last_name", "email"] }],
       order: [["created_at", "DESC"]],

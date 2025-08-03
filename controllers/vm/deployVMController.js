@@ -4,10 +4,10 @@ const { v4: uuidv4 } = require("uuid");
 const { runTerraformApply } = require("../../utils/terraformRunner");
 const {
   Deployment,
-  ConfigTemplateService,
-  InitScript,
+  ServiceTemplate,
+  InitializationScript,
   MonitoringScript,
-  MonitoringService,
+  MonitoredService,
   UserSetting
 } = require("../../models");
 const { checkIfVMNameExists } = require("../../utils/proxmoxService");
@@ -73,24 +73,24 @@ exports.deployVMDirect = async (req, res) => {
     // 1️⃣ CONFIGURATION
     let configScriptPath = "";
     if (payload.config_id) {
-      const config = await ConfigTemplateService.findByPk(payload.config_id);
+      const config = await ServiceTemplate.findByPk(payload.config_id);
       if (!config) return res.status(404).json({ message: `Configuration introuvable (ID: ${payload.config_id})` });
       configScriptPath = config.script_path.replace(/\\/g, "/");
     } else {
-      const latestConfig = await ConfigTemplateService.findOne({ where: { service_type }, order: [["created_at", "DESC"]] });
+      const latestConfig = await ServiceTemplate.findOne({ where: { service_type }, order: [["created_at", "DESC"]] });
       if (!latestConfig) return res.status(404).json({ message: `Aucune configuration trouvée pour '${service_name}'` });
       configScriptPath = latestConfig.script_path.replace(/\\/g, "/");
     }
 
-    // 2️⃣ INIT
-    let initScriptPath = "";
-    if (payload.init_script_id) {
-      const init = await InitScript.findByPk(payload.init_script_id);
-      if (!init) return res.status(404).json({ message: `Script init introuvable (ID: ${payload.init_script_id})` });
-      initScriptPath = init.script_path.replace(/\\/g, "/");
+    // 2️⃣ INITIALIZATION
+    let initializationScriptPath = "";
+    if (payload.initialization_script_id) {
+      const init = await InitializationScript.findByPk(payload.initialization_script_id);
+      if (!init) return res.status(404).json({ message: `Script init introuvable (ID: ${payload.initialization_script_id})` });
+      initializationScriptPath = init.script_path.replace(/\\/g, "/");
     } else {
-      const latestInit = await InitScript.findOne({ order: [["created_at", "DESC"]] });
-      if (latestInit) initScriptPath = latestInit.script_path.replace(/\\/g, "/");
+      const latestInit = await InitializationScript.findOne({ order: [["created_at", "DESC"]] });
+      if (latestInit) initializationScriptPath = latestInit.script_path.replace(/\\/g, "/");
     }
 
     // 3️⃣ MONITORING
@@ -104,29 +104,29 @@ exports.deployVMDirect = async (req, res) => {
       if (latestMonitor) monitoringScriptPath = latestMonitor.script_path.replace(/\\/g, "/");
     }
 
-    // 4️⃣ MONITORING SERVICES
-    let monitoringServicesScriptPath = "";
-    if (payload.monitoring_services_script_id) {
-      const monitorServices = await MonitoringService.findByPk(payload.monitoring_services_script_id);
-      if (!monitorServices) return res.status(404).json({ message: `Script services introuvable (ID: ${payload.monitoring_services_script_id})` });
-      monitoringServicesScriptPath = monitorServices.script_path.replace(/\\/g, "/");
+    // 4️⃣ MONITORED SERVICES
+    let monitoredServicesScriptPath = "";
+    if (payload.monitored_services_script_id) {
+      const monitorServices = await MonitoredService.findByPk(payload.monitored_services_script_id);
+      if (!monitorServices) return res.status(404).json({ message: `Script services introuvable (ID: ${payload.monitored_services_script_id})` });
+      monitoredServicesScriptPath = monitorServices.script_path.replace(/\\/g, "/");
     } else {
-      const latestMonitorService = await MonitoringService.findOne({ order: [["created_at", "DESC"]] });
-      if (latestMonitorService) monitoringServicesScriptPath = latestMonitorService.script_path.replace(/\\/g, "/");
+      const latestMonitorService = await MonitoredService.findOne({ order: [["created_at", "DESC"]] });
+      if (latestMonitorService) monitoredServicesScriptPath = latestMonitorService.script_path.replace(/\\/g, "/");
     }
 
     // 5️⃣ Préparation pour Terraform
     payload.instance_id = instanceId;
-    payload.init_script = initScriptPath;
+    payload.initialization_script = initializationScriptPath;
     payload.monitoring_script = monitoringScriptPath;
-    payload.monitoring_services_script = monitoringServicesScriptPath;
+    payload.monitored_services_script = monitoredServicesScriptPath;
     payload.service_config_scripts = { [vmName]: configScriptPath };
 
     console.log("🧩 Scripts injectés :", {
       config: configScriptPath,
-      init: initScriptPath,
+      initialization: initializationScriptPath,
       monitoring: monitoringScriptPath,
-      monitoring_services: monitoringServicesScriptPath,
+      monitored_services: monitoredServicesScriptPath,
     });
 
     // 6️⃣ Lancement Terraform
@@ -142,7 +142,7 @@ exports.deployVMDirect = async (req, res) => {
     const logPath = path.resolve(logsDir, logFilename);
     fs.writeFileSync(logPath, `==== DEPLOIEMENT ${service_name} ====\n\n📅 Début : ${startTime}\n🕒 Durée : ${duration}s\n✅ Succès : ${success}\n\n--- STDOUT ---\n${stdout}\n\n--- STDERR ---\n${stderr}`);
 
-    const injectedFiles = [initScriptPath, monitoringScriptPath, monitoringServicesScriptPath, configScriptPath].filter(Boolean);
+    const injectedFiles = [initializationScriptPath, monitoringScriptPath, monitoredServicesScriptPath, configScriptPath].filter(Boolean);
     const vmSpecs = {
       template_name: payload.template_name || "ubuntu-template",
       memory_mb: payload.memory_mb || 2048,

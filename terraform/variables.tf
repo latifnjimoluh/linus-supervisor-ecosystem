@@ -116,7 +116,7 @@ variable "service_config_scripts" {
   type        = map(string)
 }
 
-variable "init_script" {
+variable "initialization_script" {
   description = "Script init commun (ex: install dépendances)"
   type        = string
 }
@@ -127,7 +127,7 @@ variable "monitoring_script" {
   default     = ""
 }
 
-variable "monitoring_services_script" {
+variable "monitored_services_script" {
   description = "Script de détection des services système"
   type        = string
   default     = ""

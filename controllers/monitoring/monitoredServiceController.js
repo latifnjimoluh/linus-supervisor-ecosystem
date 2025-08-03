@@ -1,13 +1,13 @@
 const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
-const { MonitoringService, ServiceTemplate } = require("../../models");
+const { MonitoredService, ScriptTemplate } = require("../../models");
 
 function renderTemplate(template, variables) {
   return template.replace(/{{(\w+)}}/g, (_, key) => variables[key] || "");
 }
 
-exports.generateMonitoringServiceScript = async (req, res) => {
+exports.generateMonitoredServiceScript = async (req, res) => {
   try {
     const { template_id, services, cron_interval } = req.body;
 
@@ -15,7 +15,7 @@ exports.generateMonitoringServiceScript = async (req, res) => {
       return res.status(400).json({ message: "Champs requis : template_id, services (array), cron_interval" });
     }
 
-    const template = await ServiceTemplate.findByPk(template_id);
+    const template = await ScriptTemplate.findByPk(template_id);
     if (!template) {
       return res.status(404).json({ message: "Template introuvable." });
     }
@@ -35,7 +35,7 @@ exports.generateMonitoringServiceScript = async (req, res) => {
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(outputPath, rendered);
 
-    const saved = await MonitoringService.create({
+    const saved = await MonitoredService.create({
       name: `Service Watcher - ${uuidv4().slice(0, 8)}`,
       service_type: "services",
       script_path: outputPath,
@@ -46,7 +46,7 @@ exports.generateMonitoringServiceScript = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: "✅ Script généré et sauvegardé dans monitoring_services",
+      message: "✅ Script généré et sauvegardé dans monitored_services",
       script_id: saved.id,
       script_path: saved.script_path
     });

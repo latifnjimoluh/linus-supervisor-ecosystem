@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-  const RolePermission = sequelize.define("RolePermission", {
+  const AssignedPermission = sequelize.define("AssignedPermission", {
     role_id: {
       type: DataTypes.INTEGER,
       references: {
@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
   }, {
-    tableName: "role_permissions",
+    tableName: "assigned_permissions",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
@@ -27,5 +27,5 @@ module.exports = (sequelize, DataTypes) => {
     ],
   });
 
-  return RolePermission;
+  return AssignedPermission;
 };

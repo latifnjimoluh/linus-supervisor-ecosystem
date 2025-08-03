@@ -3,14 +3,14 @@ const path = require("path");
 const db = require("../../models");
 const { Op } = require("sequelize");
 const { getNextSequence } = require("../../utils/sequence");
-const { MonitoringService } = db;
-const ServiceTemplate = db.ServiceTemplate;
+const { MonitoredService } = db;
+const ScriptTemplate = db.ScriptTemplate;
 
 function renderTemplate(template, variables) {
   return template.replace(/{{(\w+)}}/g, (_, key) => variables[key] || "");
 }
 
-exports.generateMonitoringServiceScript = async (req, res) => {
+exports.generateMonitoredServiceScript = async (req, res) => {
   try {
     const { template_id, services, cron_interval } = req.body;
 
@@ -18,11 +18,11 @@ exports.generateMonitoringServiceScript = async (req, res) => {
       return res.status(400).json({ message: "Champs requis : template_id, services (array), cron_interval" });
     }
 
-    if (!ServiceTemplate) {
-      return res.status(500).json({ message: "Modèle de service non chargé" });
+    if (!ScriptTemplate) {
+      return res.status(500).json({ message: "Modèle de script non chargé" });
     }
 
-    const template = await ServiceTemplate.findByPk(template_id);
+    const template = await ScriptTemplate.findByPk(template_id);
     if (!template) {
       return res.status(404).json({ message: "Template introuvable." });
     }
@@ -43,7 +43,7 @@ exports.generateMonitoringServiceScript = async (req, res) => {
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(outputPath, rendered);
 
-    const saved = await MonitoringService.create({
+    const saved = await MonitoredService.create({
       name: `Service Watcher - ${seq}`,
       service_type: "services",
       script_path: outputPath,
@@ -54,7 +54,7 @@ exports.generateMonitoringServiceScript = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: "✅ Script généré et sauvegardé dans monitoring_services",
+      message: "✅ Script généré et sauvegardé dans monitored_services",
       script_id: saved.id,
       script_path: saved.script_path
     });
@@ -65,7 +65,7 @@ exports.generateMonitoringServiceScript = async (req, res) => {
   }
 };
 
-exports.listMonitoringServiceScripts = async (req, res) => {
+exports.listMonitoredServiceScripts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -80,7 +80,7 @@ exports.listMonitoringServiceScripts = async (req, res) => {
         { service_type: { [Op.iLike]: `%${q}%` } },
       ];
     }
-    const { count, rows } = await MonitoringService.findAndCountAll({
+    const { count, rows } = await MonitoredService.findAndCountAll({
       where,
       order: [[sort, direction]],
       limit,
@@ -101,10 +101,10 @@ exports.listMonitoringServiceScripts = async (req, res) => {
   }
 };
 
-exports.updateMonitoringServiceScript = async (req, res) => {
+exports.updateMonitoredServiceScript = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await MonitoringService.findByPk(id);
+    const record = await MonitoredService.findByPk(id);
     if (!record) return res.status(404).json({ message: "Script introuvable" });
     const { name, config_data } = req.body;
     if (name) record.name = name;
@@ -117,10 +117,10 @@ exports.updateMonitoringServiceScript = async (req, res) => {
   }
 };
 
-exports.deleteMonitoringServiceScript = async (req, res) => {
+exports.deleteMonitoredServiceScript = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await MonitoringService.findByPk(id);
+    const record = await MonitoredService.findByPk(id);
     if (!record) return res.status(404).json({ message: "Script introuvable" });
     await record.destroy();
     res.json({ message: "Script supprimé" });

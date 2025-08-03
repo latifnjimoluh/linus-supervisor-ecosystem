@@ -1,10 +1,10 @@
 const fs = require("fs");
 const path = require("path");
-const { InitScript } = require("../../models");
+const { InitializationScript } = require("../../models");
 const { Op } = require("sequelize");
 const { getNextSequence } = require("../../utils/sequence");
 
-exports.generateInitScript = async (req, res) => {
+exports.generateInitializationScript = async (req, res) => {
   try {
     const { name, description, content } = req.body;
 
@@ -25,7 +25,7 @@ exports.generateInitScript = async (req, res) => {
     fs.writeFileSync(outputPath, content, { mode: 0o755 });
 
     // Enregistrer dans la base
-    const savedScript = await InitScript.create({
+    const savedScript = await InitializationScript.create({
       name,
       description: description || "",
       script_path: outputPath,
@@ -44,7 +44,7 @@ exports.generateInitScript = async (req, res) => {
   }
 };
 
-exports.listInitScripts = async (req, res) => {
+exports.listInitializationScripts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -59,7 +59,7 @@ exports.listInitScripts = async (req, res) => {
         { service_type: { [Op.iLike]: `%${q}%` } },
       ];
     }
-    const { count, rows } = await InitScript.findAndCountAll({
+    const { count, rows } = await InitializationScript.findAndCountAll({
       where,
       order: [[sort, direction]],
       limit,
@@ -80,10 +80,10 @@ exports.listInitScripts = async (req, res) => {
   }
 };
 
-exports.updateInitScript = async (req, res) => {
+exports.updateInitializationScript = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await InitScript.findByPk(id);
+    const record = await InitializationScript.findByPk(id);
     if (!record) return res.status(404).json({ message: "Script introuvable" });
     const { name, description } = req.body;
     if (name) record.name = name;
@@ -96,10 +96,10 @@ exports.updateInitScript = async (req, res) => {
   }
 };
 
-exports.deleteInitScript = async (req, res) => {
+exports.deleteInitializationScript = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await InitScript.findByPk(id);
+    const record = await InitializationScript.findByPk(id);
     if (!record) return res.status(404).json({ message: "Script introuvable" });
     await record.destroy();
     res.json({ message: "Script supprimé" });

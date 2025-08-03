@@ -1,5 +1,5 @@
 // 📁 controllers/permissions/permissionController.js
-const { Permission, Role, RolePermission } = require("../../models");
+const { Permission, Role, AssignedPermission } = require("../../models");
 const { Op } = require("sequelize");
 
 exports.getAllPermissions = async (req, res) => {
@@ -138,7 +138,7 @@ exports.assignPermissionsToRole = async (req, res) => {
       }
 
       // Récupérer les permissions déjà attribuées
-      const existing = await RolePermission.findAll({ where: { role_id } });
+      const existing = await AssignedPermission.findAll({ where: { role_id } });
       const existingIds = new Set(existing.map((rp) => rp.permission_id));
 
       // Ne créer que les nouvelles associations
@@ -147,7 +147,7 @@ exports.assignPermissionsToRole = async (req, res) => {
         .map((pid) => ({ role_id, permission_id: pid }));
 
       if (toInsert.length) {
-        await RolePermission.bulkCreate(toInsert);
+        await AssignedPermission.bulkCreate(toInsert);
       }
     }
 
@@ -180,7 +180,7 @@ exports.unassignPermissionsFromRole = async (req, res) => {
     if (!role_id || !Array.isArray(permission_ids)) {
       return res.status(400).json({ message: "role_id ou permission_ids manquants ou invalides." });
     }
-    await RolePermission.destroy({
+    await AssignedPermission.destroy({
       where: { role_id, permission_id: permission_ids },
     });
     res.json({ message: "Permissions retirées avec succès." });

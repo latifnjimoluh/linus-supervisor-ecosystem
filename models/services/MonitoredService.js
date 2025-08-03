@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-  const MonitoringService = sequelize.define("MonitoringService", {
+  const MonitoredService = sequelize.define("MonitoredService", {
     name: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -17,9 +17,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     }
   }, {
-    tableName: "monitoring_services",  // 👈 important : nom explicite en base
+    tableName: "monitored_services",  // 👈 important : nom explicite en base
     underscored: true                  // facultatif : pour created_at vs createdAt
   });
 
-  return MonitoringService;
+  return MonitoredService;
 };

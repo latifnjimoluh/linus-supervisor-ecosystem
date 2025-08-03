@@ -27,7 +27,7 @@ output "status" {
   description = "Résumé du déploiement"
   value = <<EOT
 ✅ ${length(proxmox_vm_qemu.vm)} VM(s) déployée(s)
-🟢 Script d'initialisation : ${var.init_script}
+🟢 Script d'initialisation : ${var.initialization_script}
 🧩 Scripts de service injectés :
 %{ for name, path in var.service_config_scripts ~}
 - ${name} : ${path}

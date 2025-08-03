@@ -17,15 +17,15 @@ controllers/
 │  └─ configMail.js
 ├─ generate/
 │  ├─ generateAgentController.js
-│  ├─ generateInitScriptController.js
+│  ├─ generateInitializationScriptController.js
 │  └─ generateMonitoringDNSController.js
 ├─ monitoring/
-│  └─ monitoringServiceController.js
+│  └─ monitoredServiceController.js
 ├─ supervision/
 │  └─ supervisionFetchController.js
 ├─ template/
 │  ├─ configTemplateController.js
-│  └─ templateServiceController.js
+│  └─ serviceTemplateController.js
 ├─ user/
 │  └─ userResetPasswordController.js
 └─ vm/
@@ -48,10 +48,10 @@ controllers/
 ## Endpoints principaux
 | Méthode | Route | Contrôleur |
 |--------|-------|------------|
-| POST | `/api/init-scripts/generate` | generateInitScriptController.generateInitScript |
+| POST | `/api/initialization-scripts/generate` | generateInitializationScriptController.generateInitializationScript |
 | POST | `/api/monitoring/generate` | generateMonitoringDNSController.generateMonitoringScript |
-| POST | `/api/monitoring/monitoring-services/generate` | monitoringServiceController.generateMonitoringServiceScript |
-| POST | `/api/services/config-template` | templateServiceController.configureService |
+| POST | `/api/monitoring/monitored-services/generate` | generateMonitoredServiceController.generateMonitoredServiceScript |
+| POST | `/api/service-templates` | serviceTemplateController.generateServiceTemplate |
 | POST | `/api/templates/create` | configTemplateController.createTemplate |
 | POST | `/api/convert-template/convert` | templateVmController.convertToTemplate |
 | POST | `/api/vm/check-vm-status` | checkVMStatusController.checkVMStatus |
@@ -100,10 +100,10 @@ Les scripts d'initialisation et de supervision sont générés à partir de temp
 - `config/db.js` : initialisation de la connexion PostgreSQL.
 - `controllers/auth/userAuthController.js` : inscription et connexion des utilisateurs.
 - `controllers/deploy/deployController.js` : lance les déploiements Terraform.
-- `controllers/generate/generateInitScriptController.js` : gestion des scripts d'initialisation.
+- `controllers/generate/generateInitializationScriptController.js` : gestion des scripts d'initialisation.
 - `controllers/generate/generateMonitoringDNSController.js` : gestion des scripts de monitoring.
-- `controllers/template/templateServixeController.js` : gère les modèles de configuration de service.
-- `controllers/generate/generateMonitoringServiceController.js` : enregistre les services supervisés.
+- `controllers/template/serviceTemplateController.js` : gère les modèles de configuration de service.
+- `controllers/generate/generateMonitoredServiceController.js` : enregistre les services supervisés.
 - `controllers/generate/generateAgentController.js` : génère les agents de supervision.
 - `controllers/supervision/supervisionFetchController.js` : récupère et enregistre les données de supervision des VMs.
 - `controllers/template/configTemplateController.js` : CRUD des modèles de configuration.
@@ -114,11 +114,12 @@ Les scripts d'initialisation et de supervision sont générés à partir de temp
 - `middlewares/auth.js` : création et validation des JWT ainsi que vérification des rôles.
 - `models/auth/User.js` : modèle utilisateur.
 - `models/deploy/Deployment.js` : journal des déploiements Terraform.
-- `models/scripts/InitScript.js` : modèle des scripts d'initialisation.
+- `models/scripts/InitializationScript.js` : modèle des scripts d'initialisation.
 - `models/scripts/MonitoringScript.js` : modèle des scripts de monitoring.
-- `models/services/MonitoringService.js` : décrit un service supervisé.
+- `models/services/MonitoredService.js` : décrit un service supervisé.
 - `models/supervision/serviceStatus.js` : état d'un service supervisé.
-- `models/services/configTemplateService.js` : lien entre service et modèle de configuration.
+- `models/services/ServiceTemplate.js` : scripts de configuration générés pour les services.
+- `models/template/ScriptTemplate.js` : modèles réutilisables pour générer des scripts.
 - `models/supervision/statusSnapshot.js` : instantané global de supervision.
 - `models/supervision/vmInstance.js` : décrit une VM créée.
 - `models/template/configTemplate.js` : modèle de configuration générique.
