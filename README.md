@@ -1,158 +1,135 @@
-# Linusupervisor Backend
+# 📘 Linusupervisor Backend
 
-## Présentation du projet
-Plateforme de supervision centralisée des infrastructures Linux du BUNEC. Le backend expose une API REST qui gère l'authentification, l'injection dynamique de scripts et la surveillance des services et machines virtuelles Proxmox.
+## 🚀 Présentation
 
-## Technologies utilisées
-- Node.js & Express
+Un backend Express.js modulaire permettant de déployer, superviser, configurer et surveiller des serveurs Linux à distance (via Proxmox/Terraform), dans le cadre du projet "Système centralisé de supervision intelligente du BUNEC".
+
+---
+
+## 🧰 Technologies utilisées
+
+- Node.js
+- Express.js
 - Sequelize (PostgreSQL)
-- JWT & bcrypt
-- Axios, SSH2
-- Terraform
+- JWT Authentication
+- dotenv
+- SSH2 / Child Process
+- Middleware personnalisés (`verifyToken`, `checkPermission`)
+- Modularisation par contrôleurs et templates
 
-## Arborescence du backend
-```text
-controllers/
-├─ config/
-│  └─ configMail.js
-├─ generate/
-│  ├─ generateAgentController.js
-│  ├─ generateInitializationScriptController.js
-│  └─ generateMonitoringDNSController.js
-├─ monitoring/
-│  └─ monitoredServiceController.js
-├─ supervision/
-│  └─ supervisionFetchController.js
-├─ template/
-│  ├─ configTemplateController.js
-│  └─ serviceTemplateController.js
-├─ user/
-│  └─ userResetPasswordController.js
-└─ vm/
-   ├─ checkVMStatusController.js
-   ├─ deleteVMController.js
-   ├─ deployVMController.js
-   ├─ startVMController.js
-   ├─ stopVMController.js
-   └─ templateVmController.js
+---
+
+## 🗂️ Arborescence des principaux dossiers
+
+```bash
+.
+├── controllers/
+│   ├── auth/
+│   ├── generate/
+│   ├── supervision/
+│   ├── vm/
+│   └── template/
+├── models/
+├── routes/
+├── services/   (optionnel)
+├── middlewares/
+├── config/
+├── scripts/
+├── logs/
+├── utils/
+└── app.js
 ```
 
-## Description des principaux dossiers
-- **controllers/generate** : création de scripts d'initialisation, d'agents et de supervision DNS.
-- **controllers/monitoring** : génération des scripts de monitoring des services.
-- **controllers/template** : gestion et utilisation des templates de configuration.
-- **controllers/supervision** : collecte et sauvegarde des informations de supervision.
-- **controllers/vm** : opérations sur les machines virtuelles (statut, démarrage/arrêt, conversion en template).
-- **controllers/config** : configuration de l'envoi d'e-mails.
+---
 
-## Endpoints principaux
-| Méthode | Route | Contrôleur |
-|--------|-------|------------|
-| POST | `/api/initialization-scripts/generate` | generateInitializationScriptController.generateInitializationScript |
-| POST | `/api/monitoring/generate` | generateMonitoringDNSController.generateMonitoringScript |
-| POST | `/api/monitoring/monitored-services/generate` | generateMonitoredServiceController.generateMonitoredServiceScript |
-| POST | `/api/service-templates` | serviceTemplateController.generateServiceTemplate |
-| POST | `/api/templates/create` | configTemplateController.createTemplate |
-| POST | `/api/convert-template/convert` | templateVmController.convertToTemplate |
-| POST | `/api/vm/check-vm-status` | checkVMStatusController.checkVMStatus |
-| POST | `/api/vm/start` | startVMController.startVM |
-| POST | `/api/vm/stop` | stopVMController.stopVM |
-| POST | `/api/supervision/fetch` | supervisionFetchController.fetchFromDynamicVM |
-| POST | `/api/supervision/status` | supervisionFetchController.saveStatus |
-| POST | `/api/supervision/services` | supervisionFetchController.saveServices |
-| GET | `/api/supervision/status` | supervisionFetchController (lecture) |
-| GET | `/api/supervision/services` | supervisionFetchController (lecture) |
+## ⚙️ Configuration
 
-## Lancement du backend
+Créer un fichier `.env` à la racine avec les variables suivantes :
+
+```dotenv
+PORT=5000
+DATABASE_URL=postgres://user:password@localhost:5432/linusupervisor
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRES_IN=1h
+```
+
+---
+
+## ▶️ Lancement du projet
+
 ```bash
 npm install
-npm run dev
-```
-L'API écoute par défaut sur `http://localhost:5000`.
-
-## Gestion des scripts Terraform sous Windows
-Avant de lancer un déploiement depuis un poste Windows, assurez-vous que les fichiers shell utilisent des fins de ligne Unix :
-
-```bash
-dos2unix init.sh config.sh monitoring.sh service-detector.sh
+npm run dev   # Pour lancer en développement
+npm start     # Pour lancer en production
 ```
 
-## Configuration de l'environnement
-Créer un fichier `.env` à la racine :
-```dotenv
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=linusupervision
-DB_USER=postgres
-DB_PASS=motdepasse
-JWT_SECRET=supersecret
-SMTP_USER=exemple@gmail.com
-SMTP_PASS=motdepasseSMTP
-PORT=5000
+---
+
+## 📡 API
+
+La documentation complète de l’API est dans `DOCUMENTATION_API.md`
+Tu peux aussi utiliser Postman ou Swagger pour tester les routes.
+
+---
+
+## 🔐 Authentification
+
+Toutes les routes sont protégées via JWT et vérification de permissions.
+Tu dois inclure ce header :
+
+```http
+Authorization: Bearer <your_token>
 ```
-codex/rename-and-restructure-backend-controllers
-## Architecture dynamique
-Les scripts d'initialisation et de supervision sont générés à partir de templates stockés en base puis injectés automatiquement dans les VMs via SSH. Les actions de démarrage/arrêt et de collecte de supervision communiquent avec l'API Proxmox. Les déploiements d'infrastructure utilisent Terraform et les journaux sont sauvegardés en base PostgreSQL.
-=======
-## Description détaillée des fichiers
-- `app.js` : démarre l'application Express et charge les routes.
-- `config/config.json` : configuration Sequelize pour l'environnement de développement.
-- `config/db.js` : initialisation de la connexion PostgreSQL.
-- `controllers/auth/userAuthController.js` : inscription et connexion des utilisateurs.
-- `controllers/deploy/deployController.js` : lance les déploiements Terraform.
-- `controllers/generate/generateInitializationScriptController.js` : gestion des scripts d'initialisation.
-- `controllers/generate/generateMonitoringDNSController.js` : gestion des scripts de monitoring.
-- `controllers/template/serviceTemplateController.js` : gère les modèles de configuration de service.
-- `controllers/generate/generateMonitoredServiceController.js` : enregistre les services supervisés.
-- `controllers/generate/generateAgentController.js` : génère les agents de supervision.
-- `controllers/supervision/supervisionFetchController.js` : récupère et enregistre les données de supervision des VMs.
-- `controllers/template/configTemplateController.js` : CRUD des modèles de configuration.
-- `controllers/templateVMController.js` : conversion d'une VM en template Cloud-Init.
-- `controllers/vm/deleteVMController.js` : supprime une machine virtuelle.
-- `generated-scripts/` : scripts générés automatiquement lors des déploiements.
-- `generated-templates/` : modèles de script générés pour la configuration et la supervision.
-- `middlewares/auth.js` : création et validation des JWT ainsi que vérification des rôles.
-- `models/auth/User.js` : modèle utilisateur.
-- `models/deploy/Deployment.js` : journal des déploiements Terraform.
-- `models/scripts/InitializationScript.js` : modèle des scripts d'initialisation.
-- `models/scripts/MonitoringScript.js` : modèle des scripts de monitoring.
-- `models/services/MonitoredService.js` : décrit un service supervisé.
-- `models/supervision/serviceStatus.js` : état d'un service supervisé.
-- `models/services/ServiceTemplate.js` : scripts de configuration générés pour les services.
-- `models/template/ScriptTemplate.js` : modèles réutilisables pour générer des scripts.
-- `models/supervision/statusSnapshot.js` : instantané global de supervision.
-- `models/supervision/vmInstance.js` : décrit une VM créée.
-- `models/template/configTemplate.js` : modèle de configuration générique.
-- `models/vm/deleteVm.js` : traces de suppression de VM.
-- `routes/` : fichiers définissant l'ensemble des endpoints REST de l'API.
-- `utils/proxmoxService.js` : appels à l'API Proxmox pour gérer les VMs.
-- `utils/sshClient.js` : fonctions utilitaires pour lire des fichiers via SSH.
-- `utils/terraformRunner.js` : exécution des commandes Terraform.
-- `terraform/` : scripts Terraform utilisés lors des déploiements.
-- `sql/linusupervision_backup.sql` : sauvegarde de la base PostgreSQL.
-- `nodemon.json` : configuration de Nodemon pour le mode développement.
-- `package.json` et `package-lock.json` : dépendances Node.js et scripts npm.
-- `README.md` : documentation du projet.
-## Historique
-- 2024 : ajout de l'authentification JWT et du déploiement via Terraform
-- 2024 : prise en charge des scripts d'initialisation et de monitoring
-- 2024 : gestion des services supervisés et journalisation en base
-- 2025 : réorganisation des dossiers (controllers, models, routes)
 
-## Licence
-Ce projet est distribué sous licence ISC.
+---
 
-Save
-pg_dump -U postgres -d linusupervision -f "D:\backup.sql"
-"C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -U postgres -d linusupervision -f "D:\Keyce_B3\Soutenance\linusupervisor-backend\linusupervisor-backend\sql\linusupervision_backup.sql"
+## 🛠 Fonctionnalités principales
 
-📌 Cas 1 : Tu as un fichier .sql (export normal)
-Commande pour restaurer à vide dans une base existante :
+- Création, démarrage, arrêt et suppression de VMs via Proxmox
+- Génération de scripts d’init, de supervision, de monitoring
+- Suivi du statut des services installés
+- Journalisation des actions utilisateurs
+- Rôles & permissions dynamiques
+- Template JSON modulaire pour injecter des configurations
+- Architecture RESTful prête pour CI/CD et scalabilité
 
-psql -U postgres -d linusupervision -f "D:\linusupervision_backup.sql"
-Si la base linusupervision n’existe pas encore :
+---
 
-createdb -U postgres linusupervision
-psql -U postgres -d linusupervision -f "D:\linusupervision_backup.sql"
+## 🧪 Tests
 
-main
+📌 Les tests unitaires ou d’intégration sont à mettre en place avec jest ou mocha.
+(Dossier `__tests__` recommandé – à créer)
+
+---
+
+## 📁 Données persistées
+
+Liste des modèles Sequelize utilisés :
+
+- User
+- Role, Permission, RolePermission
+- InitScript, MonitoringScript, MonitoringService
+- ConfigTemplate, ConfigTemplateService
+- Deployment, Delete, VMInstance
+- StatusSnapshot, ServiceStatus
+- UserActionLog, UserSetting
+
+---
+
+## ✨ Recommandations
+
+- Ajouter Swagger/OpenAPI (route `/api-docs`)
+- Mettre en place des tests (jest)
+- Ajouter sécurité avancée (rate-limit, helmet, input sanitization)
+- Créer un vrai système de rollback en cas d’échec VM
+- Ajouter supervision IA contextuelle (optionnel)
+
+---
+
+## 🧠 Auteur
+
+Projet de Bachelor 3 – KEYCE School
+
+Nom : [Ton nom ici]
+Sujet : Mise en œuvre d’un système centralisé de gestion et de supervision intelligente des infrastructures Linux au BUNEC
+
