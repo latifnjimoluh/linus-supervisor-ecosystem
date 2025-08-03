@@ -29,14 +29,14 @@ exports.runTerraformApply = (instanceId, variables) => {
       console.log(`📄 [Terraform Runner] Fichier copié : ${file}`);
     });
 
-    if (variables.init_script && fs.existsSync(variables.init_script)) {
+    if (variables.initialization_script && fs.existsSync(variables.initialization_script)) {
       try {
-        const rawInit = fs.readFileSync(variables.init_script, "utf8");
+        const rawInit = fs.readFileSync(variables.initialization_script, "utf8");
         const interpolatedInit = rawInit.replace(/\${instance_id}/g, instanceId);
         const targetInitPath = path.join(deployDir, "init.sh");
         fs.writeFileSync(targetInitPath, interpolatedInit);
         console.log("🔁 [Terraform Runner] Script init.sh personnalisé avec instance_id injecté :", targetInitPath);
-        variables.init_script = targetInitPath;
+        variables.initialization_script = targetInitPath;
       } catch (err) {
         console.warn("⚠️ [Terraform Runner] Échec injection instance_id dans init.sh :", err.message);
       }

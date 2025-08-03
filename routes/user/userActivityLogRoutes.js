@@ -1,22 +1,22 @@
 const express = require("express");
 const router = express.Router();
-const userActionLogController = require("../../controllers/user/userActionLogController");
+const userActivityLogController = require("../../controllers/user/userActivityLogController");
 const { verifyToken, checkPermission } = require("../../middlewares/auth");
 const logUserAction = require("../../middlewares/logUserAction");
 
 router.get(
   "/",
   verifyToken,
-  checkPermission("userLogs.view"),
+  checkPermission("userActivityLogs.view"),
   logUserAction("Consultation de tous les logs d'utilisateur"),
-  userActionLogController.getAllLogs
+  userActivityLogController.getAllLogs
 );
 router.get(
   "/users/:id",
   verifyToken,
-  checkPermission("userLogs.view"),
+  checkPermission("userActivityLogs.view"),
   logUserAction("Consultation des logs d'un utilisateur", req => `ID: ${req.params.id}`),
-  userActionLogController.getLogsByUser
+  userActivityLogController.getLogsByUser
 );
 
 module.exports = router;

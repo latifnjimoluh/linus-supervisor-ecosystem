@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const initScriptController = require("../../controllers/generate/generateInitScriptController");
+const initializationScriptController = require("../../controllers/generate/generateInitializationScriptController");
 const { verifyToken, checkPermission } = require("../../middlewares/auth");
 const logUserAction = require("../../middlewares/logUserAction");
 
@@ -10,33 +10,33 @@ const logUserAction = require("../../middlewares/logUserAction");
 router.post(
   "/generate",
   verifyToken,
-  checkPermission("initScript.generate"), // 🔐 Vérification dynamique
+  checkPermission("initializationScript.generate"), // 🔐 Vérification dynamique
   logUserAction("Génération d'un script d'initialisation", req => `Body: ${JSON.stringify(req.body)}`),
-  initScriptController.generateInitScript
+  initializationScriptController.generateInitializationScript
 );
 
 router.get(
   "/generate",
   verifyToken,
-  checkPermission("initScript.list"),
+  checkPermission("initializationScript.list"),
   logUserAction("Consultation des scripts d'initialisation"),
-  initScriptController.listInitScripts
+  initializationScriptController.listInitializationScripts
 );
 
 router.put(
   "/generate/:id",
   verifyToken,
-  checkPermission("initScript.update"),
+  checkPermission("initializationScript.update"),
   logUserAction("Mise à jour d'un script d'initialisation", req => `ID: ${req.params.id}`),
-  initScriptController.updateInitScript
+  initializationScriptController.updateInitializationScript
 );
 
 router.delete(
   "/generate/:id",
   verifyToken,
-  checkPermission("initScript.delete"),
+  checkPermission("initializationScript.delete"),
   logUserAction("Suppression d'un script d'initialisation", req => `ID: ${req.params.id}`),
-  initScriptController.deleteInitScript
+  initializationScriptController.deleteInitializationScript
 );
 
 module.exports = router;

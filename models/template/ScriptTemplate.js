@@ -1,29 +1,28 @@
-"use strict";
-
 module.exports = (sequelize, DataTypes) => {
-  const ServiceTemplate = sequelize.define(
-    "ServiceTemplate",
+  const ScriptTemplate = sequelize.define(
+    "ScriptTemplate",
     {
+      name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
       service_type: {
         type: DataTypes.STRING,
         allowNull: false,
       },
-      config_data: {
-        type: DataTypes.JSONB,
-        allowNull: false,
-      },
-      script_path: {
-        type: DataTypes.STRING,
+      template_path: {
+        type: DataTypes.TEXT,
         allowNull: false,
       },
     },
     {
-      tableName: "service_templates",
+      tableName: "script_templates",
       timestamps: true,
       createdAt: "created_at",
       updatedAt: "updated_at",
     }
   );
 
-  return ServiceTemplate;
+  return ScriptTemplate;
 };
+

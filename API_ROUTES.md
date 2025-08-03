@@ -202,8 +202,8 @@ Route protégée : JWT + permission `users.delete`.
 
 ## Logs utilisateurs (non monté)
 
-### `GET /api/user-logs/users/:id` (À compléter manuellement)
-**Description**: Récupère les logs d'actions d'un utilisateur. Cette route est définie dans `routes/user/userActionLogRoutes.js` mais n'est pas enregistrée dans `routes/index.js`.
+### `GET /api/user-activity-logs/users/:id` (À compléter manuellement)
+**Description**: Récupère les logs d'actions d'un utilisateur. Cette route est définie dans `routes/user/userActivityLogRoutes.js` mais n'est pas enregistrée dans `routes/index.js`.
 
 Paramètres URL (`req.params`) :
 - `id` : identifiant de l'utilisateur
@@ -216,7 +216,7 @@ URL : À compléter manuellement (route non montée)
 
 Headers : Authorization: Bearer <token>
 
-Route protégée : JWT + permission `userLogs.view`.
+Route protégée : JWT + permission `userActivityLogs.view`.
 
 ---
 
@@ -578,7 +578,7 @@ Route protégée : JWT + permission `vm.stop`.
 
 ## Génération de scripts
 
-### `POST /api/init-scripts/generate`
+### `POST /api/initialization-scripts/generate`
 **Description**: Génère et enregistre un script d'initialisation.
 
 **Corps attendu (`req.body`)** :
@@ -593,13 +593,13 @@ Exemple de test avec Postman :
 
 Méthode : POST
 
-URL : http://localhost:5000/api/init-scripts/generate
+URL : http://localhost:5000/api/initialization-scripts/generate
 
 Headers : Content-Type: application/json, Authorization: Bearer <token>
 
 Body (raw JSON) : (corps JSON ci-dessus)
 
-Route protégée : JWT + permission `initScript.generate`.
+Route protégée : JWT + permission `initializationScript.generate`.
 
 ---
 
@@ -630,7 +630,7 @@ Route protégée : JWT + permission `monitoringScript.generate`.
 
 ---
 
-### `POST /api/monitoring/monitoring-services/generate`
+### `POST /api/monitoring/monitored-services/generate`
 **Description**: Génère un script de surveillance de services.
 
 **Corps attendu (`req.body`)** :
@@ -645,17 +645,17 @@ Exemple de test avec Postman :
 
 Méthode : POST
 
-URL : http://localhost:5000/api/monitoring/monitoring-services/generate
+URL : http://localhost:5000/api/monitoring/monitored-services/generate
 
 Headers : Content-Type: application/json, Authorization: Bearer <token>
 
 Body (raw JSON) : (corps JSON ci-dessus)
 
-Route protégée : JWT + permission `monitoringService.generate`.
+Route protégée : JWT + permission `monitoredService.generate`.
 
 ---
 
-### `POST /api/services/config-template`
+### `POST /api/service-templates`
 **Description**: Génère un script de configuration depuis un template de service.
 
 **Corps attendu (`req.body`)** :
@@ -673,13 +673,13 @@ Exemple de test avec Postman :
 
 Méthode : POST
 
-URL : http://localhost:5000/api/services/config-template
+URL : http://localhost:5000/api/service-templates
 
 Headers : Content-Type: application/json, Authorization: Bearer <token>
 
 Body (raw JSON) : (corps JSON ci-dessus)
 
-Route protégée : JWT + permission `serviceConfig.configure`.
+Route protégée : JWT + permission `serviceTemplate.create`.
 
 ---
 
@@ -873,7 +873,7 @@ Headers : Aucun
 | GET | /api/users/:id | Détails d'un utilisateur | JWT + permission `users.read` |
 | PUT | /api/users/:id | Mise à jour utilisateur | JWT + permission `users.update` |
 | DELETE | /api/users/:id | Désactivation utilisateur | JWT + permission `users.delete` |
-| GET | (non monté) /api/user-logs/users/:id | Logs utilisateur | À compléter manuellement |
+| GET | (non monté) /api/user-activity-logs/users/:id | Logs utilisateur | À compléter manuellement |
 | GET | /api/permissions/ | Liste des permissions | JWT |
 | POST | /api/permissions/ | Création permission | JWT + superadmin |
 | POST | /api/permissions/assign | Attribution permissions | JWT + superadmin |
@@ -890,10 +890,10 @@ Headers : Aucun
 | POST | /api/vm/check-vm-status | Vérification d'état VM | JWT + permission `vm.status` |
 | POST | /api/vm/start | Démarrage VM | JWT + permission `vm.start` |
 | POST | /api/vm/stop | Arrêt VM | JWT + permission `vm.stop` |
-| POST | /api/init-scripts/generate | Génération script init | JWT + permission `initScript.generate` |
+| POST | /api/initialization-scripts/generate | Génération script init | JWT + permission `initializationScript.generate` |
 | POST | /api/monitoring/generate | Génération script monitoring | JWT + permission `monitoringScript.generate` |
-| POST | /api/monitoring/monitoring-services/generate | Génération script services | JWT + permission `monitoringService.generate` |
-| POST | /api/services/config-template | Génération script de configuration | JWT + permission `serviceConfig.configure` |
+| POST | /api/monitoring/monitored-services/generate | Génération script services | JWT + permission `monitoredService.generate` |
+| POST | /api/service-templates | Génération script de configuration | JWT + permission `serviceTemplate.create` |
 | POST | /api/templates/create | Création template | JWT + permission `configTemplate.create` |
 | POST | /api/convert-template/convert | Conversion VM en template | JWT + permission `template.convert` |
 | POST | /api/supervision/fetch | Import supervision via SSH | JWT + permission `supervision.fetch` |

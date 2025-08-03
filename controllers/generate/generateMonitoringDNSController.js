@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { MonitoringScript, ServiceTemplate } = require("../../models");
+const { MonitoringScript, ScriptTemplate } = require("../../models");
 const { Op } = require("sequelize");
 const { getNextSequence } = require("../../utils/sequence");
 
@@ -18,7 +18,7 @@ exports.generateMonitoringScript = async (req, res) => {
       });
     }
 
-    const template = await ServiceTemplate.findByPk(template_id);
+    const template = await ScriptTemplate.findByPk(template_id);
     if (!template) {
       return res.status(404).json({ message: "Template de supervision introuvable." });
     }

@@ -1,4 +1,4 @@
-const { UserActionLog } = require("../models");
+const { UserActivityLog } = require("../models");
 const { v4: uuidv4 } = require("uuid");
 
 const logUserAction = (actionLabel, detailsInput = "") => {
@@ -27,7 +27,7 @@ const logUserAction = (actionLabel, detailsInput = "") => {
 
       console.log(`📝 Tentative de log - Utilisateur ID: ${user.id}, Action: ${actionLabel}, Details: ${details}`);
 
-      const logEntry = await UserActionLog.create({
+      const logEntry = await UserActivityLog.create({
         id: uuidv4(),
         user_id: user.id,
         action: actionLabel,

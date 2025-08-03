@@ -109,7 +109,7 @@ resource "null_resource" "configure_service" {
 
   # 📄 Transfert des scripts
   provisioner "file" {
-    source      = var.init_script
+    source      = var.initialization_script
     destination = "/tmp/init.sh"
   }
 
@@ -125,7 +125,7 @@ resource "null_resource" "configure_service" {
 
   # 🎯 Script de détection des services
   provisioner "file" {
-    source      = var.monitoring_services_script
+    source      = var.monitored_services_script
     destination = "/tmp/service-detector.sh"
   }
 

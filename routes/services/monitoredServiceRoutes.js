@@ -1,40 +1,40 @@
 const express = require("express");
 const router = express.Router();
-const controller = require("../../controllers/generate/generateMonitoringServiceController");
+const controller = require("../../controllers/generate/generateMonitoredServiceController");
 const { verifyToken, checkPermission } = require("../../middlewares/auth");
 const logUserAction = require("../../middlewares/logUserAction");
 
 
 router.post(
-  "/monitoring-services/generate",
+  "/monitored-services/generate",
   verifyToken,
-  checkPermission("monitoringService.generate"),
+  checkPermission("monitoredService.generate"),
   logUserAction("Génération d'un script de monitoring de service", req => `Body: ${JSON.stringify(req.body)}`),
-  controller.generateMonitoringServiceScript
+  controller.generateMonitoredServiceScript
 );
 
 router.get(
-  "/monitoring-services/generate",
+  "/monitored-services/generate",
   verifyToken,
-  checkPermission("monitoringService.list"),
+  checkPermission("monitoredService.list"),
   logUserAction("Consultation des scripts de monitoring de service"),
-  controller.listMonitoringServiceScripts
+  controller.listMonitoredServiceScripts
 );
 
 router.put(
-  "/monitoring-services/generate/:id",
+  "/monitored-services/generate/:id",
   verifyToken,
-  checkPermission("monitoringService.update"),
+  checkPermission("monitoredService.update"),
   logUserAction("Mise à jour d'un script de monitoring de service", req => `ID: ${req.params.id}`),
-  controller.updateMonitoringServiceScript
+  controller.updateMonitoredServiceScript
 );
 
 router.delete(
-  "/monitoring-services/generate/:id",
+  "/monitored-services/generate/:id",
   verifyToken,
-  checkPermission("monitoringService.delete"),
+  checkPermission("monitoredService.delete"),
   logUserAction("Suppression d'un script de monitoring de service", req => `ID: ${req.params.id}`),
-  controller.deleteMonitoringServiceScript
+  controller.deleteMonitoredServiceScript
 );
 
 module.exports = router;

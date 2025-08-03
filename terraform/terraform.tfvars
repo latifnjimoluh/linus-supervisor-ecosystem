@@ -10,7 +10,7 @@ cloudinit_user        = "nexus"
 ssh_private_key_path  = "C:/Users/Nexus-PC/.ssh/id_rsa"
 
 cloudinit_password        = "Nexus2023."
-init_script = "Scripts/dns-install.sh"
+initialization_script = "Scripts/dns-install.sh"
 # config_script = "Scripts/dns-configure.sh"
 
 vm_names = ["dns"]

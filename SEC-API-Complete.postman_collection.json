@@ -566,7 +566,7 @@
             ]
         },
         {
-            "name": "User Logs",
+            "name": "User Activity Logs",
             "item": [
                 {
                     "name": "Get All User Logs",
@@ -579,13 +579,13 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/user-logs?page=1&limit=10",
+                            "raw": "{{base_url}}/api/user-activity-logs?page=1&limit=10",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
-                                "user-logs"
+                                "user-activity-logs"
                             ],
                             "query": [
                                 {
@@ -612,13 +612,13 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/user-logs/users/1",
+                            "raw": "{{base_url}}/api/user-activity-logs/users/1",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
-                                "user-logs",
+                                "user-activity-logs",
                                 "users",
                                 "1"
                             ]
@@ -1265,10 +1265,10 @@
             ]
         },
         {
-            "name": "Services",
+            "name": "Service Templates",
             "item": [
                 {
-                    "name": "Configure Service",
+                    "name": "Create Service Template",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -1287,21 +1287,20 @@
                             }
                         },
                         "url": {
-                            "raw": "{{base_url}}/api/services/config-template",
+                            "raw": "{{base_url}}/api/service-templates",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
-                                "services",
-                                "config-template"
+                                "service-templates"
                             ]
                         }
                     },
                     "response": []
                 },
                 {
-                    "name": "List Config Templates",
+                    "name": "List Service Templates",
                     "request": {
                         "method": "GET",
                         "header": [
@@ -1311,21 +1310,20 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/services/config-template",
+                            "raw": "{{base_url}}/api/service-templates",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
-                                "services",
-                                "config-template"
+                                "service-templates"
                             ]
                         }
                     },
                     "response": []
                 },
                 {
-                    "name": "Update Config Template",
+                    "name": "Update Service Template",
                     "request": {
                         "method": "PUT",
                         "header": [
@@ -1344,14 +1342,13 @@
                             }
                         },
                         "url": {
-                            "raw": "{{base_url}}/api/services/config-template/1",
+                            "raw": "{{base_url}}/api/service-templates/1",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
-                                "services",
-                                "config-template",
+                                "service-templates",
                                 "1"
                             ]
                         }
@@ -1359,7 +1356,7 @@
                     "response": []
                 },
                 {
-                    "name": "Delete Config Template",
+                    "name": "Delete Service Template",
                     "request": {
                         "method": "DELETE",
                         "header": [
@@ -1369,14 +1366,13 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/services/config-template/1",
+                            "raw": "{{base_url}}/api/service-templates/1",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
-                                "services",
-                                "config-template",
+                                "service-templates",
                                 "1"
                             ]
                         }
@@ -1441,14 +1437,14 @@
                             }
                         },
                         "url": {
-                            "raw": "{{base_url}}/api/monitoring/monitoring-services/generate",
+                            "raw": "{{base_url}}/api/monitoring/monitored-services/generate",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
                                 "monitoring",
-                                "monitoring-services",
+                                "monitored-services",
                                 "generate"
                             ]
                         }
@@ -1549,14 +1545,14 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/monitoring/monitoring-services/generate",
+                            "raw": "{{base_url}}/api/monitoring/monitored-services/generate",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
                                 "monitoring",
-                                "monitoring-services",
+                                "monitored-services",
                                 "generate"
                             ]
                         }
@@ -1574,14 +1570,14 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/monitoring/monitoring-services/generate/1",
+                            "raw": "{{base_url}}/api/monitoring/monitored-services/generate/1",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
                                 "monitoring",
-                                "monitoring-services",
+                                "monitored-services",
                                 "generate",
                                 "1"
                             ]
@@ -1609,14 +1605,14 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/monitoring/monitoring-services/generate/1",
+                            "raw": "{{base_url}}/api/monitoring/monitored-services/generate/1",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
                                 "monitoring",
-                                "monitoring-services",
+                                "monitored-services",
                                 "generate",
                                 "1"
                             ]
@@ -1649,13 +1645,13 @@
                             }
                         },
                         "url": {
-                            "raw": "{{base_url}}/api/init-scripts/generate",
+                            "raw": "{{base_url}}/api/initialization-scripts/generate",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
-                                "init-scripts",
+                                "initialization-scripts",
                                 "generate"
                             ]
                         }
@@ -1673,13 +1669,13 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/init-scripts/generate",
+                            "raw": "{{base_url}}/api/initialization-scripts/generate",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
-                                "init-scripts",
+                                "initialization-scripts",
                                 "generate"
                             ]
                         }
@@ -1697,13 +1693,13 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/init-scripts/generate/1",
+                            "raw": "{{base_url}}/api/initialization-scripts/generate/1",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
-                                "init-scripts",
+                                "initialization-scripts",
                                 "generate",
                                 "1"
                             ]
@@ -1731,13 +1727,13 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/init-scripts/generate/1",
+                            "raw": "{{base_url}}/api/initialization-scripts/generate/1",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
-                                "init-scripts",
+                                "initialization-scripts",
                                 "generate",
                                 "1"
                             ]

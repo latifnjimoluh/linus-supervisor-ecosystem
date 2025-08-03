@@ -11,7 +11,7 @@ function renderTemplate(template, variables) {
   return template.replace(/{{(\w+)}}/g, (_, key) => variables[key] || "");
 }
 
-exports.configureService = async (req, res) => {
+exports.generateServiceTemplate = async (req, res) => {
   try {
     const { template_id, config_data } = req.body;
 
@@ -58,7 +58,7 @@ exports.configureService = async (req, res) => {
     fs.writeFileSync(scriptPath, renderedScript, "utf-8");
 
     // 💾 Enregistrement dans la table renommée
-    const configRecord = await db.ConfigTemplateService.create({
+    const configRecord = await db.ServiceTemplate.create({
       service_type: template.service_type,
       config_data,
       script_path: scriptPath,
@@ -76,7 +76,7 @@ exports.configureService = async (req, res) => {
   }
 };
 
-exports.listConfigTemplates = async (req, res) => {
+exports.listServiceTemplates = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -91,7 +91,7 @@ exports.listConfigTemplates = async (req, res) => {
         { script_path: { [Op.iLike]: `%${q}%` } },
       ];
     }
-    const { count, rows } = await db.ConfigTemplateService.findAndCountAll({
+    const { count, rows } = await db.ServiceTemplate.findAndCountAll({
       where,
       order: [[sort, direction]],
       limit,
@@ -107,35 +107,35 @@ exports.listConfigTemplates = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("❌ Erreur list configs:", error);
+    console.error("❌ Erreur list service templates:", error);
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
 
-exports.updateConfigTemplate = async (req, res) => {
+exports.updateServiceTemplate = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await db.ConfigTemplateService.findByPk(id);
-    if (!record) return res.status(404).json({ message: "Config introuvable" });
+    const record = await db.ServiceTemplate.findByPk(id);
+    if (!record) return res.status(404).json({ message: "Service template introuvable" });
     const { config_data } = req.body;
     if (config_data) record.config_data = config_data;
     await record.save();
-    res.json({ message: "Config mise à jour", record });
+    res.json({ message: "Service template mis à jour", record });
   } catch (error) {
-    console.error("❌ Erreur update config:", error);
+    console.error("❌ Erreur update service template:", error);
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
 
-exports.deleteConfigTemplate = async (req, res) => {
+exports.deleteServiceTemplate = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await db.ConfigTemplateService.findByPk(id);
-    if (!record) return res.status(404).json({ message: "Config introuvable" });
+    const record = await db.ServiceTemplate.findByPk(id);
+    if (!record) return res.status(404).json({ message: "Service template introuvable" });
     await record.destroy();
-    res.json({ message: "Config supprimée" });
+    res.json({ message: "Service template supprimé" });
   } catch (error) {
-    console.error("❌ Erreur delete config:", error);
+    console.error("❌ Erreur delete service template:", error);
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
