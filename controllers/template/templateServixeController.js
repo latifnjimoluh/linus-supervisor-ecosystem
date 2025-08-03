@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const db = require("../../models");
+const { getNextSequence } = require("../../utils/sequence");
 
 // Utilitaire de rendu de template
 function renderTemplate(template, variables) {
@@ -49,7 +50,8 @@ exports.configureService = async (req, res) => {
     if (!fs.existsSync(categoryDir)) fs.mkdirSync(categoryDir, { recursive: true });
 
     const safeName = template.name.replace(/\s+/g, "-").toLowerCase();
-    const filename = `config-${template.service_type}-${safeName}-${Date.now()}.sh`;
+    const seq = getNextSequence(categoryDir, `config-${template.service_type}-${safeName}-`, ".sh");
+    const filename = `config-${template.service_type}-${safeName}-${seq}.sh`;
     const scriptPath = path.join(categoryDir, filename);
 
     fs.writeFileSync(scriptPath, renderedScript, "utf-8");

@@ -3,6 +3,8 @@
 const fs = require("fs");
 const path = require("path");
 const db = require("../../models");
+const { Op } = require("sequelize");
+const { getNextSequence } = require("../../utils/sequence");
 
 // Utilitaire de rendu de template
 function renderTemplate(template, variables) {
@@ -49,7 +51,8 @@ exports.configureService = async (req, res) => {
     if (!fs.existsSync(categoryDir)) fs.mkdirSync(categoryDir, { recursive: true });
 
     const safeName = template.name.replace(/\s+/g, "-").toLowerCase();
-    const filename = `config-${template.service_type}-${safeName}-${Date.now()}.sh`;
+    const seq = getNextSequence(categoryDir, `config-${template.service_type}-${safeName}-`, ".sh");
+    const filename = `config-${template.service_type}-${safeName}-${seq}.sh`;
     const scriptPath = path.join(categoryDir, filename);
 
     fs.writeFileSync(scriptPath, renderedScript, "utf-8");
@@ -70,5 +73,69 @@ exports.configureService = async (req, res) => {
   } catch (error) {
     console.error("❌ Erreur génération script :", error);
     return res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+exports.listConfigTemplates = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const sort = req.query.sort || "created_at";
+    const direction = req.query.order === "asc" ? "ASC" : "DESC";
+    const where = {};
+    if (req.query.q) {
+      const q = req.query.q;
+      where[Op.or] = [
+        { service_type: { [Op.iLike]: `%${q}%` } },
+        { script_path: { [Op.iLike]: `%${q}%` } },
+      ];
+    }
+    const { count, rows } = await db.ConfigTemplateService.findAndCountAll({
+      where,
+      order: [[sort, direction]],
+      limit,
+      offset,
+    });
+    res.json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        pages: Math.ceil(count / limit),
+        limit,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Erreur list configs:", error);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+exports.updateConfigTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const record = await db.ConfigTemplateService.findByPk(id);
+    if (!record) return res.status(404).json({ message: "Config introuvable" });
+    const { config_data } = req.body;
+    if (config_data) record.config_data = config_data;
+    await record.save();
+    res.json({ message: "Config mise à jour", record });
+  } catch (error) {
+    console.error("❌ Erreur update config:", error);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+exports.deleteConfigTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const record = await db.ConfigTemplateService.findByPk(id);
+    if (!record) return res.status(404).json({ message: "Config introuvable" });
+    await record.destroy();
+    res.json({ message: "Config supprimée" });
+  } catch (error) {
+    console.error("❌ Erreur delete config:", error);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };

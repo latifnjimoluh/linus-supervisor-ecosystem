@@ -5,6 +5,7 @@ const { verifyToken, checkPermission } = require("../../middlewares/auth");
 
 
 router.get("/", verifyToken, checkPermission("userSettings.read"), userSettingsController.getUserSettings);
+router.get("/all", verifyToken, checkPermission("userSettings.list"), userSettingsController.listAllSettings);
 router.patch("/", verifyToken, checkPermission("userSettings.update"), userSettingsController.updateUserSettings);
 router.post("/", verifyToken, checkPermission("userSettings.create"), userSettingsController.createUserSettings);
 

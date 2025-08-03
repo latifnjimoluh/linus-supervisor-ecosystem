@@ -9,7 +9,15 @@ exports.getAllUsers = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
     const sort = req.query.sort || "created_at";
-    const order = [[sort, req.query.order === "asc" ? "ASC" : "DESC"]];
+    const direction = req.query.order === "asc" ? "ASC" : "DESC";
+    const order = [];
+    if (sort === "role") {
+      order.push([{ model: Role, as: "role" }, "name", direction]);
+    } else if (["first_name", "email", "created_at"].includes(sort)) {
+      order.push([sort, direction]);
+    } else {
+      order.push(["created_at", "DESC"]);
+    }
 
     const where = {};
     if (req.query.role) where.role_id = req.query.role;
@@ -20,6 +28,7 @@ exports.getAllUsers = async (req, res) => {
         { first_name: { [Op.iLike]: `%${q}%` } },
         { last_name: { [Op.iLike]: `%${q}%` } },
         { email: { [Op.iLike]: `%${q}%` } },
+        { "$role.name$": { [Op.iLike]: `%${q}%` } },
       ];
     }
 
