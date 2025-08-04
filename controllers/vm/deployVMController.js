@@ -20,8 +20,12 @@ exports.deployVMDirect = async (req, res) => {
     const payload = req.body;
     const vmName = payload.vm_names[0];
     const service_type = payload.service_type;
+    let zone = payload.zone || "LAN";
     if (!service_type) {
       return res.status(400).json({ message: "❌ Champ 'service_type' requis pour charger la configuration" });
+    }
+    if (!["LAN", "DMZ", "WAN"].includes(zone)) {
+      return res.status(400).json({ message: "❌ Champ 'zone' invalide (LAN, DMZ ou WAN)" });
     }
 
     const startTime = new Date();
@@ -156,6 +160,7 @@ exports.deployVMDirect = async (req, res) => {
       user_email: user.email,
       vm_name: vmName,
       service_name,
+      zone,
       operation_type: "apply",
       started_at: startTime,
       ended_at: endTime,
