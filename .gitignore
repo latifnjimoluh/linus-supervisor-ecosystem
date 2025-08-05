@@ -40,6 +40,13 @@ build/Release
 node_modules/
 jspm_packages/
 
+# Terraform artifacts
+terraform/deployments/
+terraform/states/
+.terraform/
+*.tfstate
+*.tfstate.*
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 

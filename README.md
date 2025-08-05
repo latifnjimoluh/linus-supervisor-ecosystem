@@ -26,6 +26,9 @@ See [docs/API.md](docs/API.md) for the list of available endpoints.
 ## Logging
 All authenticated requests are automatically recorded in the `logs` table. Retrieve them via `GET /logs`.
 
+## Permissions
+Routes verify a specific permission string such as `user.list` or `vm.start`. Permissions are stored in the database and linked to roles, keeping authorization fully dynamic.
+
 ## Password Reset
 Users can request a reset code via `POST /auth/request-reset` and submit a new password with `POST /auth/reset-password`.
 
@@ -40,3 +43,17 @@ VM operations use the credentials stored in user settings. Available endpoints i
 - `POST /vms/check-status` – check VM status and ping reachability
 - `POST /vms/convert` – convert a VM to a reusable template
 - `GET /vms/conversions` – view template conversion history
+
+## Service Templates
+Define reusable service deployment templates. Each template stores its form schema as JSON so the frontend can generate dynamic inputs.
+- `GET /templates` – list templates
+- `POST /templates` – create a new template
+- `GET /templates/:id` – retrieve a template
+- `PUT /templates/:id` – update a template
+- `DELETE /templates/:id` – deactivate a template
+- `POST /templates/generate` – generate a script from stored template content
+
+## Terraform Deployment
+Use `POST /terraform/deploy` to launch a Terraform run that clones a template VM and executes initialization, configuration, monitoring, and service-detection scripts. Script paths are stored in the database and selected by ID at deployment time.
+The base Terraform configuration lives in the `terraform/` directory (`main.tf`, `variables.tf`, `outputs.tf`). The backend copies these files for each run, generates a `variables.tfvars.json`, and executes `terraform init` and `terraform apply` inside a run-specific folder.
+

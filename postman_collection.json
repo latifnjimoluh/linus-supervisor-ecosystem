@@ -602,6 +602,200 @@
           }
         }
       ]
+    },
+    {
+      "name": "Service Templates",
+      "item": [
+        {
+          "name": "List Templates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "templates"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Serveur NFS\",\n  \"service_type\": \"nfs\",\n  \"category\": \"file_sharing\",\n  \"description\": \"Installe et configure un partage NFS basique\",\n  \"template_content\": \"#!/bin/bash\\n echo Hello\",\n  \"script_path\": \"/scripts/config.sh\",\n  \"fields_schema\": {\n    \"fields\": [\n      {\n        \"name\": \"SHARE_DIR\",\n        \"label\": \"Répertoire partagé\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"/srv/nfs_share\"\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "templates"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/templates/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "templates",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Template",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Template mis à jour\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/templates/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "templates",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Template",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/templates/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "templates",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Generate Script",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"template_id\": 5,\n  \"config_data\": {\n    \"INSTANCE_ID\": \"i-1234567890abcdef0\",\n    \"ZONE_NAME\": \"camer.cm\",\n    \"CHECK_DOMAIN\": \"www.camer.cm\",\n    \"PORTS_TO_SCAN\": \"22,53,80,443,1000-2000\",\n    \"DNS_CRON_INTERVAL\": 5,\n    \"SERVICES\": \"sshd\\nbind9\\npostgresql\\nnginx\",\n    \"SERVICES_CRON_INTERVAL\": 1\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/templates/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "templates",
+                "generate"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Terraform",
+      "item": [
+        {
+          "name": "Run Deployment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vm_names\": [\"web-01\"],\n  \"service_type\": \"web\",\n  \"script_refs\": [\n    { \"type\": \"config\", \"id\": 1 },\n    { \"type\": \"init\", \"id\": 1 },\n    { \"type\": \"monitoring\", \"id\": 1 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/terraform/deploy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "terraform",
+                "deploy"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

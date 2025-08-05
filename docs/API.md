@@ -1,6 +1,7 @@
 # API Documentation
 
-All routes except `POST /auth/login` require a Bearer token obtained from the login endpoint.
+All routes except `POST /auth/login` require a Bearer token obtained from the login endpoint. Each authenticated endpoint also checks for a specific permission string tied to the user's role (e.g. `user.list`, `vm.start`).
+
 
 ## Auth
 - `POST /auth/login` – authenticate a user and receive a JWT
@@ -51,3 +52,27 @@ All routes except `POST /auth/login` require a Bearer token obtained from the lo
 - `POST /vms/check-status` – check VM power state and ping reachability
 - `POST /vms/convert` – convert a VM to a template (Cloud-Init)
 - `GET /vms/conversions` – list VM template conversion history
+
+## Service Templates
+- `GET /templates` – list service templates
+- `GET /templates/:id` – retrieve a template
+- `POST /templates` – create a service template
+- `PUT /templates/:id` – update a template
+- `DELETE /templates/:id` – deactivate a template
+- `POST /templates/generate` – generate a script from a template and config data
+
+## Terraform
+- `POST /terraform/deploy` – run a Terraform deployment using script IDs stored in the database. Base `.tf` files reside under `terraform/` and are copied to a per-run directory before execution.
+  - Body example:
+    ```json
+    {
+      "vm_names": ["web-01"],
+      "service_type": "web",
+      "script_refs": [
+        { "type": "config", "id": 1 },
+        { "type": "init", "id": 2 },
+        { "type": "monitoring", "id": 3 }
+      ]
+    }
+    ```
+    Supported types: `config`, `init`, `monitoring`, `services`.

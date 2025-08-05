@@ -82,3 +82,66 @@ CREATE TABLE logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE service_templates (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  service_type VARCHAR(255) NOT NULL,
+  category VARCHAR(255) NOT NULL,
+  description TEXT,
+  template_content TEXT NOT NULL,
+  script_path VARCHAR(255),
+  fields_schema JSON,
+  status VARCHAR(10) NOT NULL DEFAULT 'actif',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE initialization_scripts (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  script_path VARCHAR(255) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE monitoring_scripts (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  script_path VARCHAR(255) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE monitored_services (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  script_path VARCHAR(255) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE deployments (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  user_email VARCHAR(255),
+  vm_name VARCHAR(255),
+  service_name VARCHAR(255),
+  zone VARCHAR(50),
+  operation_type VARCHAR(50),
+  started_at TIMESTAMPTZ,
+  ended_at TIMESTAMPTZ,
+  duration VARCHAR(50),
+  success BOOLEAN,
+  log_path VARCHAR(255),
+  vm_id VARCHAR(255),
+  vm_ip VARCHAR(255),
+  instance_id VARCHAR(255),
+  injected_files JSON,
+  vm_specs JSON,
+  status VARCHAR(50),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

@@ -1,13 +1,15 @@
 const express = require('express');
 require('dotenv').config();
 const { sequelize } = require('./models');
-const authRoutes = require('./routes/authRoutes');
-const permissionRoutes = require('./routes/permissionRoutes');
-const roleRoutes = require('./routes/roleRoutes');
-const userRoutes = require('./routes/userRoutes');
-const logRoutes = require('./routes/logRoutes');
-const userSettingRoutes = require('./routes/userSettingRoutes');
-const proxmoxRoutes = require('./routes/proxmoxRoutes');
+const authRoutes = require('./routes/auth/authRoutes');
+const permissionRoutes = require('./routes/permissions/permissionRoutes');
+const roleRoutes = require('./routes/roles/roleRoutes');
+const userRoutes = require('./routes/users/userRoutes');
+const logRoutes = require('./routes/logs/logRoutes');
+const userSettingRoutes = require('./routes/settings/userSettingRoutes');
+const proxmoxRoutes = require('./routes/proxmox/proxmoxRoutes');
+const templateRoutes = require('./routes/templates/serviceTemplateRoutes');
+const terraformRoutes = require('./routes/terraform/terraformRoutes');
 
 const app = express();
 console.log('💻 Initialisation de l\'application Express');
@@ -20,6 +22,8 @@ app.use('/users', userRoutes);
 app.use('/logs', logRoutes);
 app.use('/settings', userSettingRoutes);
 app.use('/vms', proxmoxRoutes);
+app.use('/templates', templateRoutes);
+app.use('/terraform', terraformRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {

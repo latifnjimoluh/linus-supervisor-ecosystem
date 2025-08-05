@@ -23,13 +23,21 @@ db.sequelize = sequelize;
 
 const basename = path.basename(__filename);
 
-fs.readdirSync(__dirname)
-  .filter((file) => file !== basename && file.endsWith('.js'))
-  .forEach((file) => {
-    console.log(`📁 Chargement du modèle '${file}'`);
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
+function loadModels(dir) {
+  fs.readdirSync(dir).forEach((file) => {
+    const fullPath = path.join(dir, file);
+    if (fs.statSync(fullPath).isDirectory()) {
+      loadModels(fullPath);
+      return;
+    }
+    if (file === basename || !file.endsWith('.js')) return;
+    console.log(`📁 Chargement du modèle '${path.relative(__dirname, fullPath)}'`);
+    const model = require(fullPath)(sequelize, Sequelize.DataTypes);
     db[model.name] = model;
   });
+}
+
+loadModels(__dirname);
 
 Object.keys(db).forEach((modelName) => {
   if (db[modelName].associate) {
@@ -39,4 +47,3 @@ Object.keys(db).forEach((modelName) => {
 });
 
 module.exports = db;
-
