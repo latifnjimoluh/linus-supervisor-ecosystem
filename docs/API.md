@@ -2,6 +2,7 @@
 
 All routes except `POST /auth/login` require a Bearer token obtained from the login endpoint. Each authenticated endpoint also checks for a specific permission string tied to the user's role (e.g. `user.list`, `vm.start`).
 
+
 ## Auth
 - `POST /auth/login` – authenticate a user and receive a JWT
 - `POST /auth/register` – create a new user (requires token)

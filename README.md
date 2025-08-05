@@ -56,3 +56,4 @@ Define reusable service deployment templates. Each template stores its form sche
 ## Terraform Deployment
 Use `POST /terraform/deploy` to launch a Terraform run that clones a template VM and executes initialization, configuration, monitoring, and service-detection scripts. Script paths are stored in the database and selected by ID at deployment time.
 The base Terraform configuration lives in the `terraform/` directory (`main.tf`, `variables.tf`, `outputs.tf`). The backend copies these files for each run, generates a `variables.tfvars.json`, and executes `terraform init` and `terraform apply` inside a run-specific folder.
+
