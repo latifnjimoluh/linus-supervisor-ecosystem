@@ -145,3 +145,83 @@ CREATE TABLE deployments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Sample data
+INSERT INTO roles (name, status) VALUES ('admin', 'actif');
+
+INSERT INTO permissions (name, description, status) VALUES
+  ('auth.reset-history', 'View password reset history', 'actif'),
+  ('deployment.run', 'Run deployments', 'actif'),
+  ('log.list', 'List logs', 'actif'),
+  ('permission.assign', 'Assign permission to roles', 'actif'),
+  ('permission.byRole', 'List permissions by role', 'actif'),
+  ('permission.create', 'Create permission', 'actif'),
+  ('permission.delete', 'Delete permission', 'actif'),
+  ('permission.list', 'List permissions', 'actif'),
+  ('permission.read', 'Read permission', 'actif'),
+  ('permission.unassign', 'Unassign permission from role', 'actif'),
+  ('permission.update', 'Update permission', 'actif'),
+  ('role.create', 'Create role', 'actif'),
+  ('role.delete', 'Delete role', 'actif'),
+  ('role.list', 'List roles', 'actif'),
+  ('role.read', 'Read role', 'actif'),
+  ('role.update', 'Update role', 'actif'),
+  ('settings.create', 'Create settings', 'actif'),
+  ('settings.get', 'Get settings', 'actif'),
+  ('settings.list', 'List settings', 'actif'),
+  ('settings.update', 'Update settings', 'actif'),
+  ('template.create', 'Create template', 'actif'),
+  ('template.delete', 'Delete template', 'actif'),
+  ('template.generate', 'Generate template script', 'actif'),
+  ('template.list', 'List templates', 'actif'),
+  ('template.read', 'Read template', 'actif'),
+  ('template.update', 'Update template', 'actif'),
+  ('user.create', 'Create user', 'actif'),
+  ('user.delete', 'Delete user', 'actif'),
+  ('user.list', 'List users', 'actif'),
+  ('user.read', 'Read user', 'actif'),
+  ('user.search', 'Search users', 'actif'),
+  ('user.update', 'Update user', 'actif'),
+  ('vm.conversion.list', 'List VM conversions', 'actif'),
+  ('vm.convert', 'Convert VM to template', 'actif'),
+  ('vm.list', 'List VMs', 'actif'),
+  ('vm.start', 'Start VM', 'actif'),
+  ('vm.status.check', 'Check VM status', 'actif'),
+  ('vm.stop', 'Stop VM', 'actif');
+
+INSERT INTO assigned_permissions (role_id, permission_id)
+SELECT 1, id FROM permissions;
+
+INSERT INTO users (first_name, last_name, email, phone, password, status, role_id) VALUES
+  ('John', 'Doe', 'john.doe@example.com', '555-0100', 'changeme', 'active', 1);
+
+INSERT INTO user_settings (user_id) VALUES (1);
+
+INSERT INTO converted_vms (vm_name, vm_id, user_id) VALUES ('vm1', '101', 1);
+
+INSERT INTO logs (user_id, action, details) VALUES (1, 'login', 'User logged in');
+
+INSERT INTO service_templates (name, service_type, category, description, template_content, script_path, fields_schema, status)
+VALUES (
+  'Nginx Basic',
+  'web',
+  'default',
+  'Deploys a basic Nginx server',
+  '{"packages":["nginx"],"config":"/etc/nginx/nginx.conf"}',
+  'scripts/setup_nginx.sh',
+  '{"domain":"string","root":"string"}',
+  'actif'
+);
+
+INSERT INTO initialization_scripts (name, script_path, description)
+VALUES ('Ubuntu Base Setup', 'scripts/init.sh', 'Update packages and install base utilities');
+
+INSERT INTO monitoring_scripts (name, script_path, description)
+VALUES ('CPU Load Monitor', 'scripts/monitor.sh', 'Log current CPU load');
+
+INSERT INTO monitored_services (name, script_path, description)
+VALUES ('Nginx Watchdog', 'scripts/service.sh', 'Restart Nginx if it stops');
+
+INSERT INTO deployments (user_id, user_email, vm_name, service_name, zone, operation_type, success, instance_id)
+VALUES (1, 'john.doe@example.com', 'vm1', 'service1', 'zoneA', 'create', true, 'inst-0001');
+
