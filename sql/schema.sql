@@ -193,7 +193,7 @@ INSERT INTO assigned_permissions (role_id, permission_id)
 SELECT 1, id FROM permissions;
 
 INSERT INTO users (first_name, last_name, email, phone, password, status, role_id) VALUES
-  ('John', 'Doe', 'john.doe@example.com', '555-0100', 'changeme', 'active', 1);
+  ('Nexus', 'Latid', 'latifnjimoluh@gmail.com', '555-0100', 'admin123.', 'active', 1);
 
 INSERT INTO user_settings (user_id) VALUES (1);
 

@@ -120,3 +120,17 @@ variable "instance_id" {
   description = "Identifiant unique de déploiement"
   type        = string
 }
+
+variable "script_refs" {
+  description = "Références aux scripts à injecter (type + id)"
+  type        = list(object({
+    type = string
+    id   = number
+  }))
+  default = []
+}
+
+variable "proxmox_api_token_secret" {
+  description = "Token secret d’authentification Proxmox"
+  type        = string
+}

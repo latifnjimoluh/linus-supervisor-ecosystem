@@ -1,39 +1,26 @@
-const { Sequelize } = require('sequelize');
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
-
-console.log('🚀 Initialisation de Sequelize');
-
-const sequelize = new Sequelize(
-  process.env.DB_NAME || 'database',
-  process.env.DB_USER || 'root',
-  process.env.DB_PASS || '',
-  {
-    host: process.env.DB_HOST || 'localhost',
-    dialect: process.env.DB_DIALECT || 'mysql',
-    logging: (msg) => console.log(`📝 [Sequelize] ${msg}`),
-  }
-);
-
-const db = {};
-
-db.Sequelize = Sequelize;
-db.sequelize = sequelize;
+"use strict";
+const fs = require("fs");
+const path = require("path");
+const { sequelize, Sequelize } = require("../config/db");
 
 const basename = path.basename(__filename);
+const db = { Sequelize, sequelize };
 
 function loadModels(dir) {
-  fs.readdirSync(dir).forEach((file) => {
-    const fullPath = path.join(dir, file);
-    if (fs.statSync(fullPath).isDirectory()) {
+  fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
       loadModels(fullPath);
-      return;
+    } else if (
+      entry.isFile() &&
+      entry.name.endsWith(".js") &&
+      entry.name !== basename
+    ) {
+      const model = require(fullPath)(sequelize, Sequelize.DataTypes);
+      db[model.name] = model;
+      console.log(`📁 Modèle chargé : ${model.name}`);
     }
-    if (file === basename || !file.endsWith('.js')) return;
-    console.log(`📁 Chargement du modèle '${path.relative(__dirname, fullPath)}'`);
-    const model = require(fullPath)(sequelize, Sequelize.DataTypes);
-    db[model.name] = model;
   });
 }
 
@@ -41,8 +28,8 @@ loadModels(__dirname);
 
 Object.keys(db).forEach((modelName) => {
   if (db[modelName].associate) {
-    console.log(`🔗 Association du modèle '${modelName}'`);
     db[modelName].associate(db);
+    console.log(`🔗 Associations configurées pour : ${modelName}`);
   }
 });
 

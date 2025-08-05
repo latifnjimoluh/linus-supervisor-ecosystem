@@ -107,22 +107,26 @@ resource "null_resource" "run_scripts" {
     timeout     = "2m"
   }
 
-  # 📄 Transfert dynamique des scripts
-  dynamic "provisioner" {
-    for_each = { for idx, path in each.value : idx => path }
-    content {
-      type        = "file"
-      source      = provisioner.value
-      destination = "/tmp/script_${provisioner.key}.sh"
-    }
+  provisioner "file" {
+    source      = each.value[0]
+    destination = "/tmp/script_1.sh"
   }
 
-  # 🔧 Conversion CRLF -> LF et exécution des scripts
+  provisioner "file" {
+    source      = each.value[1]
+    destination = "/tmp/script_2.sh"
+  }
+
+  provisioner "file" {
+    source      = each.value[2]
+    destination = "/tmp/script_3.sh"
+  }
+
   provisioner "remote-exec" {
     inline = [
-      "for f in $(ls /tmp/script_*.sh); do tr -d '\r' < $f > $f.tmp && mv $f.tmp $f; chmod +x $f; sudo $f; done",
-      "echo '✅ Fin des scripts'"
+      "export INSTANCE_ID=${var.instance_id}",
+      "for f in $(ls /tmp/script_*.sh); do tr -d '\r' < $f > $f.tmp && mv $f.tmp $f; chmod +x $f; sudo bash -c \"INSTANCE_ID=${var.instance_id} $f\"; done",
+      "echo '✅ Fin des scripts avec INSTANCE_ID=${var.instance_id}'"
     ]
   }
 }
-

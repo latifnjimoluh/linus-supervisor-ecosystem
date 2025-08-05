@@ -320,3 +320,30 @@ exports.getConversionHistory = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
+
+
+exports.checkIfVMNameExists = async ({ apiUrl, tokenId, tokenName, tokenSecret }, vmNameToCheck) => {
+  const headers = getHeaders(tokenId, tokenName, tokenSecret);
+  const url = `${apiUrl}/cluster/resources`;
+
+  console.log("🌐 [checkIfVMNameExists] URL Proxmox :", url);
+  console.log("🔐 [checkIfVMNameExists] Headers :", headers);
+
+  try {
+    const res = await axios.get(url, { httpsAgent, headers });
+    const allVMs = res.data?.data?.filter(r => r.type === "qemu") || [];
+
+    const found = allVMs.find(vm => vm.name === vmNameToCheck);
+    console.log("📋 [checkIfVMNameExists] Liste des VM :", allVMs.map(v => v.name));
+    console.log("🔍 [checkIfVMNameExists] Nom trouvé :", found?.name || "non trouvé");
+
+    return !!found;
+  } catch (error) {
+    console.error("❌ [checkIfVMNameExists] Erreur Axios :", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+    return false;
+  }
+};
