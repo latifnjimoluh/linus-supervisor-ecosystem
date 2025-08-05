@@ -146,6 +146,20 @@ CREATE TABLE deployments (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE deletes (
+  id SERIAL PRIMARY KEY,
+  vm_id VARCHAR(255) NOT NULL,
+  instance_id VARCHAR(255),
+  vm_name VARCHAR(255),
+  vm_ip VARCHAR(255),
+  log_path VARCHAR(255),
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  user_email VARCHAR(255),
+  deleted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Sample data
 INSERT INTO roles (name, status) VALUES ('admin', 'actif');
 
@@ -187,7 +201,8 @@ INSERT INTO permissions (name, description, status) VALUES
   ('vm.list', 'List VMs', 'actif'),
   ('vm.start', 'Start VM', 'actif'),
   ('vm.status.check', 'Check VM status', 'actif'),
-  ('vm.stop', 'Stop VM', 'actif');
+  ('vm.stop', 'Stop VM', 'actif'),
+  ('vm.delete', 'Delete VM', 'actif');
 
 INSERT INTO assigned_permissions (role_id, permission_id)
 SELECT 1, id FROM permissions;
