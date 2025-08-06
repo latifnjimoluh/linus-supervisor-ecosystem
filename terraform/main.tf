@@ -107,25 +107,19 @@ resource "null_resource" "run_scripts" {
     timeout     = "2m"
   }
 
-  provisioner "file" {
-    source      = each.value[0]
-    destination = "/tmp/script_1.sh"
+  # 📦 Transfert dynamique des scripts sur la VM
+  provisioner "local-exec" {
+    command = join(" && ", [
+      for idx, script in each.value :
+      "scp -i ${var.ssh_private_key_path} -o StrictHostKeyChecking=no ${script} ${var.cloudinit_user}@${proxmox_vm_qemu.vm[each.key].default_ipv4_address}:/tmp/script_${idx + 1}.sh"
+    ])
   }
 
-  provisioner "file" {
-    source      = each.value[1]
-    destination = "/tmp/script_2.sh"
-  }
-
-  provisioner "file" {
-    source      = each.value[2]
-    destination = "/tmp/script_3.sh"
-  }
-
+  # ▶️ Exécution séquentielle des scripts transférés
   provisioner "remote-exec" {
     inline = [
       "export INSTANCE_ID=${var.instance_id}",
-      "for f in $(ls /tmp/script_*.sh); do tr -d '\r' < $f > $f.tmp && mv $f.tmp $f; chmod +x $f; sudo bash -c \"INSTANCE_ID=${var.instance_id} $f\"; done",
+      "for f in $(ls /tmp/script_*.sh 2>/dev/null); do tr -d '\\r' < $f > $f.tmp && mv $f.tmp $f; chmod +x $f; sudo bash -c \"INSTANCE_ID=${var.instance_id} $f\"; done",
       "echo '✅ Fin des scripts avec INSTANCE_ID=${var.instance_id}'"
     ]
   }
