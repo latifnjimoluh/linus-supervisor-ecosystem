@@ -136,19 +136,47 @@ exports.deletePermission = async (req, res) => {
   }
 };
 
+exports.getPermissionsByRole = async (req, res) => {
+  console.log('📥 getPermissionsByRole called', req.params.role_id);
+  try {
+    const { role_id } = req.params;
+    const role = await Role.findByPk(role_id, {
+      include: [{ model: Permission, as: 'permissions' }],
+    });
+
+    if (!role) {
+      console.log('⚠️ Rôle introuvable');
+      return res.status(404).json({ message: 'Rôle introuvable.' });
+    }
+    console.log(`📤 ${role.permissions.length} permissions pour le rôle ${role_id}`);
+    res.json(role.permissions);
+  } catch (error) {
+    console.error('Erreur getPermissionsByRole:', error);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
 exports.assignPermissionsToRole = async (req, res) => {
   console.log('📥 assignPermissionsToRole called', req.body);
   try {
-    const assignments = req.body;
+    let assignments = req.body;
+    if (!Array.isArray(assignments)) {
+      assignments = [assignments];
+    }
 
     for (const assign of assignments) {
-      const { role_id, permission_ids } = assign;
+      let { role_id, permission_ids } = assign;
 
-      if (!role_id || !Array.isArray(permission_ids)) {
+      if (!role_id ||
+        (!Array.isArray(permission_ids) && typeof permission_ids !== 'number')) {
         console.log('❌ Données invalides');
         return res
           .status(400)
           .json({ message: 'role_id ou permission_ids manquants ou invalides.' });
+      }
+
+      if (!Array.isArray(permission_ids)) {
+        permission_ids = [permission_ids];
       }
 
       const existing = await AssignedPermission.findAll({ where: { role_id } });
@@ -196,15 +224,30 @@ exports.getPermissionsByRole = async (req, res) => {
 exports.unassignPermissionsFromRole = async (req, res) => {
   console.log('📥 unassignPermissionsFromRole called', req.body);
   try {
-    const { role_id, permission_ids } = req.body;
-    if (!role_id || !Array.isArray(permission_ids)) {
-      console.log('❌ Données invalides');
-      return res.status(400).json({ message: 'role_id ou permission_ids manquants ou invalides.' });
+    let assignments = req.body;
+    if (!Array.isArray(assignments)) {
+      assignments = [assignments];
     }
-    await AssignedPermission.destroy({
-      where: { role_id, permission_id: permission_ids },
-    });
-    console.log(`🗑️ Permissions retirées du rôle ${role_id}`);
+
+    for (const assign of assignments) {
+      let { role_id, permission_ids } = assign;
+
+      if (!role_id ||
+        (!Array.isArray(permission_ids) && typeof permission_ids !== 'number')) {
+        console.log('❌ Données invalides');
+        return res.status(400).json({ message: 'role_id ou permission_ids manquants ou invalides.' });
+      }
+
+      if (!Array.isArray(permission_ids)) {
+        permission_ids = [permission_ids];
+      }
+
+      await AssignedPermission.destroy({
+        where: { role_id, permission_id: permission_ids },
+      });
+      console.log(`🗑️ Permissions retirées du rôle ${role_id}`);
+    }
+
     res.json({ message: 'Permissions retirées avec succès.' });
   } catch (error) {
     console.error('Erreur unassignPermissionsFromRole:', error);

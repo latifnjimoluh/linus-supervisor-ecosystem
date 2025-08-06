@@ -1,1268 +1,1383 @@
 {
-  "info": {
-    "name": "Linusupervisor API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:3000"
-    },
-    {
-      "key": "token",
-      "value": ""
-    }
-  ],
-  "item": [
-    {
-      "name": "Auth",
-      "item": [
-        {
-          "name": "Login",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Register",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"secret\",\n  \"role_id\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "register"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Request Reset Code",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auth/request-reset",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "request-reset"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Reset Password",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"code\": \"123456\",\n  \"password\": \"newpass\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auth/reset-password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "reset-password"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Reset History",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/reset-history",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "reset-history"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Users",
-      "item": [
-        {
-          "name": "Create User",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Doe\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"secret\",\n  \"role_id\": 2\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Delete User",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/users/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get User",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/users/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Users",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Patch User",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"last_name\": \"Smith\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/users/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Search Users",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/users/search?query=Jane",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "search"
-              ],
-              "query": [
-                {
-                  "key": "query",
-                  "value": "Jane"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Update User",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"first_name\": \"Jane\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/users/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "1"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Roles",
-      "item": [
-        {
-          "name": "Get Roles",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/roles",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "roles"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Role",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/roles/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "roles",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Create Role",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"editor\",\n  \"description\": \"Content editor\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/roles",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "roles"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Update Role",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Updated role\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/roles/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "roles",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Delete Role",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/roles/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "roles",
-                "1"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Permissions",
-      "item": [
-        {
-          "name": "Get Permissions",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/permissions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Create Permission",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"edit_posts\",\n  \"description\": \"Edit posts\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/permissions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Assign Permissions",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "[{\n  \"role_id\": 1,\n  \"permission_ids\": [1,2]\n}]"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/permissions/assign",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions",
-                "assign"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Unassign Permissions",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "[{\n  \"role_id\": 1,\n  \"permission_ids\": [1]\n}]"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/permissions/unassign",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions",
-                "unassign"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Permissions by Role",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/permissions/role/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions",
-                "role",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Permission",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/permissions/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Update Permission",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Updated permission\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/permissions/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Delete Permission",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/permissions/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions",
-                "1"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Logs",
-      "item": [
-        {
-          "name": "Get Logs",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/logs",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "logs"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "User Settings",
-      "item": [
-        {
-          "name": "Get My Settings",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/settings/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "settings",
-                "me"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Create My Settings",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"cloudinit_user\": \"nexus\",\n  \"cloudinit_password\": \"Nexus2023.\",\n  \"proxmox_api_url\": \"https://192.168.24.134:8006/api2/json\",\n  \"proxmox_api_token_id\": \"root@pam\",\n  \"proxmox_api_token_name\": \"mytoken\",\n  \"proxmox_api_token_secret\": \"0a804aa8-029e-4503-83a3-3fb51a804771\",\n  \"pm_user\": \"root@pam\",\n  \"pm_password\": \"Nexus2023.\",\n  \"proxmox_node\": \"pve\",\n  \"vm_storage\": \"local-lvm\",\n  \"vm_bridge\": \"vmbr0\",\n  \"ssh_public_key_path\": \"/home/user/.ssh/id_rsa.pub\",\n  \"ssh_private_key_path\": \"/home/user/.ssh/id_rsa\",\n  \"statuspath\": \"/tmp/status.json\",\n  \"servicespath\": \"/tmp/services_status.json\",\n  \"instanceinfopath\": \"/etc/instance-info.conf\",\n  \"proxmox_host\": \"192.168.24.134\",\n  \"proxmox_ssh_user\": \"root\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/settings/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "settings",
-                "me"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Update My Settings",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"vm_storage\": \"local-lvm\",\n  \"vm_bridge\": \"vmbr0\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/settings/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "settings",
-                "me"
-              ]
-            }
-          }
-        },
-        {
-          "name": "List All Settings",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/settings",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "settings"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Proxmox",
-      "item": [
-        {
-          "name": "List VMs",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/vms",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Start VM",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/vms/101/start",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "101",
-                "start"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Stop VM",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/vms/101/stop",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "101",
-                "stop"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Delete VM",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"vm_id\": 101,\n  \"instance_id\": \"inst-0001\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/vms/delete",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "delete"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Check VM Status",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"vm_id\": 101\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/vms/check-status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "check-status"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Convert VM to Template",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"vm_id\": 101\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/vms/convert",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "convert"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Conversion History",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/vms/conversions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "conversions"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Service Templates",
-      "item": [
-        {
-          "name": "List Templates",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/templates",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "templates"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Create Template",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Serveur NFS\",\n  \"service_type\": \"nfs\",\n  \"category\": \"file_sharing\",\n  \"description\": \"Installe et configure un partage NFS basique\",\n  \"template_content\": \"#!/bin/bash\\n echo Hello\",\n  \"script_path\": \"/scripts/config.sh\",\n  \"fields_schema\": {\n    \"fields\": [\n      {\n        \"name\": \"SHARE_DIR\",\n        \"label\": \"Répertoire partagé\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"/srv/nfs_share\"\n      }\n    ]\n  }\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/templates",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "templates"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Template",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/templates/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "templates",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Update Template",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Template mis à jour\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/templates/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "templates",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Delete Template",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/templates/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "templates",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Generate Script",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"template_id\": 5,\n  \"config_data\": {\n    \"INSTANCE_ID\": \"i-1234567890abcdef0\",\n    \"ZONE_NAME\": \"camer.cm\",\n    \"CHECK_DOMAIN\": \"www.camer.cm\",\n    \"PORTS_TO_SCAN\": \"22,53,80,443,1000-2000\",\n    \"DNS_CRON_INTERVAL\": 5,\n    \"SERVICES\": \"sshd\\nbind9\\npostgresql\\nnginx\",\n    \"SERVICES_CRON_INTERVAL\": 1\n  }\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/templates/generate",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "templates",
-                "generate"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Monitoring",
-      "item": [
-        {
-          "name": "List Monitoring Records",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/monitoring",
-              "host": ["{{baseUrl}}"],
-              "path": ["monitoring"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Monitoring Record",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/monitoring/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["monitoring", "1"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Collect Monitoring Data",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"vm_ip\": \"192.168.1.10\",\n  \"username\": \"root\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/monitoring/collect",
-              "host": ["{{baseUrl}}"],
-              "path": ["monitoring", "collect"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Sync Deployment IP",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"instance_id\": \"i-123456\",\n  \"vm_ip\": \"192.168.1.10\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/monitoring/sync-ip",
-              "host": ["{{baseUrl}}"],
-              "path": ["monitoring", "sync-ip"]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Terraform",
-      "item": [
-        {
-          "name": "Run Deployment",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"vm_names\": [\"web-01\"],\n  \"service_type\": \"web\",\n  \"script_refs\": [\n    { \"type\": \"config\", \"id\": 1 },\n    { \"type\": \"init\", \"id\": 1 },\n    { \"type\": \"monitoring\", \"id\": 1 }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/terraform/deploy",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "terraform",
-                "deploy"
-              ]
-            }
-          }
-        }
-      ]
-    }
-  ]
+	"info": {
+		"_postman_id": "87a667bb-0386-445a-aabb-26e4d1aa3da2",
+		"name": "Linusupervisor API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "32690343"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"latifnjimoluh@gmail.com\",\n  \"password\": \"admin123.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"secret\",\n  \"role_id\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Request Reset Code",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"latifnjimoluh@gmail.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/request-reset",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"request-reset"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"803327\",\n  \"password\": \"admin123.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/reset-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"reset-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reset History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/reset-history",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"reset-history"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Create User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Doe\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"secret\",\n  \"role_id\": 2\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patch User",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"last_name\": \"Smith\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/search?query=Jane",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"search"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "Jane"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"Jane\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Roles",
+			"item": [
+				{
+					"name": "Get Roles",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/roles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"roles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Role",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/roles/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"roles",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Role",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"editor\",\n  \"description\": \"Content editor\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/roles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"roles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Role",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Updated role\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/roles/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"roles",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Role",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/roles/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"roles",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Permissions",
+			"item": [
+				{
+					"name": "Get Permissions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/permissions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"permissions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Permission",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"test\",\n  \"description\": \"test posts\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/permissions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"permissions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Permissions",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n  \"role_id\": 1,\n  \"permission_ids\": [44]\n}]"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/permissions/assign",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"permissions",
+								"assign"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unassign Permissions",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n  \"role_id\": 1,\n  \"permission_ids\": [44]\n}]"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/permissions/unassign",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"permissions",
+								"unassign"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Permissions by Role",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/permissions/role/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"permissions",
+								"role",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Permission",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/permissions/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"permissions",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Permission",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Updated permission\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/permissions/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"permissions",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Permission",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/permissions/44",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"permissions",
+								"44"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Logs",
+			"item": [
+				{
+					"name": "Get Logs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/logs",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"logs"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User Settings",
+			"item": [
+				{
+					"name": "Get My Settings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/settings/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"settings",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create My Settings",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cloudinit_user\": \"nexus\",\n  \"cloudinit_password\": \"Nexus2023.\",\n  \"proxmox_api_url\": \"https://192.168.24.134:8006/api2/json\",\n  \"proxmox_api_token_id\": \"root@pam\",\n  \"proxmox_api_token_name\": \"mytoken\",\n  \"proxmox_api_token_secret\": \"0a804aa8-029e-4503-83a3-3fb51a804771\",\n  \"pm_user\": \"root@pam\",\n  \"pm_password\": \"Nexus2023.\",\n  \"proxmox_node\": \"pve\",\n  \"vm_storage\": \"local-lvm\",\n  \"vm_bridge\": \"vmbr0\",\n  \"ssh_public_key_path\": \"/home/user/.ssh/id_rsa.pub\",\n  \"ssh_private_key_path\": \"/home/user/.ssh/id_rsa\",\n  \"statuspath\": \"/tmp/status.json\",\n  \"servicespath\": \"/tmp/services_status.json\",\n  \"instanceinfopath\": \"/etc/instance-info.conf\",\n  \"proxmox_host\": \"192.168.24.134\",\n  \"proxmox_ssh_user\": \"root\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/settings/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"settings",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update My Settings",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cloudinit_user\": \"nexus\",\n  \"cloudinit_password\": \"Nexus2023.\",\n  \"proxmox_api_url\": \"https://192.168.24.134:8006/api2/json\",\n  \"proxmox_api_token_id\": \"root@pam\",\n  \"proxmox_api_token_name\": \"delete\",\n  \"proxmox_api_token_secret\": \"0a804aa8-029e-4503-83a3-3fb51a804771\",\n  \"pm_user\": \"root@pam\",\n  \"pm_password\": \"Nexus2023.\",\n  \"proxmox_node\": \"pve\",\n  \"vm_storage\": \"local-lvm\",\n  \"vm_bridge\": \"vmbr0\",\n  \"ssh_public_key_path\": \"C:/Users/Nexus-PC/.ssh/id_rsa.pub\",\n  \"ssh_private_key_path\": \"C:/Users/Nexus-PC/.ssh/id_rsa\",\n  \"statuspath\": \"/tmp/status.json\",\n  \"servicespath\": \"/tmp/services_status.json\",\n  \"instanceinfopath\": \"/etc/instance-info.conf\",\n  \"proxmox_host\": \"192.168.24.134\",\n  \"proxmox_ssh_user\": \"root\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/settings/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"settings",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List All Settings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/settings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"settings"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Proxmox",
+			"item": [
+				{
+					"name": "List VMs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/vms",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"vms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Start VM",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/vms/104/start",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"vms",
+								"104",
+								"start"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Stop VM",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/vms/104/stop",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"vms",
+								"104",
+								"stop"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete VM",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vm_id\": 101,\n  \"instance_id\": \"inst-0001\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/vms/delete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"vms",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Check VM Status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vm_id\": 104,\n  \"ip_address\": \"192.168.24.78\"\n}\n"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/vms/check-status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"vms",
+								"check-status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Convert VM to Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vm_id\": 101\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/vms/convert",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"vms",
+								"convert"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Conversion History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/vms/conversions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"vms",
+								"conversions"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Service Templates",
+			"item": [
+				{
+					"name": "List Templates",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/templates",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"templates"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Serveur NFS\",\n  \"service_type\": \"nfs\",\n  \"category\": \"file_sharing\",\n  \"description\": \"Installe et configure un partage NFS basique\",\n  \"template_content\": \"#!/bin/bash\\n echo Hello\",\n  \"script_path\": \"/scripts/config.sh\",\n  \"fields_schema\": {\n    \"fields\": [\n      {\n        \"name\": \"SHARE_DIR\",\n        \"label\": \"Répertoire partagé\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"/srv/nfs_share\"\n      }\n    ]\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/templates",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"templates"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Template",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/templates/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"templates",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Template",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Template mis à jour\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/templates/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"templates",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Template",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/templates/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"templates",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Generate Script",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"template_id\": 5,\n  \"config_data\": {\n    \"INSTANCE_ID\": \"i-1234567890abcdef0\",\n    \"ZONE_NAME\": \"camer.cm\",\n    \"CHECK_DOMAIN\": \"www.camer.cm\",\n    \"PORTS_TO_SCAN\": \"22,53,80,443,1000-2000\",\n    \"DNS_CRON_INTERVAL\": 5,\n    \"SERVICES\": \"sshd\\nbind9\\npostgresql\\nnginx\",\n    \"SERVICES_CRON_INTERVAL\": 1\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/templates/generate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"templates",
+								"generate"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Monitoring",
+			"item": [
+				{
+					"name": "List Monitoring Records",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/monitoring",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"monitoring"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Monitoring Record",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/monitoring/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"monitoring",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Collect Monitoring Data",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vm_ip\": \"192.168.24.78\",\n  \"username\": \"nexus\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/monitoring/collect",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"monitoring",
+								"collect"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Sync Deployment IP",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"instance_id\": \"e591f327-9107-473b-9fd1-9c40c70641a4\",\n  \"vm_ip\": \"192.168.24.78\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/monitoring/sync-ip",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"monitoring",
+								"sync-ip"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Terraform",
+			"item": [
+				{
+					"name": "Run Deployment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vm_names\": [\"web-001\"],\n  \"service_type\": \"web\",\n  \"script_refs\": [\n    { \"type\": \"config\", \"id\": 1 },\n    { \"type\": \"init\", \"id\": 1 },\n    { \"type\": \"monitoring\", \"id\": 1 }\n  ],\n  \"template_name\": \"ubuntu-template\",\n  \"memory_mb\": 2048,\n  \"vcpu_cores\": 2,\n  \"vcpu_sockets\": 1,\n  \"disk_size\": \"20G\",\n  \"use_static_ip\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/terraform/deploy",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"terraform",
+								"deploy"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJsYXRpZm5qaW1vbHVoQGdtYWlsLmNvbSIsInJvbGVfaWQiOjEsImlhdCI6MTc1NDQ1MTY4MCwiZXhwIjoxNzU0NDU1MjgwfQ.WbZaa-3yb80VuXUJqYzVyWh0Gjg4imFi-7SmIHZIBKk",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000"
+		},
+		{
+			"key": "token",
+			"value": ""
+		}
+	]
 }

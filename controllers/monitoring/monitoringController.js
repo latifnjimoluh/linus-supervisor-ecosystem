@@ -1,22 +1,36 @@
 const fs = require('fs');
+const path = require('path');
 const { getRemoteFileContent, getRemoteJSON } = require('../../utils/sshClient');
 const { Monitoring, UserSetting, Deployment } = require('../../models');
 
 exports.collectMonitoringData = async (req, res) => {
   const user = req.user;
-  const { vm_ip, username } = req.body;
+  const {
+    vm_ip,
+    host: bodyHost,
+    username,
+    privateKeyPath: bodyKeyPath,
+    statusPath: bodyStatusPath,
+    servicesPath: bodyServicesPath,
+    instanceInfoPath: bodyInstanceInfoPath,
+  } = req.body;
 
-  if (!vm_ip) {
-    return res.status(400).json({ message: '❌ vm_ip requis' });
+  const host = vm_ip || bodyHost;
+
+  if (!host || !username) {
+    return res.status(400).json({ message: '❌ Champs requis : vm_ip/host et username' });
   }
 
   const settings = await UserSetting.findOne({ where: { user_id: user.id } });
 
   const sshUser = username || settings?.proxmox_ssh_user;
-  const privateKeyPath = settings?.ssh_private_key_path;
-  const statusPath = settings?.statuspath || '/tmp/status.json';
-  const servicesPath = settings?.servicespath || '/tmp/services_status.json';
-  const instanceInfoPath = settings?.instanceinfopath || '/etc/instance-info.conf';
+  const privateKeyPath = bodyKeyPath || settings?.ssh_private_key_path;
+  const statusPath =
+    bodyStatusPath || settings?.statuspath || '/tmp/status.json';
+  const servicesPath =
+    bodyServicesPath || settings?.servicespath || '/tmp/services_status.json';
+  const instanceInfoPath =
+    bodyInstanceInfoPath || settings?.instanceinfopath || '/etc/instance-info.conf';
 
   if (!sshUser || !privateKeyPath) {
     return res.status(400).json({ message: '❌ Informations SSH incomplètes' });
@@ -24,20 +38,20 @@ exports.collectMonitoringData = async (req, res) => {
 
   let privateKey;
   try {
-    privateKey = fs.readFileSync(privateKeyPath);
+    privateKey = fs.readFileSync(path.resolve(privateKeyPath));
   } catch (err) {
     return res.status(500).json({ message: '❌ Lecture de la clé privée impossible', error: err.message });
   }
 
   try {
     console.log("🔐 Connexion SSH avec :");
-    console.log("- host :", vm_ip);
+    console.log("- host :", host);
     console.log("- username :", sshUser);
     console.log("- privateKeyPath :", privateKeyPath);
     console.log("- instanceInfoPath :", instanceInfoPath);
 
     const instanceInfoRaw = await getRemoteFileContent({
-      host: vm_ip,
+      host,
       username: sshUser,
       privateKey,
       filePath: instanceInfoPath,
@@ -50,21 +64,21 @@ exports.collectMonitoringData = async (req, res) => {
         ?.trim() || instanceInfoRaw.trim();
 
     const servicesStatus = await getRemoteJSON({
-      host: vm_ip,
+      host,
       username: sshUser,
       privateKey,
       filePath: servicesPath,
     });
 
     const systemStatus = await getRemoteJSON({
-      host: vm_ip,
+      host,
       username: sshUser,
       privateKey,
       filePath: statusPath,
     });
 
     const record = await Monitoring.create({
-      vm_ip,
+      vm_ip: host,
       ip_address: systemStatus.ip_address,
       instance_id: instanceId,
       services_status: servicesStatus,
