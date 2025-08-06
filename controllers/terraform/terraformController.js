@@ -103,7 +103,10 @@ exports.deploy = async (req, res) => {
     }
 
     payload.instance_id = instanceId;
-    payload.scripts = { [vmName]: scriptList };
+    // 👉 Applique la même liste de scripts à chaque VM demandée
+    payload.scripts = Array.isArray(payload.vm_names)
+      ? Object.fromEntries(payload.vm_names.map((name) => [name, scriptList]))
+      : { [vmName]: scriptList };
 
     console.log('🧩 Scripts injectés :', scriptList);
 
