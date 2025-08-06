@@ -1,4 +1,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const crypto = require('crypto');
+const { AiCache } = require('../models');
 
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -10,64 +12,100 @@ async function callGemini(prompt) {
   return response.text();
 }
 
-async function explainScript(scriptCode) {
-  const prompt = `
+async function cachedResponse(type, input, buildPrompt, ref = {}) {
+  const hash = crypto.createHash('sha256').update(`${type}:${input}`).digest('hex');
+  const cached = await AiCache.findOne({ where: { hash } });
+  if (cached) return cached.response_text;
+  const prompt = buildPrompt(input);
+  const response = await callGemini(prompt);
+  await AiCache.create({
+    type,
+    hash,
+    input_text: input,
+    response_text: response,
+    entity_type: ref.entityType,
+    entity_id: ref.entityId,
+  });
+  return response;
+}
+
+async function explainScript(scriptCode, ref) {
+  return cachedResponse(
+    'explain_script',
+    scriptCode,
+    (script) => `
 Voici un script système ou DevOps à déployer :
 
 \`\`\`bash
-${scriptCode}
+${script}
 \`\`\`
 
 1. Explique brièvement ce que fait ce script.
 2. Donne des conseils ou alternatives après le déploiement.
-`;
-  return callGemini(prompt);
+`,
+    ref,
+  );
 }
 
-async function analyzeAndImproveScript(scriptCode) {
-  const prompt = `
+async function analyzeAndImproveScript(scriptCode, ref) {
+  return cachedResponse(
+    'analyze_script',
+    scriptCode,
+    (script) => `
 Voici un script de template :
 
 \`\`\`bash
-${scriptCode}
+${script}
 \`\`\`
 
 1. Analyse ce script et indique les améliorations possibles.
 2. Propose des alternatives ou pratiques modernes.
 3. Fournis une version optimisée du script.
-`;
-  return callGemini(prompt);
+`,
+    ref,
+  );
 }
 
-async function explainTemplateVariables(templateCode) {
-  const prompt = `
+async function explainTemplateVariables(templateCode, ref) {
+  return cachedResponse(
+    'explain_variables',
+    templateCode,
+    (template) => `
 Voici un template avec des variables :
 
 \`\`\`bash
-${templateCode}
+${template}
 \`\`\`
 
 Explique de façon concise quelles variables doivent être renseignées et à quoi elles servent.
-`;
-  return callGemini(prompt);
+`,
+    ref,
+  );
 }
 
-async function summarizeDeploymentLogs(logs) {
-  const prompt = `
+async function summarizeDeploymentLogs(logs, ref) {
+  return cachedResponse(
+    'summarize_logs',
+    logs,
+    (content) => `
 Voici des logs de déploiement :
 
 \`\`\`
-${logs}
+${content}
 \`\`\`
 
 Résume en quelques lignes ce que ces logs montrent.
-`;
-  return callGemini(prompt);
+`,
+    ref,
+  );
 }
 
-async function suggestSmartBundle(needs) {
-  const prompt = `
-L'utilisateur a les besoins suivants : ${needs}
+async function suggestSmartBundle(needs, ref) {
+  return cachedResponse(
+    'suggest_bundle',
+    needs,
+    (need) => `
+L'utilisateur a les besoins suivants : ${need}
 
 Propose un ou plusieurs packs d'installation adaptés. Choisis parmi :
 - Stack Web : Nginx + PHP + MariaDB
@@ -75,24 +113,29 @@ Propose un ou plusieurs packs d'installation adaptés. Choisis parmi :
 - Stack DevSecOps : Git + Jenkins + SonarQube + UFW + Fail2Ban
 
 Explique brièvement pourquoi tu proposes chaque stack.
-`;
-  return callGemini(prompt);
+`,
+    ref,
+  );
 }
 
-async function simulateScriptExecution(scriptCode) {
-  const prompt = `
+async function simulateScriptExecution(scriptCode, ref) {
+  return cachedResponse(
+    'simulate_execution',
+    scriptCode,
+    (script) => `
 Voici un script :
 
 \`\`\`bash
-${scriptCode}
+${script}
 \`\`\`
 
 Décris ce qui se passera lors de son exécution :
 - Quelles ressources seront créées ou modifiées ?
 - Quels services seront redémarrés ?
 - Un redémarrage du système est-il nécessaire ?
-`;
-  return callGemini(prompt);
+`,
+    ref,
+  );
 }
 
 module.exports = {
@@ -103,4 +146,3 @@ module.exports = {
   suggestSmartBundle,
   simulateScriptExecution,
 };
-

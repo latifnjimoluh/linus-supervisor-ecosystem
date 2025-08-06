@@ -11,5 +11,6 @@ router.use('/vms', require('./proxmox/proxmoxRoutes'));
 router.use('/templates', require('./templates/serviceTemplateRoutes'));
 router.use('/terraform', require('./terraform/terraformRoutes'));
 router.use('/monitoring', require('./monitoring/monitoringRoutes'));
+router.use('/ai-cache', require('./ai/aiCacheRoutes'));
 
 module.exports = router;

@@ -36,81 +36,7 @@ const getNextFileNumber = (dir, prefix, ext) => {
 exports.createTemplate = async (req, res) => {
   console.log('📥 createTemplate called', req.body);
   const { name, service_type, category, description, template_content, fields_schema } = req.body;
-
-  try {
-    const safeName = sanitizeName(name);
-    const safeCategory = sanitizeName(category);
-    const safeServiceType = sanitizeName(service_type);
-    const baseName = `${safeServiceType}_${safeCategory}_${safeName}`;
-    const categoryDir = path.join(__dirname, `../../scripts/templates/${safeCategory}`);
-    if (!fs.existsSync(categoryDir)) fs.mkdirSync(categoryDir, { recursive: true });
-
-    const fileNum = getNextFileNumber(categoryDir, baseName + '_tpl', '.sh');
-    const filename = `${baseName}_tpl${fileNum}.sh`;
-    const filepath = path.join(categoryDir, filename); // absolu
-    const script_path = `/scripts/templates/${safeCategory}/${filename}`; // relatif
-
-    fs.writeFileSync(filepath, template_content);
-    console.log(`📁 Template écrit dans ${filepath}`);
-
-    const tpl = await ServiceTemplate.create({
-      name,
-      service_type,
-      category,
-      description,
-      template_content,
-      script_path,
-      abs_path: filepath,
-      fields_schema,
-    });
-
-    await logAction(req, `create_template:${tpl.id}`);
-    res.status(201).json(tpl);
-  } catch (err) {
-    console.error('❌ Erreur createTemplate:', err);
-    res.status(500).json({ message: 'Erreur serveur.' });
-  }
-};
-
-// 🔄 Générer un script basé sur un template + config
-exports.generateScript = async (req, res) => {
-  console.log('📥 generateScript called', req.body);
-  const { template_id, config_data } = req.body;
-
-  if (!template_id || typeof config_data !== 'object') {
-    return res.status(400).json({ message: 'template_id et config_data requis' });
-  }
-
-  try {
-    const tpl = await ServiceTemplate.findByPk(template_id);
-    if (!tpl) return res.status(404).json({ message: 'Template non trouvé' });
-
-    if (tpl.fields_schema?.fields) {
-      for (const field of tpl.fields_schema.fields) {
-        if (field.required && !(field.name in config_data)) {
-          return res.status(400).json({ message: `Champ requis manquant: ${field.name}` });
-        }
-      }
-    }
-
-    let script = tpl.template_content;
-    for (const [key, value] of Object.entries(config_data)) {
-      const regex1 = new RegExp(`{{${key}}}`, 'g');
-      const regex2 = new RegExp(`\\$\\{${key}\\}`, 'g');
-      script = script.replace(regex1, value).replace(regex2, value);
-    }
-
-    const safeName = sanitizeName(tpl.name);
-    const safeCategory = sanitizeName(tpl.category);
-    const safeServiceType = sanitizeName(tpl.service_type);
-    const baseName = `${safeServiceType}_${safeCategory}_${safeName}`;
-    const categoryDir = path.join(__dirname, `../../scripts/generated/${safeCategory}`);
-    if (!fs.existsSync(categoryDir)) fs.mkdirSync(categoryDir, { recursive: true });
-
-    const fileNum = getNextFileNumber(categoryDir, baseName + '_script', '.sh');
-    const filename = `${baseName}_script${fileNum}.sh`;
-    const filepath = path.join(categoryDir, filename); // absolu
-    const script_path = `/scripts/generated/${safeCategory}/${filename}`; // relatif
+@@ -106,50 +114,170 @@ exports.generateScript = async (req, res) => {
 
     fs.writeFileSync(filepath, script);
     console.log(`✅ Script généré et sauvegardé dans ${filepath}`);
@@ -138,14 +64,17 @@ exports.generateScript = async (req, res) => {
 
 // 📝 Expliquer brièvement un script
 exports.explainScript = async (req, res) => {
-  const { script } = req.body;
+  const { script, entity_type, entity_id } = req.body;
 
   if (!script) {
     return res.status(400).json({ message: 'Script manquant.' });
   }
 
   try {
-    const aiResponse = await explainScriptWithAI(script);
+    const aiResponse = await explainScriptWithAI(script, {
+      entityType: entity_type,
+      entityId: entity_id,
+    });
     res.status(200).json({ explanation: aiResponse });
   } catch (error) {
     console.error('Erreur explication IA:', error.message);
@@ -155,14 +84,17 @@ exports.explainScript = async (req, res) => {
 
 // 🤖 Analyser un script de template avec l'IA
 exports.analyzeScript = async (req, res) => {
-  const { script } = req.body;
+  const { script, entity_type, entity_id } = req.body;
 
   if (!script) {
     return res.status(400).json({ message: 'Script manquant.' });
   }
 
   try {
-    const aiResponse = await analyzeAndImproveScript(script);
+    const aiResponse = await analyzeAndImproveScript(script, {
+      entityType: entity_type,
+      entityId: entity_id,
+    });
     res.status(200).json({ analysis: aiResponse });
   } catch (error) {
     console.error('Erreur analyse IA:', error.message);
@@ -172,14 +104,17 @@ exports.analyzeScript = async (req, res) => {
 
 // ℹ️ Expliquer les variables d'un template
 exports.explainVariables = async (req, res) => {
-  const { template } = req.body;
+  const { template, entity_type, entity_id } = req.body;
 
   if (!template) {
     return res.status(400).json({ message: 'Template manquant.' });
   }
 
   try {
-    const aiResponse = await explainTemplateVariables(template);
+    const aiResponse = await explainTemplateVariables(template, {
+      entityType: entity_type,
+      entityId: entity_id,
+    });
     res.status(200).json({ explanation: aiResponse });
   } catch (error) {
     console.error('Erreur explication variables IA:', error.message);
@@ -189,14 +124,17 @@ exports.explainVariables = async (req, res) => {
 
 // 📋 Résumer les logs de déploiement
 exports.summarizeLogs = async (req, res) => {
-  const { logs } = req.body;
+  const { logs, entity_type, entity_id } = req.body;
 
   if (!logs) {
     return res.status(400).json({ message: 'Logs manquants.' });
   }
 
   try {
-    const aiResponse = await summarizeDeploymentLogs(logs);
+    const aiResponse = await summarizeDeploymentLogs(logs, {
+      entityType: entity_type,
+      entityId: entity_id,
+    });
     res.status(200).json({ summary: aiResponse });
   } catch (error) {
     console.error('Erreur résumé logs IA:', error.message);
@@ -206,14 +144,17 @@ exports.summarizeLogs = async (req, res) => {
 
 // 🧩 Proposer des packs d'installation intelligents
 exports.suggestBundle = async (req, res) => {
-  const { needs } = req.body;
+  const { needs, entity_type, entity_id } = req.body;
 
   if (!needs) {
     return res.status(400).json({ message: 'Besoins manquants.' });
   }
 
   try {
-    const aiResponse = await suggestSmartBundle(needs);
+    const aiResponse = await suggestSmartBundle(needs, {
+      entityType: entity_type,
+      entityId: entity_id,
+    });
     res.status(200).json({ suggestion: aiResponse });
   } catch (error) {
     console.error('Erreur suggestion bundle IA:', error.message);
@@ -223,14 +164,17 @@ exports.suggestBundle = async (req, res) => {
 
 // 🧪 Simuler l'exécution d'un script
 exports.simulateScript = async (req, res) => {
-  const { script } = req.body;
+  const { script, entity_type, entity_id } = req.body;
 
   if (!script) {
     return res.status(400).json({ message: 'Script manquant.' });
   }
 
   try {
-    const aiResponse = await simulateScriptExecution(script);
+    const aiResponse = await simulateScriptExecution(script, {
+      entityType: entity_type,
+      entityId: entity_id,
+    });
     res.status(200).json({ simulation: aiResponse });
   } catch (error) {
     console.error('Erreur simulation script IA:', error.message);
@@ -263,75 +207,3 @@ exports.getAllTemplates = async (req, res) => {
       limit,
       offset,
     });
-    console.log('📤 Templates retrieved:', rows.length);
-    res.json({
-      data: rows,
-      pagination: {
-        total: count,
-        page,
-        pages: Math.ceil(count / limit),
-        limit,
-      },
-    });
-  } catch (err) {
-    console.error('❌ Erreur getAllTemplates:', err);
-    res.status(500).json({ message: 'Erreur serveur.' });
-  }
-};
-
-// 🔎 Récupérer un template par son ID
-exports.getTemplateById = async (req, res) => {
-  console.log('📥 getTemplateById called', req.params.id);
-  try {
-    const tpl = await ServiceTemplate.findByPk(req.params.id);
-    if (!tpl) {
-      console.log('⚠️ Template non trouvé');
-      return res.status(404).json({ message: 'Template non trouvé' });
-    }
-    res.json(tpl);
-  } catch (err) {
-    console.error('❌ Erreur getTemplateById:', err);
-    res.status(500).json({ message: 'Erreur serveur.' });
-  }
-};
-
-// ✏️ Modifier un template
-exports.updateTemplate = async (req, res) => {
-  console.log('📥 updateTemplate called', req.params.id, req.body);
-  try {
-    const tpl = await ServiceTemplate.findByPk(req.params.id);
-    if (!tpl) {
-      console.log('⚠️ Template non trouvé');
-      return res.status(404).json({ message: 'Template non trouvé' });
-    }
-    await tpl.update(req.body);
-    await logAction(req, `update_template:${tpl.id}`);
-    console.log('✅ Template mis à jour', tpl.id);
-    res.json({ message: 'Template mis à jour', template: tpl });
-  } catch (err) {
-    console.error('❌ Erreur updateTemplate:', err);
-    res.status(500).json({ message: 'Erreur serveur.' });
-  }
-};
-
-// 🗑️ Désactiver un template
-exports.deleteTemplate = async (req, res) => {
-  console.log('📥 deleteTemplate called', req.params.id);
-  try {
-    const tpl = await ServiceTemplate.findByPk(req.params.id);
-    if (!tpl) {
-      console.log('⚠️ Template non trouvé');
-      return res.status(404).json({ message: 'Template non trouvé' });
-    }
-    tpl.status = 'inactif';
-    await tpl.save();
-    await logAction(req, `delete_template:${tpl.id}`);
-    console.log('🗑️ Template désactivé', tpl.id);
-    res.json({ message: 'Template désactivé' });
-  } catch (err) {
-    console.error('❌ Erreur deleteTemplate:', err);
-    res.status(500).json({ message: 'Erreur serveur.' });
-  }
-};
-
-

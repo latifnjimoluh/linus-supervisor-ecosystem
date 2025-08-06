@@ -4,5 +4,10 @@
   {"name": "template.explainVariables", "description": "Explain template variables using AI"},
   {"name": "template.summarizeLogs", "description": "Summarize deployment logs using AI"},
   {"name": "template.suggestBundle", "description": "Suggest stack bundles using AI"},
-  {"name": "template.simulateExecution", "description": "Simulate script execution using AI"}
+  {"name": "template.simulateExecution", "description": "Simulate script execution using AI"},
+  {"name": "aiCache.list", "description": "List AI cache entries"},
+  {"name": "aiCache.create", "description": "Create AI cache entry"},
+  {"name": "aiCache.read", "description": "Read AI cache entry"},
+  {"name": "aiCache.update", "description": "Update AI cache entry"},
+  {"name": "aiCache.delete", "description": "Delete AI cache entry"}
 ]

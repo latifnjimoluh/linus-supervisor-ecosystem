@@ -15,7 +15,15 @@
         "body": {"mode": "raw", "raw": "{\n  \"script\": \"#!/bin/bash\\necho hello\"\n}"},
         "url": {"raw": "{{baseUrl}}/templates/explain", "host": ["{{baseUrl}}"], "path": ["templates", "explain"]}
       },
-      "response": []
+      "response": [
+        {
+          "name": "200",
+          "status": "OK",
+          "code": 200,
+          "header": [{"key": "Content-Type", "value": "application/json"}],
+          "body": "{\n  \"explanation\": \"Imprime hello.\"\n}"
+        }
+      ]
     },
     {
       "name": "Analyze Script",
@@ -28,7 +36,15 @@
         "body": {"mode": "raw", "raw": "{\n  \"script\": \"#!/bin/bash\\nsudo apt update\"\n}"},
         "url": {"raw": "{{baseUrl}}/templates/analyze", "host": ["{{baseUrl}}"], "path": ["templates", "analyze"]}
       },
-      "response": []
+      "response": [
+        {
+          "name": "200",
+          "status": "OK",
+          "code": 200,
+          "header": [{"key": "Content-Type", "value": "application/json"}],
+          "body": "{\n  \"analysis\": \"Explique le script et propose des améliorations.\"\n}"
+        }
+      ]
     },
     {
       "name": "Explain Variables",
@@ -41,7 +57,15 @@
         "body": {"mode": "raw", "raw": "{\n  \"template\": \"#!/bin/bash\\nexport VAR={{VALUE}}\"\n}"},
         "url": {"raw": "{{baseUrl}}/templates/variables/explain", "host": ["{{baseUrl}}"], "path": ["templates", "variables", "explain"]}
       },
-      "response": []
+      "response": [
+        {
+          "name": "200",
+          "status": "OK",
+          "code": 200,
+          "header": [{"key": "Content-Type", "value": "application/json"}],
+          "body": "{\n  \"explanation\": \"VAR: description de la variable.\"\n}"
+        }
+      ]
     },
     {
       "name": "Summarize Logs",
@@ -54,7 +78,15 @@
         "body": {"mode": "raw", "raw": "{\n  \"logs\": \"Log line 1\\nLog line 2\"\n}"},
         "url": {"raw": "{{baseUrl}}/templates/logs/summarize", "host": ["{{baseUrl}}"], "path": ["templates", "logs", "summarize"]}
       },
-      "response": []
+      "response": [
+        {
+          "name": "200",
+          "status": "OK",
+          "code": 200,
+          "header": [{"key": "Content-Type", "value": "application/json"}],
+          "body": "{\n  \"summary\": \"Résumé des actions effectuées.\"\n}"
+        }
+      ]
     },
     {
       "name": "Suggest Bundle",
@@ -67,7 +99,15 @@
         "body": {"mode": "raw", "raw": "{\n  \"needs\": \"Hébergement web\"\n}"},
         "url": {"raw": "{{baseUrl}}/templates/bundle", "host": ["{{baseUrl}}"], "path": ["templates", "bundle"]}
       },
-      "response": []
+      "response": [
+        {
+          "name": "200",
+          "status": "OK",
+          "code": 200,
+          "header": [{"key": "Content-Type", "value": "application/json"}],
+          "body": "{\n  \"suggestion\": \"Stack Web : Nginx + PHP + MariaDB\"\n}"
+        }
+      ]
     },
     {
       "name": "Simulate Script",
@@ -80,7 +120,69 @@
         "body": {"mode": "raw", "raw": "{\n  \"script\": \"#!/bin/bash\\nsystemctl restart nginx\"\n}"},
         "url": {"raw": "{{baseUrl}}/templates/simulate", "host": ["{{baseUrl}}"], "path": ["templates", "simulate"]}
       },
-      "response": []
+      "response": [
+        {
+          "name": "200",
+          "status": "OK",
+          "code": 200,
+          "header": [{"key": "Content-Type", "value": "application/json"}],
+          "body": "{\n  \"simulation\": \"Redémarrera nginx sans reboot système.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "AiCache List",
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "url": {"raw": "{{baseUrl}}/ai-cache", "host": ["{{baseUrl}}"], "path": ["ai-cache"]}
+      }
+    },
+    {
+      "name": "AiCache Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+          "body": {"mode": "raw", "raw": "{\\n  \\\"type\\\": \\\"test\\\",\\n  \\\"hash\\\": \\\"abc123\\\",\\n  \\\"input_text\\\": \\\"hello\\\",\\n  \\\"response_text\\\": \\\"world\\\"\\n}"},
+          "url": {"raw": "{{baseUrl}}/ai-cache", "host": ["{{baseUrl}}"], "path": ["ai-cache"]}
+      }
+    },
+    {
+      "name": "AiCache Read",
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "url": {"raw": "{{baseUrl}}/ai-cache/1", "host": ["{{baseUrl}}"], "path": ["ai-cache", "1"]}
+      }
+    },
+    {
+      "name": "AiCache Update",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"response_text\": \"updated\"\n}"},
+        "url": {"raw": "{{baseUrl}}/ai-cache/1", "host": ["{{baseUrl}}"], "path": ["ai-cache", "1"]}
+      }
+    },
+    {
+      "name": "AiCache Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "url": {"raw": "{{baseUrl}}/ai-cache/1", "host": ["{{baseUrl}}"], "path": ["ai-cache", "1"]}
+      }
     }
   ],
   "variable": [
