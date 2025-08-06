@@ -61,6 +61,12 @@ Ce document résume les routes exposées dans la collection Postman de l'API *Li
 - **DELETE /templates/:id** : suppression d'un template.
 - **POST /templates/generate** : génération d'un script à partir d'un template.
 
+## Monitoring
+- **GET /monitoring** : liste les enregistrements de monitoring.
+- **GET /monitoring/:id** : détail d'un enregistrement précis.
+- **POST /monitoring/collect** : récupère les fichiers de monitoring d'une VM et les enregistre en base avec l'heure de collecte.
+- **POST /monitoring/sync-ip** : met à jour l'IP d'une VM dans la table des déploiements si elle a changé.
+
 ## Terraform
 - **POST /terraform/deploy** : déclenchement d'un déploiement Terraform avec une liste dynamique de scripts.
 

@@ -265,7 +265,7 @@ exports.convertToTemplate = async (req, res) => {
     const privateKey = fs.readFileSync(path.resolve(privateKeyPath), 'utf-8');
     const startTime = new Date();
     const logFileName = `convert-template-${startTime.toISOString().replace(/[:.]/g, '-')}-${userId}.log`;
-    const logsDir = path.resolve(__dirname, '../logs');
+    const logsDir = path.resolve(__dirname, '../../logs');
     if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir);
     const logPath = path.join(logsDir, logFileName);
 
@@ -300,7 +300,7 @@ exports.convertToTemplate = async (req, res) => {
   } catch (error) {
     const failTime = new Date();
     const logFileName = `convert-template-${failTime.toISOString().replace(/[:.]/g, '-')}-${userId}.log`;
-    const logsDir = path.resolve(__dirname, '../logs');
+    const logsDir = path.resolve(__dirname, '../../logs');
     if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir);
     const logPath = path.join(logsDir, logFileName);
 

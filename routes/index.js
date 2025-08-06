@@ -10,5 +10,6 @@ router.use('/settings', require('./settings/userSettingRoutes'));
 router.use('/vms', require('./proxmox/proxmoxRoutes'));
 router.use('/templates', require('./templates/serviceTemplateRoutes'));
 router.use('/terraform', require('./terraform/terraformRoutes'));
+router.use('/monitoring', require('./monitoring/monitoringRoutes'));
 
 module.exports = router;

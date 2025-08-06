@@ -160,6 +160,18 @@ CREATE TABLE deletes (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE monitorings (
+  id SERIAL PRIMARY KEY,
+  vm_ip VARCHAR(255),
+  ip_address VARCHAR(255),
+  instance_id VARCHAR(255),
+  services_status JSON,
+  system_status JSON,
+  retrieved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Sample data
 INSERT INTO roles (name, status) VALUES ('admin', 'actif');
 
@@ -196,6 +208,10 @@ INSERT INTO permissions (name, description, status) VALUES
   ('user.read', 'Read user', 'actif'),
   ('user.search', 'Search users', 'actif'),
   ('user.update', 'Update user', 'actif'),
+  ('monitoring.collect', 'Collect monitoring data', 'actif'),
+  ('monitoring.list', 'List monitoring records', 'actif'),
+  ('monitoring.read', 'Read monitoring record', 'actif'),
+  ('monitoring.sync', 'Synchronize deployment IP', 'actif'),
   ('vm.conversion.list', 'List VM conversions', 'actif'),
   ('vm.convert', 'Convert VM to template', 'actif'),
   ('vm.list', 'List VMs', 'actif'),
@@ -208,7 +224,7 @@ INSERT INTO assigned_permissions (role_id, permission_id)
 SELECT 1, id FROM permissions;
 
 INSERT INTO users (first_name, last_name, email, phone, password, status, role_id) VALUES
-  ('Nexus', 'Latid', 'latifnjimoluh@gmail.com', '555-0100', 'admin123.', 'active', 1);
+  ('Nexus', 'Latif', 'latifnjimoluh@gmail.com', '555-0100', 'admin123.', 'active', 1);
 
 INSERT INTO user_settings (user_id) VALUES (1);
 
@@ -221,9 +237,9 @@ VALUES (
   'Nginx Basic',
   'web',
   'default',
-  'Deploys a basic Nginx server',
+  'Deploys a hardened Nginx server',
   '{"packages":["nginx"],"config":"/etc/nginx/nginx.conf"}',
-  'scripts/setup_nginx.sh',
+  'scripts/service.sh',
   '{"domain":"string","root":"string"}',
   'actif'
 );
@@ -232,11 +248,11 @@ INSERT INTO initialization_scripts (name, script_path, description)
 VALUES ('Ubuntu Base Setup', 'scripts/init.sh', 'Update packages and install base utilities');
 
 INSERT INTO monitoring_scripts (name, script_path, description)
-VALUES ('CPU Load Monitor', 'scripts/monitor.sh', 'Log current CPU load');
+VALUES ('System Metrics Monitor', 'scripts/monitor.sh', 'Collect CPU, memory, disk and network metrics');
 
 INSERT INTO monitored_services (name, script_path, description)
-VALUES ('Nginx Watchdog', 'scripts/service.sh', 'Restart Nginx if it stops');
+VALUES ('Nginx Provisioning', 'scripts/service.sh', 'Configure Nginx and record service states');
 
 INSERT INTO deployments (user_id, user_email, vm_name, service_name, zone, operation_type, success, instance_id)
-VALUES (1, 'john.doe@example.com', 'vm1', 'service1', 'zoneA', 'create', true, 'inst-0001');
+VALUES (1, 'latifnjimoluh@gmail.com', 'vm1', 'service1', 'LAN', 'create', true, 'inst-0001');
 
