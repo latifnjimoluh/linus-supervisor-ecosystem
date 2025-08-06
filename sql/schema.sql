@@ -172,6 +172,18 @@ CREATE TABLE monitorings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE "GeneratedScripts" (
+  "id" SERIAL PRIMARY KEY,
+  "template_id" INTEGER NOT NULL REFERENCES "ServiceTemplates"(id) ON DELETE CASCADE,
+  "category" VARCHAR(255) NOT NULL,
+  "service_type" VARCHAR(255) NOT NULL,
+  "script_path" TEXT NOT NULL,
+  "description" TEXT,
+  "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+
 -- Sample data
 INSERT INTO roles (name, status) VALUES ('admin', 'actif');
 

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-const { ServiceTemplate, InitializationScript, MonitoringScript, MonitoredService, UserSetting, Deployment } = require('../../models');
+const { ServiceTemplate, GeneratedScript, UserSetting, Deployment } = require('../../models');
 const { checkIfVMNameExists } = require('../proxmox/proxmoxController');
 const { runTerraformApply } = require('../../utils/terraformRunner');
 const { logAction } = require('../../middlewares/log');
@@ -66,18 +66,14 @@ exports.deploy = async (req, res) => {
 
     const scriptModels = {
       config: ServiceTemplate,
-      init: InitializationScript,
-      monitoring: MonitoringScript,
-      services: MonitoredService,
+      script: GeneratedScript,
     };
 
     const scriptRefs = Array.isArray(payload.script_refs)
       ? payload.script_refs
       : [
-          { type: 'init', id: payload.initialization_script_id },
+          { type: 'script', id: payload.script_script_id },
           { type: 'config', id: payload.config_id },
-          { type: 'monitoring', id: payload.monitoring_script_id },
-          { type: 'services', id: payload.monitored_services_script_id },
         ];
 
     const scriptList = [];
@@ -99,17 +95,19 @@ exports.deploy = async (req, res) => {
         return res.status(404).json({ message: `Script '${type}' introuvable` });
       }
 
-      scriptList.push(record.script_path.replace(/\\/g, '/'));
+      if (!record.abs_path) {
+        return res.status(500).json({ message: `Le champ 'abs_path' est manquant pour le script ID ${id}` });
+      }
+
+      scriptList.push(record.abs_path.replace(/\\/g, '/'));
     }
 
     payload.instance_id = instanceId;
-    // 👉 Applique la même liste de scripts à chaque VM demandée
     payload.scripts = Array.isArray(payload.vm_names)
       ? Object.fromEntries(payload.vm_names.map((name) => [name, scriptList]))
       : { [vmName]: scriptList };
 
     console.log('🧩 Scripts injectés :', scriptList);
-
     console.log('🚀 Lancement Terraform...');
     const { stdout, stderr, success, vmInfo } = await runTerraformApply(instanceId, payload);
     const endTime = new Date();

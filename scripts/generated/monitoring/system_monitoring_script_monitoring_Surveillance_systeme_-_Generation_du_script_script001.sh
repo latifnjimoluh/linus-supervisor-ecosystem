@@ -61,6 +61,3 @@ JSON
 EOS
 
 chmod +x /opt/monitoring/status.sh
-
-# 🕔 Ajout au cron (évite les doublons)
-grep -q "status.sh" /etc/crontab || echo "*/5 * * * * root /opt/monitoring/status.sh" >> /etc/crontab

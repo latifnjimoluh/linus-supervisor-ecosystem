@@ -1,11 +1,50 @@
-const { ServiceTemplate } = require('../../models');
+const fs = require('fs');
+const path = require('path');
 const { Op } = require('sequelize');
+const { ServiceTemplate, GeneratedScript } = require('../../models');
 const { logAction } = require('../../middlewares/log');
 
+// 🔤 Fonction de nettoyage du nom (suppression des accents et des caractères spéciaux)
+const sanitizeName = (str) => {
+  return str
+    .normalize('NFD')                         // décompose les lettres accentuées
+    .replace(/[\u0300-\u036f]/g, '')          // supprime les accents
+    .replace(/[^a-zA-Z0-9_-]/g, '_');         // remplace les caractères non autorisés
+};
+
+// 🔢 Génère le prochain numéro de fichier dans un dossier
+const getNextFileNumber = (dir, prefix, ext) => {
+  const files = fs.existsSync(dir) ? fs.readdirSync(dir) : [];
+  const matching = files.filter(f => f.startsWith(prefix) && f.endsWith(ext));
+  const numbers = matching.map(f => {
+    const match = f.match(/\d+(\.sh)?$/);
+    return match ? parseInt(match[0], 10) : 0;
+  });
+  const max = numbers.length ? Math.max(...numbers) : 0;
+  return (max + 1).toString().padStart(3, '0');
+};
+
+// 📌 Créer un template et le sauvegarder
 exports.createTemplate = async (req, res) => {
   console.log('📥 createTemplate called', req.body);
-  const { name, service_type, category, description, template_content, script_path, fields_schema } = req.body;
+  const { name, service_type, category, description, template_content, fields_schema } = req.body;
+
   try {
+    const safeName = sanitizeName(name);
+    const safeCategory = sanitizeName(category);
+    const safeServiceType = sanitizeName(service_type);
+    const baseName = `${safeServiceType}_${safeCategory}_${safeName}`;
+    const categoryDir = path.join(__dirname, `../../scripts/templates/${safeCategory}`);
+    if (!fs.existsSync(categoryDir)) fs.mkdirSync(categoryDir, { recursive: true });
+
+    const fileNum = getNextFileNumber(categoryDir, baseName + '_tpl', '.sh');
+    const filename = `${baseName}_tpl${fileNum}.sh`;
+    const filepath = path.join(categoryDir, filename); // absolu
+    const script_path = `/scripts/templates/${safeCategory}/${filename}`; // relatif
+
+    fs.writeFileSync(filepath, template_content);
+    console.log(`📁 Template écrit dans ${filepath}`);
+
     const tpl = await ServiceTemplate.create({
       name,
       service_type,
@@ -13,10 +52,11 @@ exports.createTemplate = async (req, res) => {
       description,
       template_content,
       script_path,
+      abs_path: filepath,
       fields_schema,
     });
+
     await logAction(req, `create_template:${tpl.id}`);
-    console.log('✅ Template créé', tpl.id);
     res.status(201).json(tpl);
   } catch (err) {
     console.error('❌ Erreur createTemplate:', err);
@@ -24,6 +64,72 @@ exports.createTemplate = async (req, res) => {
   }
 };
 
+// 🔄 Générer un script basé sur un template + config
+exports.generateScript = async (req, res) => {
+  console.log('📥 generateScript called', req.body);
+  const { template_id, config_data } = req.body;
+
+  if (!template_id || typeof config_data !== 'object') {
+    return res.status(400).json({ message: 'template_id et config_data requis' });
+  }
+
+  try {
+    const tpl = await ServiceTemplate.findByPk(template_id);
+    if (!tpl) return res.status(404).json({ message: 'Template non trouvé' });
+
+    if (tpl.fields_schema?.fields) {
+      for (const field of tpl.fields_schema.fields) {
+        if (field.required && !(field.name in config_data)) {
+          return res.status(400).json({ message: `Champ requis manquant: ${field.name}` });
+        }
+      }
+    }
+
+    let script = tpl.template_content;
+    for (const [key, value] of Object.entries(config_data)) {
+      const regex1 = new RegExp(`{{${key}}}`, 'g');
+      const regex2 = new RegExp(`\\$\\{${key}\\}`, 'g');
+      script = script.replace(regex1, value).replace(regex2, value);
+    }
+
+    const safeName = sanitizeName(tpl.name);
+    const safeCategory = sanitizeName(tpl.category);
+    const safeServiceType = sanitizeName(tpl.service_type);
+    const baseName = `${safeServiceType}_${safeCategory}_${safeName}`;
+    const categoryDir = path.join(__dirname, `../../scripts/generated/${safeCategory}`);
+    if (!fs.existsSync(categoryDir)) fs.mkdirSync(categoryDir, { recursive: true });
+
+    const fileNum = getNextFileNumber(categoryDir, baseName + '_script', '.sh');
+    const filename = `${baseName}_script${fileNum}.sh`;
+    const filepath = path.join(categoryDir, filename); // absolu
+    const script_path = `/scripts/generated/${safeCategory}/${filename}`; // relatif
+
+    fs.writeFileSync(filepath, script);
+    console.log(`✅ Script généré et sauvegardé dans ${filepath}`);
+
+    await GeneratedScript.create({
+      template_id: tpl.id,
+      category: tpl.category,
+      service_type: tpl.service_type,
+      script_path,
+      abs_path: filepath,
+      description: tpl.description,
+    });
+
+    await logAction(req, `generate_template_file:${tpl.id}:${filename}`);
+    res.json({
+      message: 'Script généré et sauvegardé',
+      script,
+      path: script_path,
+    });
+  } catch (err) {
+    console.error('❌ Erreur generateScript:', err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+
+// 📄 Récupérer tous les templates avec pagination et recherche
 exports.getAllTemplates = async (req, res) => {
   console.log('📥 getAllTemplates called', req.query);
   try {
@@ -63,6 +169,7 @@ exports.getAllTemplates = async (req, res) => {
   }
 };
 
+// 🔎 Récupérer un template par son ID
 exports.getTemplateById = async (req, res) => {
   console.log('📥 getTemplateById called', req.params.id);
   try {
@@ -78,6 +185,7 @@ exports.getTemplateById = async (req, res) => {
   }
 };
 
+// ✏️ Modifier un template
 exports.updateTemplate = async (req, res) => {
   console.log('📥 updateTemplate called', req.params.id, req.body);
   try {
@@ -96,6 +204,7 @@ exports.updateTemplate = async (req, res) => {
   }
 };
 
+// 🗑️ Désactiver un template
 exports.deleteTemplate = async (req, res) => {
   console.log('📥 deleteTemplate called', req.params.id);
   try {
@@ -115,44 +224,4 @@ exports.deleteTemplate = async (req, res) => {
   }
 };
 
-exports.generateScript = async (req, res) => {
-  console.log('📥 generateScript called', req.body);
-  const { template_id, config_data } = req.body;
 
-  if (!template_id || typeof config_data !== 'object') {
-    console.log('⚠️ template_id ou config_data manquant');
-    return res.status(400).json({ message: 'template_id et config_data requis' });
-  }
-
-  try {
-    const tpl = await ServiceTemplate.findByPk(template_id);
-    if (!tpl) {
-      console.log('⚠️ Template non trouvé pour génération');
-      return res.status(404).json({ message: 'Template non trouvé' });
-    }
-
-    // Vérification des champs requis à partir du schéma
-    if (tpl.fields_schema && tpl.fields_schema.fields) {
-      for (const field of tpl.fields_schema.fields) {
-        if (field.required && !(field.name in config_data)) {
-          console.log(`⛔ Champ requis manquant: ${field.name}`);
-          return res.status(400).json({ message: `Champ requis manquant: ${field.name}` });
-        }
-      }
-    }
-
-    let script = tpl.template_content;
-    for (const [key, value] of Object.entries(config_data)) {
-      const regex = new RegExp(`{{${key}}}`, 'g');
-      script = script.replace(regex, value);
-    }
-
-    await logAction(req, `generate_template:${tpl.id}`);
-    console.log('✅ Script généré pour template', tpl.id);
-
-    res.json({ script });
-  } catch (err) {
-    console.error('❌ Erreur generateScript:', err);
-    res.status(500).json({ message: 'Erreur serveur.' });
-  }
-};

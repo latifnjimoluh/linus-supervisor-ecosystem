@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-
 echo "🌐 Déploiement du serveur Web Camer-Web (web2.camer.cm)..."
 
 # 1. Installation des paquets
@@ -17,12 +16,12 @@ sudo mkdir -p /var/www/web2.camer.cm
 echo "📝 Création de la page d’accueil personnalisée..."
 sudo tee /var/www/web2.camer.cm/index.html > /dev/null <<EOF
 <!DOCTYPE html>
-<html lang="fr">
+<html lang=\"fr\">
 <head>
-    <meta charset="UTF-8">
+    <meta charset=\"UTF-8\">
     <title>Camer-Web</title>
 </head>
-<body style="font-family: sans-serif; text-align: center; margin-top: 100px;">
+<body style=\"font-family: sans-serif; text-align: center; margin-top: 100px;\">
     <h1>✅ Bienvenue sur Camer-Web</h1>
     <p>🌐 Vous êtes sur : <strong>web2.camer.cm</strong></p>
     <p>📍 IP : <strong>192.168.20.21</strong></p>
@@ -69,13 +68,13 @@ sudo ufw --force enable
 echo
 echo "✅ Camer-Web est prêt. Teste http://web2.camer.cm depuis le reverse proxy ou le client interne."
 
-: "${INSTANCE_ID:?INSTANCE_ID is required}"
+: "\${INSTANCE_ID:?INSTANCE_ID is required}"
 
 # Save instance identifier
-echo "INSTANCE_ID=$INSTANCE_ID" | sudo tee /etc/instance-info.conf > /dev/null
-echo "export INSTANCE_ID=$INSTANCE_ID" | sudo tee /etc/profile.d/instance_id.sh > /dev/null
+echo "INSTANCE_ID=\${INSTANCE_ID}" | sudo tee /etc/instance-info.conf > /dev/null
+echo "export INSTANCE_ID=\${INSTANCE_ID}" | sudo tee /etc/profile.d/instance_id.sh > /dev/null
 sudo chmod +x /etc/profile.d/instance_id.sh
-export INSTANCE_ID=$INSTANCE_ID
+export INSTANCE_ID=\${INSTANCE_ID}
 
 # Log initialization
-echo "$(date --iso-8601=seconds) - Initialized instance with ID: ${INSTANCE_ID}" | sudo tee -a /var/log/init.log
+echo "$(date --iso-8601=seconds) - Initialized instance with ID: \${INSTANCE_ID}" | sudo tee -a /var/log/init.log

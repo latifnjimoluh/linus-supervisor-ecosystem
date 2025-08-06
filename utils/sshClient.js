@@ -78,6 +78,30 @@ const execSSHCommand = ({ host, username, privateKey, command }) => {
 };
 
 /**
+ * Sanitize raw JSON text by escaping newlines that appear inside
+ * quoted strings. Some remote scripts write multi-line values without
+ * escaping them, which breaks JSON.parse.
+ * @param {string} raw
+ * @returns {string}
+ */
+function sanitizeJSONString(raw) {
+  let sanitized = '';
+  let inQuotes = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (ch === '"' && raw[i - 1] !== '\\') {
+      inQuotes = !inQuotes;
+      sanitized += ch;
+    } else if (inQuotes && (ch === '\n' || ch === '\r')) {
+      sanitized += '\\n';
+    } else {
+      sanitized += ch;
+    }
+  }
+  return sanitized;
+}
+
+/**
  * Retrieve and parse a remote JSON file via SSH
  * @param {Object} options
  * @param {string} options.host
@@ -89,8 +113,16 @@ const execSSHCommand = ({ host, username, privateKey, command }) => {
 const getRemoteJSON = async ({ host, username, privateKey, filePath }) => {
   console.log(`📥 getRemoteJSON from ${filePath}`);
   const raw = await getRemoteFileContent({ host, username, privateKey, filePath });
-  return JSON.parse(raw);
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    // If the JSON is invalid due to unescaped newlines inside string values,
+    // attempt to sanitize and parse again.
+    const sanitized = sanitizeJSONString(raw);
+    return JSON.parse(sanitized);
+  }
 };
+
 
 module.exports = {
   getRemoteFileContent,

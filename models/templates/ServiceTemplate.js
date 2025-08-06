@@ -20,6 +20,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TEXT('long'),
       allowNull: false,
     },
+    abs_path: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     script_path: {
       type: DataTypes.STRING,
       allowNull: true,

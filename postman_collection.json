@@ -794,7 +794,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"cloudinit_user\": \"nexus\",\n  \"cloudinit_password\": \"Nexus2023.\",\n  \"proxmox_api_url\": \"https://192.168.24.134:8006/api2/json\",\n  \"proxmox_api_token_id\": \"root@pam\",\n  \"proxmox_api_token_name\": \"delete\",\n  \"proxmox_api_token_secret\": \"0a804aa8-029e-4503-83a3-3fb51a804771\",\n  \"pm_user\": \"root@pam\",\n  \"pm_password\": \"Nexus2023.\",\n  \"proxmox_node\": \"pve\",\n  \"vm_storage\": \"local-lvm\",\n  \"vm_bridge\": \"vmbr0\",\n  \"ssh_public_key_path\": \"C:/Users/Nexus-PC/.ssh/id_rsa.pub\",\n  \"ssh_private_key_path\": \"C:/Users/Nexus-PC/.ssh/id_rsa\",\n  \"statuspath\": \"/tmp/status.json\",\n  \"servicespath\": \"/tmp/services_status.json\",\n  \"instanceinfopath\": \"/etc/instance-info.conf\",\n  \"proxmox_host\": \"192.168.24.134\",\n  \"proxmox_ssh_user\": \"root\"\n}"
+							"raw": "{\n  \"cloudinit_user\": \"nexus\",\n  \"cloudinit_password\": \"Nexus2023.\",\n  \"proxmox_api_url\": \"https://192.168.24.134:8006/api2/json\",\n  \"proxmox_api_token_id\": \"root@pam\",\n  \"proxmox_api_token_name\": \"delete\",\n  \"proxmox_api_token_secret\": \"0a804aa8-029e-4503-83a3-3fb51a804771\",\n  \"pm_user\": \"root@pam\",\n  \"pm_password\": \"Nexus2023.\",\n  \"proxmox_node\": \"pve\",\n  \"vm_storage\": \"local-lvm\",\n  \"vm_bridge\": \"vmbr0\",\n  \"ssh_public_key_path\": \"C:/Users/Nexus-PC/.ssh/id_rsa.pub\",\n  \"ssh_private_key_path\": \"C:/Users/Nexus-PC/.ssh/id_rsa\",\n  \"statuspath\": \"/opt/monitoring/status.json\",\n  \"servicespath\": \"/opt/monitoring/services_status.json\",\n  \"instanceinfopath\": \"/etc/instance-info.conf\",\n  \"proxmox_host\": \"192.168.24.134\",\n  \"proxmox_ssh_user\": \"root\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/settings/me",
@@ -922,7 +922,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"vm_id\": 101,\n  \"instance_id\": \"inst-0001\"\n}"
+							"raw": "{\n  \"vm_id\": 103,\n  \"instance_id\": \"inst-0001\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/vms/delete",
@@ -984,7 +984,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"vm_id\": 101\n}"
+							"raw": "{\n  \"vm_id\": 104\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/vms/convert",
@@ -1065,7 +1065,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Serveur NFS\",\n  \"service_type\": \"nfs\",\n  \"category\": \"file_sharing\",\n  \"description\": \"Installe et configure un partage NFS basique\",\n  \"template_content\": \"#!/bin/bash\\n echo Hello\",\n  \"script_path\": \"/scripts/config.sh\",\n  \"fields_schema\": {\n    \"fields\": [\n      {\n        \"name\": \"SHARE_DIR\",\n        \"label\": \"Répertoire partagé\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"/srv/nfs_share\"\n      }\n    ]\n  }\n}"
+							"raw": "{\n  \"name\": \"Activation des cronjobs de supervision\",\n  \"service_type\": \"monitoring_cron\",\n  \"category\": \"monitoring\",\n  \"description\": \"Ajoute dynamiquement les tâches cron pour exécuter les scripts de supervision.\",\n  \"template_content\": \"#!/bin/bash\\n\\n# 📍 Ce script centralise l’installation des cronjobs de monitoring\\n\\n# 🔐 Vérifie que les scripts à exécuter existent\\nSTATUS_SCRIPT=\\\"${STATUS_SCRIPT}\\\"\\nSERVICES_SCRIPT=\\\"${SERVICES_SCRIPT}\\\"\\n\\n# 🧩 Crée les cronjobs uniquement s’ils n’existent pas déjà\\nif [ -f \\\"$STATUS_SCRIPT\\\" ]; then\\n  grep -q \\\"$STATUS_SCRIPT\\\" /etc/crontab || echo \\\"*/${STATUS_CRON_INTERVAL} * * * * root $STATUS_SCRIPT\\\" >> /etc/crontab\\n  echo \\\"✅ Cron job ajouté pour status.sh\\\"\\nelse\\n  echo \\\"❌ Script $STATUS_SCRIPT introuvable\\\"\\nfi\\n\\nif [ -f \\\"$SERVICES_SCRIPT\\\" ]; then\\n  grep -q \\\"$SERVICES_SCRIPT\\\" /etc/crontab || echo \\\"*/${SERVICES_CRON_INTERVAL} * * * * root $SERVICES_SCRIPT\\\" >> /etc/crontab\\n  echo \\\"✅ Cron job ajouté pour services_status.sh\\\"\\nelse\\n  echo \\\"❌ Script $SERVICES_SCRIPT introuvable\\\"\\nfi\",\n  \"script_path\": \"/scripts/register_cronjobs.sh\",\n  \"fields_schema\": {\n    \"fields\": [\n      {\n        \"name\": \"STATUS_SCRIPT\",\n        \"label\": \"Chemin script status\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"/opt/monitoring/status.sh\"\n      },\n      {\n        \"name\": \"SERVICES_SCRIPT\",\n        \"label\": \"Chemin script services\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"/opt/monitoring/services_status.sh\"\n      },\n      {\n        \"name\": \"STATUS_CRON_INTERVAL\",\n        \"label\": \"Fréquence status (min)\",\n        \"type\": \"number\",\n        \"required\": true,\n        \"default\": 5\n      },\n      {\n        \"name\": \"SERVICES_CRON_INTERVAL\",\n        \"label\": \"Fréquence services (min)\",\n        \"type\": \"number\",\n        \"required\": true,\n        \"default\": 5\n      }\n    ]\n  }\n}\n"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/templates",
@@ -1118,16 +1118,16 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"description\": \"Template mis à jour\"\n}"
+							"raw": "{\n  \"name\": \"Configuration du serveur NFS\",\n  \"service_type\": \"nfs_server\",\n  \"category\": \"file_sharing\",\n  \"description\": \"Installe et configure un serveur NFS avec un dossier partagé sur /srv/nfs_share accessible au réseau local.\",\n  \"template_content\": \"#!/bin/bash\\n# 🎯 Script de configuration du serveur NFS - nfs.camer.cm\\n\\necho \\\"📦 Installation du serveur NFS...\\\"\\nsudo apt update && sudo apt install -y nfs-kernel-server\\n\\necho \\\"📁 Création du dossier partagé ${SHARE_DIR}...\\\"\\nsudo mkdir -p ${SHARE_DIR}\\nsudo chown nobody:nogroup ${SHARE_DIR}\\nsudo chmod 777 ${SHARE_DIR}\\n\\necho \\\"📝 Configuration du fichier /etc/exports...\\\"\\necho \\\"${SHARE_DIR} ${CLIENT_SUBNET}(rw,sync,no_subtree_check)\\\" | sudo tee -a /etc/exports\\n\\necho \\\"🔄 Redémarrage du service NFS...\\\"\\nsudo systemctl restart nfs-kernel-server\\n\\necho \\\"🔍 Vérification de l’export actif...\\\"\\nsudo exportfs -v\\n\\necho \\\"✅ Serveur NFS configuré avec succès.\\\"\",\n  \"script_path\": \"/scripts/nfs_server_setup.sh\",\n  \"fields_schema\": {\n    \"fields\": [\n      {\n        \"name\": \"SHARE_DIR\",\n        \"label\": \"Dossier partagé\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"/srv/nfs_share\"\n      },\n      {\n        \"name\": \"CLIENT_SUBNET\",\n        \"label\": \"Sous-réseau autorisé\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"192.168.24.0/24\"\n      }\n    ]\n  }\n}\n"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/templates/1",
+							"raw": "{{baseUrl}}/templates/13",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"templates",
-								"1"
+								"13"
 							]
 						}
 					},
@@ -1172,7 +1172,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"template_id\": 5,\n  \"config_data\": {\n    \"INSTANCE_ID\": \"i-1234567890abcdef0\",\n    \"ZONE_NAME\": \"camer.cm\",\n    \"CHECK_DOMAIN\": \"www.camer.cm\",\n    \"PORTS_TO_SCAN\": \"22,53,80,443,1000-2000\",\n    \"DNS_CRON_INTERVAL\": 5,\n    \"SERVICES\": \"sshd\\nbind9\\npostgresql\\nnginx\",\n    \"SERVICES_CRON_INTERVAL\": 1\n  }\n}"
+							"raw": "{\n  \"template_id\": 14,\n  \"config_data\": {\n    \"NFS_SERVER\": \"192.168.10.10\",\n    \"SHARE_DIR\": \"/srv/nfs_share\",\n    \"MOUNT_DIR\": \"/mnt/nfs_share\"\n  }\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/templates/generate",
@@ -1225,13 +1225,13 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/monitoring/1",
+							"raw": "{{baseUrl}}/monitoring/2",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"monitoring",
-								"1"
+								"2"
 							]
 						}
 					},
@@ -1253,7 +1253,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"vm_ip\": \"192.168.24.78\",\n  \"username\": \"nexus\"\n}"
+							"raw": "{\n  \"vm_ip\": \"192.168.24.94\",\n  \"username\": \"nexus\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/monitoring/collect",
@@ -1320,7 +1320,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"vm_names\": [\"web-001\"],\n  \"service_type\": \"web\",\n  \"script_refs\": [\n    { \"type\": \"config\", \"id\": 1 },\n    { \"type\": \"init\", \"id\": 1 },\n    { \"type\": \"monitoring\", \"id\": 1 }\n  ],\n  \"template_name\": \"ubuntu-template\",\n  \"memory_mb\": 2048,\n  \"vcpu_cores\": 2,\n  \"vcpu_sockets\": 1,\n  \"disk_size\": \"20G\",\n  \"use_static_ip\": false\n}"
+							"raw": "{\n  \"vm_names\": [\"Webapache\"],\n  \"service_type\": \"web\",\n  \"script_refs\": [\n    { \"type\": \"script\", \"id\": 20 },\n    { \"type\": \"script\", \"id\": 21 },\n    { \"type\": \"script\", \"id\": 22 },\n    { \"type\": \"script\", \"id\": 23 }\n  ],\n  \"template_name\": \"ubuntu-template\",\n  \"memory_mb\": 2048,\n  \"vcpu_cores\": 2,\n  \"vcpu_sockets\": 1,\n  \"disk_size\": \"20G\",\n  \"use_static_ip\": false\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/terraform/deploy",
@@ -1343,7 +1343,7 @@
 		"bearer": [
 			{
 				"key": "token",
-				"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJsYXRpZm5qaW1vbHVoQGdtYWlsLmNvbSIsInJvbGVfaWQiOjEsImlhdCI6MTc1NDQ1MTY4MCwiZXhwIjoxNzU0NDU1MjgwfQ.WbZaa-3yb80VuXUJqYzVyWh0Gjg4imFi-7SmIHZIBKk",
+				"value": "",
 				"type": "string"
 			}
 		]

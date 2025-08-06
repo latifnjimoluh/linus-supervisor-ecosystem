@@ -4,7 +4,7 @@
 mkdir -p /opt/monitoring
 
 # 📦 Créer le script de surveillance système
-cat <<'EOS' > /opt/monitoring/status.sh
+cat <<'EOS' > ${STATUS_SCRIPT_PATH}
 #!/bin/bash
 
 # 🔐 Charger l'INSTANCE_ID depuis /etc/instance-info.conf si présent
@@ -33,7 +33,7 @@ OPEN_PORTS=$(ss -tuln | awk 'NR>1 {split($5,a,":"); print a[length(a)]}' | sort 
 TOP_PROCESSES=$(ps -eo pid,comm,%cpu --sort=-%cpu | head -n 6 | tail -n 5 | awk '{printf "{\"pid\":%s,\"cmd\":\"%s\",\"cpu\":%s},", $1, $2, $3}')
 TOP_PROCESSES="[${TOP_PROCESSES%,}]"
 
-cat <<JSON > /opt/monitoring/status.json
+cat <<JSON > ${STATUS_JSON_PATH}
 {
   "timestamp": "${TIMESTAMP}",
   "instance_id": "${INSTANCE_ID}",
@@ -60,7 +60,4 @@ cat <<JSON > /opt/monitoring/status.json
 JSON
 EOS
 
-chmod +x /opt/monitoring/status.sh
-
-# 🕔 Ajout au cron (évite les doublons)
-grep -q "status.sh" /etc/crontab || echo "*/5 * * * * root /opt/monitoring/status.sh" >> /etc/crontab
+chmod +x ${STATUS_SCRIPT_PATH}

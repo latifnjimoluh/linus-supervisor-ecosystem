@@ -4,7 +4,7 @@
 mkdir -p /opt/monitoring
 
 # 📦 Créer le script de surveillance des services
-cat <<'EOS' > /opt/monitoring/services_status.sh
+cat <<'EOS' > ${SERVICES_SCRIPT_PATH}
 #!/bin/bash
 
 # 🔐 Charger l'INSTANCE_ID depuis /etc/instance-info.conf si présent
@@ -32,7 +32,7 @@ done
 
 SERVICE_STATUS_JSON="[${SERVICE_STATUS_JSON%,}]"
 
-cat <<JSON > /opt/monitoring/services_status.json
+cat <<JSON > ${SERVICES_JSON_PATH}
 {
   "timestamp": "${TIMESTAMP}",
   "instance_id": "${INSTANCE_ID}",
@@ -41,7 +41,4 @@ cat <<JSON > /opt/monitoring/services_status.json
 JSON
 EOS
 
-chmod +x /opt/monitoring/services_status.sh
-
-# 🕔 Ajout au cron (évite les doublons)
-grep -q "services_status.sh" /etc/crontab || echo "*/5 * * * * root /opt/monitoring/services_status.sh" >> /etc/crontab
+chmod +x ${SERVICES_SCRIPT_PATH}

@@ -83,9 +83,16 @@ exports.runTerraformApply = (instanceId, variables) => {
       const logData = `=== STDOUT ===\n${stdout}\n\n=== STDERR ===\n${stderr}`;
       fs.writeFileSync(logFilePath, logData);
 
-      if (!success) {
-        console.error('❌ [Terraform Runner] Erreur :', stderr);
-        return reject({ stdout, stderr, success });
+      // 📄 Analyse de terraform-debug.log pour erreurs dans les scripts
+      const tfDebugPath = path.join(deployDir, 'terraform-debug.log');
+      let hasScriptError = false;
+      try {
+        const debugContent = fs.readFileSync(tfDebugPath, 'utf8');
+        if (debugContent.includes('terraform_script_errors.log') || debugContent.includes('❌')) {
+          hasScriptError = true;
+        }
+      } catch (err) {
+        console.warn('⚠️ [Terraform Runner] Impossible de lire terraform-debug.log');
       }
 
       const srcState = path.join(deployDir, 'terraform.tfstate');
@@ -112,7 +119,18 @@ exports.runTerraformApply = (instanceId, variables) => {
         status: outputJson?.status?.value || ''
       };
 
-      return resolve({ stdout, stderr, success, vmInfo });
+      if (!success) {
+        console.error('❌ [Terraform Runner] Terraform a échoué complètement.');
+        return reject({ stdout, stderr, success: false });
+      }
+
+      if (hasScriptError) {
+        console.warn('⚠️ [Terraform Runner] Déploiement terminé avec des erreurs dans les scripts (voir /tmp/terraform_script_errors.log)');
+      } else {
+        console.log('✅ [Terraform Runner] Déploiement terminé avec succès.');
+      }
+
+      return resolve({ stdout, stderr, success: true, hasScriptError, vmInfo });
     });
   });
 };

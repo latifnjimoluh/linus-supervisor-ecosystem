@@ -26,11 +26,20 @@ exports.collectMonitoringData = async (req, res) => {
   const sshUser = username || settings?.proxmox_ssh_user;
   const privateKeyPath = bodyKeyPath || settings?.ssh_private_key_path;
   const statusPath =
-    bodyStatusPath || settings?.statuspath || '/tmp/status.json';
+    bodyStatusPath ||
+    settings?.statuspath ||
+    process.env.STATUS_JSON_PATH ||
+    '/opt/monitoring/status.json';
   const servicesPath =
-    bodyServicesPath || settings?.servicespath || '/tmp/services_status.json';
+    bodyServicesPath ||
+    settings?.servicespath ||
+    process.env.SERVICES_JSON_PATH ||
+    '/opt/monitoring/services_status.json';
   const instanceInfoPath =
-    bodyInstanceInfoPath || settings?.instanceinfopath || '/etc/instance-info.conf';
+    bodyInstanceInfoPath ||
+    settings?.instanceinfopath ||
+    process.env.INSTANCE_INFO_PATH ||
+    '/etc/instance-info.conf';
 
   if (!sshUser || !privateKeyPath) {
     return res.status(400).json({ message: '❌ Informations SSH incomplètes' });
@@ -50,18 +59,22 @@ exports.collectMonitoringData = async (req, res) => {
     console.log("- privateKeyPath :", privateKeyPath);
     console.log("- instanceInfoPath :", instanceInfoPath);
 
-    const instanceInfoRaw = await getRemoteFileContent({
-      host,
-      username: sshUser,
-      privateKey,
-      filePath: instanceInfoPath,
-    });
-    const instanceId =
-      instanceInfoRaw
-        .split('\n')
-        .find((l) => l.includes('INSTANCE_ID'))
-        ?.split('=')[1]
-        ?.trim() || instanceInfoRaw.trim();
+    let instanceId = null;
+    try {
+      const instanceInfoRaw = await getRemoteFileContent({
+        host,
+        username: sshUser,
+        privateKey,
+        filePath: instanceInfoPath,
+      });
+      const match = instanceInfoRaw.match(/^INSTANCE_ID=(.*)$/m);
+      instanceId = match ? match[1].trim() : instanceInfoRaw.trim();
+      if (!match) {
+        console.warn('⚠️ INSTANCE_ID non trouvé dans instance-info.conf');
+      }
+    } catch (e) {
+      console.warn('⚠️ Erreur lecture instance-info.conf :', e.message);
+    }
 
     const servicesStatus = await getRemoteJSON({
       host,
@@ -86,24 +99,13 @@ exports.collectMonitoringData = async (req, res) => {
       retrieved_at: new Date(),
     });
 
-    // 🔄 Synchroniser l'adresse IP dans la table deployments si elle a changé
-    const deployment = await Deployment.findOne({ where: { instance_id: instanceId } });
-    if (deployment && deployment.vm_ip !== systemStatus.ip_address) {
-      await deployment.update({ vm_ip: systemStatus.ip_address });
-    }
-
-    return res.status(200).json({
-      message: '✅ Données de monitoring récupérées',
-      record,
-    });
+    res.json(record);
   } catch (err) {
-    console.error('❌ collectMonitoringData error:', err.message);
-    return res.status(500).json({
-      message: '❌ Échec de la collecte des données de monitoring',
-      error: err.message,
-    });
+    console.error('🚨 Erreur lors de la collecte des données de monitoring :', err.message);
+    res.status(500).json({ message: '❌ Erreur lors de la collecte des données de monitoring', error: err.message });
   }
 };
+
 
 // 📋 Lister tous les enregistrements de monitoring
 exports.getMonitoringRecords = async (req, res) => {
