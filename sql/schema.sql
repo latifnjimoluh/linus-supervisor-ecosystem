@@ -146,6 +146,32 @@ CREATE TABLE deployments (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE deletes (
+  id SERIAL PRIMARY KEY,
+  vm_id VARCHAR(255) NOT NULL,
+  instance_id VARCHAR(255),
+  vm_name VARCHAR(255),
+  vm_ip VARCHAR(255),
+  log_path VARCHAR(255),
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  user_email VARCHAR(255),
+  deleted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE monitorings (
+  id SERIAL PRIMARY KEY,
+  vm_ip VARCHAR(255),
+  ip_address VARCHAR(255),
+  instance_id VARCHAR(255),
+  services_status JSON,
+  system_status JSON,
+  retrieved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Sample data
 INSERT INTO roles (name, status) VALUES ('admin', 'actif');
 
@@ -182,12 +208,17 @@ INSERT INTO permissions (name, description, status) VALUES
   ('user.read', 'Read user', 'actif'),
   ('user.search', 'Search users', 'actif'),
   ('user.update', 'Update user', 'actif'),
+  ('monitoring.collect', 'Collect monitoring data', 'actif'),
+  ('monitoring.list', 'List monitoring records', 'actif'),
+  ('monitoring.read', 'Read monitoring record', 'actif'),
+  ('monitoring.sync', 'Synchronize deployment IP', 'actif'),
   ('vm.conversion.list', 'List VM conversions', 'actif'),
   ('vm.convert', 'Convert VM to template', 'actif'),
   ('vm.list', 'List VMs', 'actif'),
   ('vm.start', 'Start VM', 'actif'),
   ('vm.status.check', 'Check VM status', 'actif'),
-  ('vm.stop', 'Stop VM', 'actif');
+  ('vm.stop', 'Stop VM', 'actif'),
+  ('vm.delete', 'Delete VM', 'actif');
 
 INSERT INTO assigned_permissions (role_id, permission_id)
 SELECT 1, id FROM permissions;
@@ -206,9 +237,9 @@ VALUES (
   'Nginx Basic',
   'web',
   'default',
-  'Deploys a basic Nginx server',
+  'Deploys a hardened Nginx server',
   '{"packages":["nginx"],"config":"/etc/nginx/nginx.conf"}',
-  'scripts/setup_nginx.sh',
+  'scripts/service.sh',
   '{"domain":"string","root":"string"}',
   'actif'
 );
@@ -217,10 +248,10 @@ INSERT INTO initialization_scripts (name, script_path, description)
 VALUES ('Ubuntu Base Setup', 'scripts/init.sh', 'Update packages and install base utilities');
 
 INSERT INTO monitoring_scripts (name, script_path, description)
-VALUES ('CPU Load Monitor', 'scripts/monitor.sh', 'Log current CPU load');
+VALUES ('System Metrics Monitor', 'scripts/monitor.sh', 'Collect CPU, memory, disk and network metrics');
 
 INSERT INTO monitored_services (name, script_path, description)
-VALUES ('Nginx Watchdog', 'scripts/service.sh', 'Restart Nginx if it stops');
+VALUES ('Nginx Provisioning', 'scripts/service.sh', 'Configure Nginx and record service states');
 
 INSERT INTO deployments (user_id, user_email, vm_name, service_name, zone, operation_type, success, instance_id)
 VALUES (1, 'john.doe@example.com', 'vm1', 'service1', 'zoneA', 'create', true, 'inst-0001');
