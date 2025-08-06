@@ -224,7 +224,7 @@ INSERT INTO assigned_permissions (role_id, permission_id)
 SELECT 1, id FROM permissions;
 
 INSERT INTO users (first_name, last_name, email, phone, password, status, role_id) VALUES
-  ('Nexus', 'Latid', 'latifnjimoluh@gmail.com', '555-0100', 'admin123.', 'active', 1);
+  ('Nexus', 'Latif', 'latifnjimoluh@gmail.com', '555-0100', 'admin123.', 'active', 1);
 
 INSERT INTO user_settings (user_id) VALUES (1);
 
@@ -254,5 +254,5 @@ INSERT INTO monitored_services (name, script_path, description)
 VALUES ('Nginx Provisioning', 'scripts/service.sh', 'Configure Nginx and record service states');
 
 INSERT INTO deployments (user_id, user_email, vm_name, service_name, zone, operation_type, success, instance_id)
-VALUES (1, 'john.doe@example.com', 'vm1', 'service1', 'zoneA', 'create', true, 'inst-0001');
+VALUES (1, 'latifnjimoluh@gmail.com', 'vm1', 'service1', 'LAN', 'create', true, 'inst-0001');
 
