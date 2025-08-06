@@ -1,0 +1,8 @@
+[
+  {"name": "template.explain", "description": "Explain script using AI"},
+  {"name": "template.analyze", "description": "Analyze script using AI"},
+  {"name": "template.explainVariables", "description": "Explain template variables using AI"},
+  {"name": "template.summarizeLogs", "description": "Summarize deployment logs using AI"},
+  {"name": "template.suggestBundle", "description": "Suggest stack bundles using AI"},
+  {"name": "template.simulateExecution", "description": "Simulate script execution using AI"}
+]

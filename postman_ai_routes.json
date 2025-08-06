@@ -1,0 +1,90 @@
+{
+  "info": {
+    "name": "AI Template Routes",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Explain Script",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"script\": \"#!/bin/bash\\necho hello\"\n}"},
+        "url": {"raw": "{{baseUrl}}/templates/explain", "host": ["{{baseUrl}}"], "path": ["templates", "explain"]}
+      },
+      "response": []
+    },
+    {
+      "name": "Analyze Script",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"script\": \"#!/bin/bash\\nsudo apt update\"\n}"},
+        "url": {"raw": "{{baseUrl}}/templates/analyze", "host": ["{{baseUrl}}"], "path": ["templates", "analyze"]}
+      },
+      "response": []
+    },
+    {
+      "name": "Explain Variables",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"template\": \"#!/bin/bash\\nexport VAR={{VALUE}}\"\n}"},
+        "url": {"raw": "{{baseUrl}}/templates/variables/explain", "host": ["{{baseUrl}}"], "path": ["templates", "variables", "explain"]}
+      },
+      "response": []
+    },
+    {
+      "name": "Summarize Logs",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"logs\": \"Log line 1\\nLog line 2\"\n}"},
+        "url": {"raw": "{{baseUrl}}/templates/logs/summarize", "host": ["{{baseUrl}}"], "path": ["templates", "logs", "summarize"]}
+      },
+      "response": []
+    },
+    {
+      "name": "Suggest Bundle",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"needs\": \"Hébergement web\"\n}"},
+        "url": {"raw": "{{baseUrl}}/templates/bundle", "host": ["{{baseUrl}}"], "path": ["templates", "bundle"]}
+      },
+      "response": []
+    },
+    {
+      "name": "Simulate Script",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{token}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"script\": \"#!/bin/bash\\nsystemctl restart nginx\"\n}"},
+        "url": {"raw": "{{baseUrl}}/templates/simulate", "host": ["{{baseUrl}}"], "path": ["templates", "simulate"]}
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:3000"},
+    {"key": "token", "value": ""}
+  ]
+}
