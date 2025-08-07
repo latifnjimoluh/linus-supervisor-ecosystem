@@ -13,7 +13,7 @@ export function ChatbotLauncher() {
     <>
       {/* Chatbot Interface */}
       {isOpen && (
-        <div className="fixed bottom-20 right-4 z-50 w-80 h-96 bg-card border border-border rounded-2xl shadow-lg">
+        <div className="fixed bottom-20 right-4 z-50 w-96 h-[32rem] bg-card border border-border rounded-2xl shadow-lg">
           <ChatbotInterface onClose={() => setIsOpen(false)} />
         </div>
       )}
