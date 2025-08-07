@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Bot, Send, X, Minimize2, MessageCircle, Copy, RefreshCw, Sparkles, Code, FileText, Settings } from 'lucide-react'
+import { Bot, Send, X, Minimize2, Copy, RefreshCw, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -463,11 +463,11 @@ return (
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="flex flex-col flex-1"
+                className="flex flex-col flex-1 min-h-0"
               >
-                <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
+                <CardContent className="flex-1 p-0 flex flex-col overflow-hidden min-h-0">
                   {/* Messages Area */}
-                  <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+                  <ScrollArea className="flex-1 p-4 h-full min-h-0" ref={scrollAreaRef}>
                     <div className="space-y-1">
                       {messages.map(renderMessage)}
                       

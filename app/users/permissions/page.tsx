@@ -17,12 +17,12 @@ import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { useToast } from "@/hooks/use-toast"
 
 interface Permission {
-  id: number // Changed to number
+  id: number
   name: string
   description: string
   module: string
-  isActive: boolean
-  createdAt: string
+  is_active: boolean
+  created_at: string
 }
 
 interface Role {
@@ -34,21 +34,21 @@ interface Role {
 // Mock data for permissions
 const generateMockPermissions = (): Permission[] => {
   return [
-    { id: 1, name: "vm.create", description: "Créer des machines virtuelles", module: "VM Management", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 2, name: "vm.delete", description: "Supprimer des machines virtuelles", module: "VM Management", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 3, name: "vm.start", description: "Démarrer des machines virtuelles", module: "VM Management", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 4, name: "vm.stop", description: "Arrêter des machines virtuelles", module: "VM Management", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 5, name: "vm.monitor", description: "Superviser les machines virtuelles", module: "VM Management", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 6, name: "template.create", description: "Créer des templates", module: "Templates", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 7, name: "template.delete", description: "Supprimer des templates", module: "Templates", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 8, name: "template.analyze", description: "Analyser des templates avec l'IA", module: "Templates", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 9, name: "logs.read", description: "Consulter les logs système", module: "Logs", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 10, name: "logs.export", description: "Exporter les logs", module: "Logs", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 11, name: "users.create", description: "Créer des utilisateurs", module: "User Management", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 12, name: "users.delete", description: "Supprimer des utilisateurs", module: "User Management", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 13, name: "roles.manage", description: "Gérer les rôles", module: "User Management", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 14, name: "permissions.manage", description: "Gérer les permissions", module: "User Management", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
-    { id: 15, name: "system.config", description: "Configurer le système", module: "System", isActive: true, createdAt: "2024-01-01T00:00:00Z" },
+    { id: 1, name: "vm.create", description: "Créer des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 2, name: "vm.delete", description: "Supprimer des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 3, name: "vm.start", description: "Démarrer des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 4, name: "vm.stop", description: "Arrêter des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 5, name: "vm.monitor", description: "Superviser les machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 6, name: "template.create", description: "Créer des templates", module: "Templates", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 7, name: "template.delete", description: "Supprimer des templates", module: "Templates", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 8, name: "template.analyze", description: "Analyser des templates avec l'IA", module: "Templates", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 9, name: "logs.read", description: "Consulter les logs système", module: "Logs", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 10, name: "logs.export", description: "Exporter les logs", module: "Logs", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 11, name: "users.create", description: "Créer des utilisateurs", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 12, name: "users.delete", description: "Supprimer des utilisateurs", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 13, name: "roles.manage", description: "Gérer les rôles", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 14, name: "permissions.manage", description: "Gérer les permissions", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
+    { id: 15, name: "system.config", description: "Configurer le système", module: "System", is_active: true, created_at: "2024-01-01T00:00:00Z" },
   ]
 }
 
@@ -171,12 +171,12 @@ export default function PermissionsPage() {
       await new Promise(resolve => setTimeout(resolve, 1500))
 
       const newPermission: Permission = {
-        id: permissions.length > 0 ? Math.max(...permissions.map(p => p.id)) + 1 : 1, // Generate new numeric ID
+        id: permissions.length > 0 ? Math.max(...permissions.map(p => p.id)) + 1 : 1,
         name: formData.name,
         description: formData.description,
         module: formData.module,
-        isActive: true,
-        createdAt: new Date().toISOString(),
+        is_active: true,
+        created_at: new Date().toISOString(),
       }
 
       setPermissions(prev => [...prev, newPermission])
@@ -269,7 +269,7 @@ export default function PermissionsPage() {
   const selectedRoleData = roles.find(r => String(r.id) === selectedRole) // Compare with string value from select
   const stats = {
     total: permissions.length,
-    active: permissions.filter(p => p.isActive).length,
+    active: permissions.filter(p => p.is_active).length,
     modules: modules.length,
   }
 
@@ -489,7 +489,7 @@ export default function PermissionsPage() {
                           <Badge variant="outline" className="text-xs">
                             {permission.module}
                           </Badge>
-                          {permission.isActive ? (
+                    {permission.is_active ? (
                             <Badge variant="success" className="text-xs">Actif</Badge>
                           ) : (
                             <Badge variant="warning" className="text-xs">Inactif</Badge>
@@ -497,7 +497,7 @@ export default function PermissionsPage() {
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">{permission.description}</p>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                          <span>Créé le {new Date(permission.createdAt).toLocaleDateString("fr-FR")}</span>
+                          <span>Créé le {new Date(permission.created_at).toLocaleDateString("fr-FR")}</span>
                           {isUsedByRoles.length > 0 && (
                             <span>Utilisé par: {isUsedByRoles.map(r => r.name).join(", ")}</span>
                           )}
