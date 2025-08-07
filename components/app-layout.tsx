@@ -19,18 +19,20 @@ export function AppLayout({ children }: AppLayoutProps) {
   const toggleSidebar = () => setIsSidebarOpen((open) => !open)
   const closeSidebar = () => setIsSidebarOpen(false)
 
+  if (isLoginPage) {
+    return <main className="flex min-h-screen w-full flex-col">{children}</main>
+  }
+
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      {!isLoginPage && <AppHeader onToggleSidebar={toggleSidebar} />}
-      <div className="flex flex-1">
-        {!isLoginPage && (
-          <AppSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
-        )}
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+    <div className="flex h-screen w-full overflow-hidden">
+      <AppSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+      <div className="flex flex-1 flex-col">
+        <AppHeader onToggleSidebar={toggleSidebar} />
+        <main className="flex flex-1 flex-col gap-4 overflow-auto p-4 lg:gap-6 lg:p-6">
           {children}
         </main>
       </div>
-      {!isLoginPage && <ChatbotLauncher />}
+      <ChatbotLauncher />
     </div>
   )
 }

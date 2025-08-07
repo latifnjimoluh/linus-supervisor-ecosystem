@@ -16,6 +16,7 @@ import {
   Terminal,
   Users,
   X,
+  ChevronDown,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -89,11 +90,23 @@ const navItems: NavItem[] = [
 ]
 export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
   const pathname = usePathname()
+  const [openItems, setOpenItems] = React.useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {}
+    navItems.forEach((item) => {
+      if (item.children?.some((child) => child.href === pathname)) {
+        initial[item.label] = true
+      }
+    })
+    return initial
+  })
+
+  const toggleItem = (label: string) =>
+    setOpenItems((prev) => ({ ...prev, [label]: !prev[label] }))
 
   return (
     <aside
       className={cn(
-        "flex flex-col border-r bg-background transition-all duration-300 overflow-hidden",
+        "flex h-full flex-shrink-0 flex-col border-r bg-background transition-all duration-300",
         isOpen ? "w-64" : "w-0"
       )}
     >
@@ -108,31 +121,46 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
         </Button>
       </div>
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
-        {navItems.map((item) => (
-          <div key={item.label} className="flex flex-col gap-1">
-            <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground">
-              <item.icon className="h-5 w-5" />
-              <span>{item.label}</span>
+        {navItems.map((item) => {
+          const isOpenItem = openItems[item.label]
+          return (
+            <div key={item.label} className="flex flex-col">
+              <button
+                type="button"
+                onClick={() => toggleItem(item.label)}
+                className="flex items-center justify-between gap-3 px-3 py-2 text-sm font-medium text-muted-foreground"
+              >
+                <span className="flex items-center gap-3">
+                  <item.icon className="h-5 w-5" />
+                  {item.label}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition-transform",
+                    isOpenItem && "rotate-180"
+                  )}
+                />
+              </button>
+              {item.children && isOpenItem && (
+                <div className="ml-6 flex flex-col gap-1">
+                  {item.children.map((child) => (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                        pathname === child.href && "bg-accent text-accent-foreground"
+                      )}
+                    >
+                      <child.icon className="h-5 w-5" />
+                      <span>{child.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
-            {item.children && (
-              <div className="ml-6 flex flex-col gap-1">
-                {item.children.map((child) => (
-                  <Link
-                    key={child.href}
-                    href={child.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                      pathname === child.href && "bg-accent text-accent-foreground"
-                    )}
-                  >
-                    <child.icon className="h-5 w-5" />
-                    <span>{child.label}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </nav>
     </aside>
   )

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Bell, LogOut, User } from 'lucide-react'
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
@@ -61,7 +62,10 @@ export function AppNavbar({ user }: AppNavbarProps) {
     <header className="flex justify-between items-center h-16 px-4 border-b bg-background">
       <div className="flex items-center gap-4">
         <SidebarTrigger />
-        <h1 className="text-xl font-semibold">Linusupervisor</h1>
+        <Link href="/" className="flex items-center gap-2">
+          <Image src="/placeholder-logo.png" alt="Logo Linusupervisor" width={32} height={32} />
+          <h1 className="text-xl font-semibold">Linusupervisor</h1>
+        </Link>
         <Badge variant={getRoleBadgeVariant(currentUser.role_id)} className="text-xs">
           {getRoleLabel(currentUser.role_id)}
         </Badge>
