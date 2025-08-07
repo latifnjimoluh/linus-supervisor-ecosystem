@@ -1,7 +1,7 @@
 import client from './client';
 
-export const login = (email, password) =>
-  client.post('/auth/login', { email, password });
+export const login = (email, password, remember) =>
+  client.post('/auth/login', { email, password, remember });
 
 export const register = (data) => client.post('/auth/register', data);
 

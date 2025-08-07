@@ -75,7 +75,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     console.log('🔐 Tentative de connexion:', req.body.email);
-    const { email, password } = req.body;
+    const { email, password, remember } = req.body;
 
     const user = await User.findOne({
       where: { email },
@@ -108,11 +108,14 @@ exports.login = async (req, res) => {
       role_id: user.role_id,
     };
 
-    const token = createToken({
-      id: user.id,
-      email: user.email,
-      role_id: user.role?.id,
-    });
+    const token = createToken(
+      {
+        id: user.id,
+        email: user.email,
+        role_id: user.role?.id,
+      },
+      remember ? '7d' : '24h'
+    );
 
     await logAction(req, 'login', { user_id: user.id });
 

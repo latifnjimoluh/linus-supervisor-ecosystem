@@ -1,6 +1,7 @@
 import client from './client';
 
-export const listPermissions = () => client.get('/permissions');
+export const listPermissions = (params = {}) =>
+  client.get('/permissions', { params });
 
 export const getPermission = (id) => client.get(`/permissions/${id}`);
 

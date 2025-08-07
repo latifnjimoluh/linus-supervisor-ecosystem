@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Monitoring() {
   const [records, setRecords] = useState([]);
-  const [query, setQuery] = useState('');
+  const [vmIp, setVmIp] = useState('');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ pages: 1 });
   const [loading, setLoading] = useState(false);
@@ -24,7 +24,7 @@ export default function Monitoring() {
     setLoading(true);
     setError('');
     try {
-      const res = await listMonitoring({ page, q: query });
+      const res = await listMonitoring({ page, vm_ip: vmIp });
       const data = res.data || {};
       setRecords(data.data || []);
       setPagination(data.pagination || { page: 1, pages: 1 });
@@ -39,7 +39,7 @@ export default function Monitoring() {
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, query]);
+  }, [page, vmIp]);
 
   const handleCollect = async (e) => {
     e.preventDefault();
@@ -138,11 +138,11 @@ export default function Monitoring() {
       <div className="mb-4 flex justify-between items-center">
         <input
           type="text"
-          placeholder="Rechercher..."
-          value={query}
+          placeholder="Filtrer par IP VM..."
+          value={vmIp}
           onChange={(e) => {
             setPage(1);
-            setQuery(e.target.value);
+            setVmIp(e.target.value);
           }}
           className="border p-2 rounded w-64"
         />
@@ -157,7 +157,8 @@ export default function Monitoring() {
               <tr>
                 <th className="p-2 text-left">ID</th>
                 <th className="p-2 text-left">VM IP</th>
-                <th className="p-2 text-left">Utilisateur</th>
+                <th className="p-2 text-left">Charge</th>
+                <th className="p-2 text-left">Mémoire (Mo)</th>
                 <th className="p-2 text-left">Date</th>
                 <th className="p-2" />
               </tr>
@@ -167,10 +168,23 @@ export default function Monitoring() {
                 <tr key={rec.id} className="border-t hover:bg-gray-50">
                   <td className="p-2">{rec.id}</td>
                   <td className="p-2">{rec.vm_ip || rec.vmIp}</td>
-                  <td className="p-2">{rec.username || rec.user}</td>
+                  <td className="p-2">{rec.system_status?.load_average}</td>
                   <td className="p-2">
-                    {rec.created_at
-                      ? new Date(rec.created_at).toLocaleString()
+                    {rec.system_status?.memory
+                      ? (
+                          (
+                            (rec.system_status.memory.total_kb -
+                              rec.system_status.memory.available_kb) /
+                            1024
+                          ).toFixed(1) +
+                          ' / ' +
+                          (rec.system_status.memory.total_kb / 1024).toFixed(1)
+                        )
+                      : ''}
+                  </td>
+                  <td className="p-2">
+                    {rec.retrieved_at
+                      ? new Date(rec.retrieved_at).toLocaleString()
                       : ''}
                   </td>
                   <td className="p-2">
@@ -186,7 +200,7 @@ export default function Monitoring() {
               {records.length === 0 && (
                 <tr>
                   <td
-                    colSpan="5"
+                    colSpan="6"
                     className="p-2 text-center text-gray-500"
                   >
                     Aucun enregistrement
