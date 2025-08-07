@@ -1,3 +1,10 @@
 'use client';
-import Settings from '@/pages/Settings';
-export default Settings;
+
+export default function SettingsPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">Settings</h1>
+      {/* TODO: configuration options */}
+    </div>
+  );
+}

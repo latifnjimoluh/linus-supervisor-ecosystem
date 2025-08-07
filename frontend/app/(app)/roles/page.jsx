@@ -1,3 +1,10 @@
 'use client';
-import Roles from '@/pages/Roles';
-export default Roles;
+
+export default function RolesPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">Roles</h1>
+      {/* TODO: implement role management */}
+    </div>
+  );
+}

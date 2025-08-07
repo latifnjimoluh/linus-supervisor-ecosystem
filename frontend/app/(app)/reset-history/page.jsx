@@ -1,3 +1,10 @@
 'use client';
-import ResetHistory from '@/pages/ResetHistory';
-export default ResetHistory;
+
+export default function ResetHistoryPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">Password Reset History</h1>
+      {/* TODO: display password reset logs */}
+    </div>
+  );
+}

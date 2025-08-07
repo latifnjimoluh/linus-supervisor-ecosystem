@@ -1,3 +1,10 @@
 'use client';
-import DashboardMap from '@/pages/DashboardMap';
-export default DashboardMap;
+
+export default function DashboardMapPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">Dashboard Map</h1>
+      {/* TODO: implement map overview */}
+    </div>
+  );
+}

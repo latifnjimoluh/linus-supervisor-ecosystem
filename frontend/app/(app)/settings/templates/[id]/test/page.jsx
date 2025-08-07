@@ -1,3 +1,10 @@
 'use client';
-import TemplateTest from '@/pages/TemplateTest';
-export default TemplateTest;
+
+export default function TemplateTestPage({ params }) {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">Template Test</h1>
+      {/* TODO: run test for template {params.id} */}
+    </div>
+  );
+}
