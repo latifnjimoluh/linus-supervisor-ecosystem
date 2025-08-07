@@ -1,56 +1,46 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const { startServer, closeServer } = require('./server');
+const request = require('supertest');
+const app = require('../app');
 
 const cases = [
-  { method: 'GET', path: '/auth/me', status: 401 },
-  { method: 'GET', path: '/permissions', status: 401 },
-  { method: 'GET', path: '/roles', status: 401 },
-  { method: 'GET', path: '/users', status: 401 },
-  { method: 'GET', path: '/logs', status: 401 },
-  { method: 'GET', path: '/settings', status: 401 },
-  { method: 'GET', path: '/settings/notifications', status: 401 },
-  { method: 'GET', path: '/vms', status: 401 },
-  { method: 'GET', path: '/templates', status: 401 },
-  { method: 'POST', path: '/terraform/deploy', status: 401 },
-  { method: 'GET', path: '/monitoring', status: 401 },
-  { method: 'GET', path: '/dashboard/summary', status: 401 },
-  { method: 'GET', path: '/alerts', status: 401 },
-  { method: 'GET', path: '/ai-cache', status: 401 },
-  { method: 'GET', path: '/servers', status: 401 },
+  { method: 'get', path: '/auth/me', status: 401 },
+  { method: 'get', path: '/permissions', status: 401 },
+  { method: 'get', path: '/roles', status: 401 },
+  { method: 'get', path: '/users', status: 401 },
+  { method: 'get', path: '/logs', status: 401 },
+  { method: 'get', path: '/settings', status: 401 },
+  { method: 'get', path: '/settings/notifications', status: 401 },
+  { method: 'get', path: '/vms', status: 401 },
+  { method: 'get', path: '/templates', status: 401 },
+  { method: 'post', path: '/terraform/deploy', status: 401 },
+  { method: 'get', path: '/monitoring', status: 401 },
+  { method: 'get', path: '/dashboard/summary', status: 401 },
+  { method: 'get', path: '/alerts', status: 401 },
+  { method: 'get', path: '/ai-cache', status: 401 },
+  { method: 'get', path: '/servers', status: 401 }
 ];
 
-for (const c of cases) {
-  test(`${c.method} ${c.path} returns ${c.status}`, async () => {
-    const server = await startServer();
-    const port = server.address().port;
-    const res = await fetch(`http://localhost:${port}${c.path}`, { method: c.method });
-    assert.equal(res.status, c.status);
-    await closeServer(server);
+describe('protected routes', () => {
+  cases.forEach((c) => {
+    it(`${c.method.toUpperCase()} ${c.path} returns ${c.status}`, async () => {
+      const res = await request(app)[c.method](c.path);
+      expect(res.status).toBe(c.status);
+    });
   });
-}
-
-// open routes
-
-test('GET /scripts/preview returns generated script', async () => {
-  const server = await startServer();
-  const port = server.address().port;
-  const res = await fetch(`http://localhost:${port}/scripts/preview/123/test`);
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.format, 'bash');
-  assert.ok(body.script.includes('Configuring test'));
-  await closeServer(server);
 });
 
-test('POST /assistant/chat without message returns 400', async () => {
-  const server = await startServer();
-  const port = server.address().port;
-  const res = await fetch(`http://localhost:${port}/assistant/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
+describe('open routes', () => {
+  it('GET /scripts/preview returns generated script', async () => {
+    const res = await request(app).get('/scripts/preview/123/test');
+    expect(res.status).toBe(200);
+    expect(res.body.format).toBe('bash');
+    expect(res.body.script).toContain('Configuring test');
   });
-  assert.equal(res.status, 400);
-  await closeServer(server);
+
+  it('POST /assistant/chat without message returns 400', async () => {
+    const res = await request(app)
+      .post('/assistant/chat')
+      .set('Content-Type', 'application/json')
+      .send({});
+    expect(res.status).toBe(400);
+  });
 });

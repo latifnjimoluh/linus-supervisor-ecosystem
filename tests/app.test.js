@@ -1,19 +1,14 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const { startServer, closeServer } = require('./server');
+const request = require('supertest');
+const app = require('../app');
 
-test('unknown route returns 404', async () => {
-  const server = await startServer();
-  const port = server.address().port;
-  const res = await fetch(`http://localhost:${port}/unknown`);
-  assert.equal(res.status, 404);
-  await closeServer(server);
-});
+describe('app routes', () => {
+  it('unknown route returns 404', async () => {
+    const res = await request(app).get('/unknown');
+    expect(res.status).toBe(404);
+  });
 
-test('users route without token returns 401', async () => {
-  const server = await startServer();
-  const port = server.address().port;
-  const res = await fetch(`http://localhost:${port}/users`);
-  assert.equal(res.status, 401);
-  await closeServer(server);
+  it('users route without token returns 401', async () => {
+    const res = await request(app).get('/users');
+    expect(res.status).toBe(401);
+  });
 });

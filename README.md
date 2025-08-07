@@ -2,6 +2,21 @@
 
 Node.js backend with Express and Sequelize providing user, role, and permission management secured by JWT authentication and verbose console logging.
 
+## Monorepo structure
+
+The repository uses **npm workspaces** to host both the backend API and the Next.js frontend.
+
+```
+.
+├── app.js             # Express entry point
+├── frontend/          # Next.js application
+├── controllers/       # Express route handlers
+├── services/          # Business logic separated from controllers
+└── tests/             # Jest and supertest tests
+```
+
+Run scripts from the repository root so shared dependencies are reused by both applications.
+
 ## Prerequisites
 - Node.js 18+
 - MySQL server
@@ -12,10 +27,21 @@ Node.js backend with Express and Sequelize providing user, role, and permission 
    npm install
    ```
 2. Copy `.env.example` to `.env` and adjust values. Include SMTP settings for password reset emails.
-3. Start the server:
+3. Start the applications:
    ```bash
-   node app.js
+   npm run dev:backend   # API
+   npm run dev:frontend  # Frontend
    ```
+
+### Deployment flow
+
+1. Build both apps from the root:
+   ```bash
+   npm --workspace . run build    # backend (if applicable)
+   npm --workspace frontend run build
+   ```
+2. Deploy the `app.js` server with the built frontend served by your preferred web server or CDN.
+3. Set environment variables documented below on the server.
 
 ### Environment variables
 
