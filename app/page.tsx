@@ -55,13 +55,13 @@ export default function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Card className="w-full max-w-md rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+        <Card className="w-full max-w-lg rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-semibold">Connexion</CardTitle>
             <CardDescription>Connectez-vous à votre compte Linusupervisor</CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={action} className="space-y-6">
+            <form action={action} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -123,16 +123,6 @@ export default function LoginPage() {
                 </Link>
               </div>
             </form>
-            
-            {/* Aide pour les tests */}
-            <div className="mt-6 p-4 bg-muted/50 rounded-xl text-xs">
-              <p className="font-medium mb-2">Comptes de test :</p>
-              <ul className="space-y-1">
-                <li><strong>Admin:</strong> admin@example.com / password123</li>
-                <li><strong>Technicien:</strong> tech@example.com / password123</li>
-                <li><strong>Auditeur:</strong> auditor@example.com / password123</li>
-              </ul>
-            </div>
           </CardContent>
         </Card>
       </motion.div>

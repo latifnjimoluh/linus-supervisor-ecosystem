@@ -47,13 +47,13 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+      <Card className="w-full max-w-lg rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Connexion</CardTitle>
           <CardDescription>Connectez-vous à votre compte Linusupervisor</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={action} className="space-y-6">
+          <form action={action} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

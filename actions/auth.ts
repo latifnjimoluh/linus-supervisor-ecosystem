@@ -102,7 +102,7 @@ export async function login(prevState: any, formData: FormData) {
   }
   
   // Store in secure HttpOnly cookie
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   cookieStore.set("auth_token", JSON.stringify(jwtPayload), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
