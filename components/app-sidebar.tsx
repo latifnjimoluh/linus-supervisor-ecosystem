@@ -2,7 +2,22 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Server, LayoutDashboard, Users, FileText, Settings, Code, Map, Terminal, Edit, Activity, Shield, Key, X } from 'lucide-react'
+import {
+  Activity,
+  Code,
+  Edit,
+  FileText,
+  Key,
+  LayoutDashboard,
+  Map,
+  Server,
+  Settings,
+  Shield,
+  Terminal,
+  Users,
+  X,
+} from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -11,36 +26,80 @@ interface AppSidebarProps {
   onClose?: () => void
 }
 
+interface NavItem {
+  label: string
+  icon: LucideIcon
+  href?: string
+  children?: { label: string; href: string; icon: LucideIcon }[]
+}
+
 export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
   const pathname = usePathname()
 
-  const navItems = [
-    { href: "/dashboard", icon: LayoutDashboard, label: "Tableau de bord" },
-    { href: "/dashboard/map", icon: Map, label: "Carte Infra" }, // Added new link
-    { href: "/monitoring", icon: Activity, label: "Supervision" },
-    { href: "/deploy", icon: Server, label: "Déploiement" },
-    { href: "/templates", icon: Code, label: "Scripts & Templates" },
-    { href: "/users", icon: Users, label: "Utilisateurs" },
-    { href: "/users/roles", icon: Shield, label: "Rôles" },
-    { href: "/users/permissions", icon: Key, label: "Permissions" },
-    { href: "/logs", icon: FileText, label: "Logs" },
-    { href: "/terminal", icon: Terminal, label: "Terminal" },
-    { href: "/editor", icon: Edit, label: "Éditeur de code" },
-    { href: "/settings", icon: Settings, label: "Paramètres" },
+  const navItems: NavItem[] = [
+    {
+      label: "Tableau de bord",
+      icon: LayoutDashboard,
+      children: [
+        { href: "/dashboard", icon: LayoutDashboard, label: "Vue d'ensemble" },
+        { href: "/dashboard/map", icon: Map, label: "Carte Infra" },
+      ],
+    },
+    {
+      label: "Supervision",
+      icon: Activity,
+      children: [{ href: "/monitoring", icon: Activity, label: "Monitoring" }],
+    },
+    {
+      label: "Déploiement",
+      icon: Server,
+      children: [{ href: "/deploy", icon: Server, label: "Déployer" }],
+    },
+    {
+      label: "Scripts & Templates",
+      icon: Code,
+      children: [{ href: "/templates", icon: Code, label: "Liste" }],
+    },
+    {
+      label: "Utilisateurs",
+      icon: Users,
+      children: [
+        { href: "/users", icon: Users, label: "Utilisateurs" },
+        { href: "/users/roles", icon: Shield, label: "Rôles" },
+        { href: "/users/permissions", icon: Key, label: "Permissions" },
+      ],
+    },
+    {
+      label: "Logs",
+      icon: FileText,
+      children: [{ href: "/logs", icon: FileText, label: "Logs" }],
+    },
+    {
+      label: "Terminal",
+      icon: Terminal,
+      children: [{ href: "/terminal", icon: Terminal, label: "Terminal" }],
+    },
+    {
+      label: "Éditeur de code",
+      icon: Edit,
+      children: [{ href: "/editor", icon: Edit, label: "Éditeur" }],
+    },
+    {
+      label: "Paramètres",
+      icon: Settings,
+      children: [{ href: "/settings", icon: Settings, label: "Paramètres" }],
+    },
   ]
 
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r bg-background transition-transform duration-300",
-        isOpen ? "translate-x-0" : "-translate-x-full"
+        "flex flex-col border-r bg-background transition-all duration-300 overflow-hidden",
+        isOpen ? "w-64" : "w-0"
       )}
     >
       <div className="flex h-16 items-center justify-between border-b px-4">
-        <Link
-          href="#"
-          className="flex items-center gap-2 text-lg font-semibold"
-        >
+        <Link href="#" className="flex items-center gap-2 text-lg font-semibold">
           LS
           <span className="sr-only">LinuSupervisor</span>
         </Link>
@@ -51,17 +110,29 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
       </div>
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
         {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-              pathname === item.href && "bg-accent text-accent-foreground"
+          <div key={item.label} className="flex flex-col gap-1">
+            <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground">
+              <item.icon className="h-5 w-5" />
+              <span>{item.label}</span>
+            </div>
+            {item.children && (
+              <div className="ml-6 flex flex-col gap-1">
+                {item.children.map((child) => (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                      pathname === child.href && "bg-accent text-accent-foreground"
+                    )}
+                  >
+                    <child.icon className="h-5 w-5" />
+                    <span>{child.label}</span>
+                  </Link>
+                ))}
+              </div>
             )}
-          >
-            <item.icon className="h-5 w-5" />
-            <span>{item.label}</span>
-          </Link>
+          </div>
         ))}
       </nav>
     </aside>
