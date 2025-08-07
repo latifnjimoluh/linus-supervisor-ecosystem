@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 10% 98.8%; /* Fond principal #f9fafb */
+    --foreground: 210 10% 11.4%; /* Texte principal #111827 */
+
+    --card: 0 0% 100%; /* Fond secondaire (cards, sections) #ffffff */
+    --card-foreground: 210 10% 11.4%; /* Texte principal #111827 */
+
+    --popover: 0 0% 100%; /* Popover background */
+    --popover-foreground: 210 10% 11.4%; /* Popover foreground */
+
+    --primary: 217 91.2% 53.9%; /* Primaire #2563eb */
+    --primary-foreground: 0 0% 100%; /* Blanc pour texte sur primaire */
+
+    --secondary: 200 97.1% 93.7%; /* Secondaire #e0f2fe */
+    --secondary-foreground: 210 10% 11.4%; /* Texte principal #111827 */
+
+    --muted: 210 10% 98.8%; /* Muted background (similar to main background) */
+    --muted-foreground: 216 12.2% 46.1%; /* Texte secondaire #6b7280 */
+
+    --accent: 200 97.1% 93.7%; /* Accent background (similar to secondary) */
+    --accent-foreground: 210 10% 11.4%; /* Accent foreground */
+
+    --destructive: 0 84.2% 60.6%; /* Erreur #ef4444 */
+    --destructive-foreground: 0 0% 100%; /* Blanc pour texte sur destructif */
+
+    --border: 210 14.3% 91.4%; /* Borders #e5e7eb */
+    --input: 210 14.3% 91.4%; /* Input border */
+    --ring: 217 91.2% 53.9%; /* Ring color (primary blue) */
+
+    --radius: 0.5rem; /* Default shadcn radius */
+
+    --success: 156 82.6% 39.4%; /* Succès #10b981 */
+    --success-foreground: 0 0% 100%;
+    --error: 0 84.2% 60.6%; /* Erreur #ef4444 */
+    --error-foreground: 0 0% 100%;
+    --warning: 46 95.5% 53.9%; /* Alerte / Warning #facc15 */
+    --warning-foreground: 210 10% 11.4%; /* Noir pour texte sur warning */
+    --info: 217 91.2% 53.9%; /* Info (using primary blue for now) */
+    --info-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 222 47.4% 11.6%; /* Fond principal #0f172a */
+    --foreground: 210 16.7% 96.1%; /* Texte principal #f1f5f9 */
+
+    --card: 215 33.3% 17.5%; /* Fond secondaire (cards, sections) #1e293b */
+    --card-foreground: 210 16.7% 96.1%; /* Texte principal #f1f5f9 */
+
+    --popover: 215 33.3% 17.5%; /* Popover background */
+    --popover-foreground: 210 16.7% 96.1%; /* Popover foreground */
+
+    --primary: 217 90.3% 60.2%; /* Primaire #3b82f6 */
+    --primary-foreground: 210 16.7% 96.1%; /* Blanc pour texte sur primaire */
+
+    --secondary: 220 63.2% 32.2%; /* Secondaire #1e3a8a */
+    --secondary-foreground: 210 16.7% 96.1%; /* Texte principal #f1f5f9 */
+
+    --muted: 222 47.4% 11.6%; /* Muted background */
+    --muted-foreground: 210 20% 84.3%; /* Texte secondaire #cbd5e1 */
+
+    --accent: 220 63.2% 32.2%; /* Accent background */
+    --accent-foreground: 210 16.7% 96.1%; /* Accent foreground */
+
+    --destructive: 0 90.9% 70.4%; /* Erreur #f87171 */
+    --destructive-foreground: 222 47.4% 11.6%; /* Noir pour texte sur destructif */
+
+    --border: 215 25% 26.3%; /* Borders #334155 */
+    --input: 215 25% 26.3%; /* Input border */
+    --ring: 217 90.3% 60.2%; /* Ring color (primary blue) */
+
+    --success: 156 66.7% 51.6%; /* Succès #34d399 */
+    --success-foreground: 222 47.4% 11.6%;
+    --error: 0 90.9% 70.4%; /* Erreur #f87171 */
+    --error-foreground: 222 47.4% 11.6%;
+    --warning: 46 96.1% 63.7%; /* Alerte / Warning #fde047 */
+    --warning-foreground: 222 47.4% 11.6%; /* Noir pour texte sur warning */
+    --info: 217 90.3% 60.2%; /* Info (using primary blue for now) */
+    --info-foreground: 222 47.4% 11.6%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+  h1 {
+    @apply text-4xl font-semibold; /* titres de section */
+  }
+  h2 {
+    @apply text-2xl font-semibold; /* sous-titres */
+  }
+  h3 {
+    @apply text-lg font-semibold; /* titres de carte */
+  }
+  label {
+    @apply font-medium; /* Labels */
+  }
+  p, span, div {
+    @apply text-base font-normal; /* texte standard, infos */
+  }
+}
