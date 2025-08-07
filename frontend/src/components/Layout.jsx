@@ -1,78 +1,44 @@
-import React from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+'use client';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import ChatbotLauncher from './ChatbotLauncher';
 
-export default function Layout() {
-  const navigate = useNavigate();
+export default function Layout({ children }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('tokenExpiry');
-    navigate('/login');
+    router.push('/login');
   };
 
-  const linkClass = ({ isActive }) =>
+  const linkClass = (path) =>
     `px-3 py-2 rounded hover:bg-blue-700 transition-colors ${
-      isActive ? 'bg-blue-700' : ''
+      pathname === path ? 'bg-blue-700' : ''
     }`;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
         <div className="space-x-2">
-          <NavLink to="/dashboard" className={linkClass}>
-            Dashboard
-          </NavLink>
-          <NavLink to="/dashboard/alerts" className={linkClass}>
-            Alertes
-          </NavLink>
-          <NavLink to="/users" className={linkClass}>
-            Utilisateurs
-          </NavLink>
-          <NavLink to="/roles" className={linkClass}>
-            Rôles
-          </NavLink>
-          <NavLink to="/permissions" className={linkClass}>
-            Permissions
-          </NavLink>
-          <NavLink to="/reset-history" className={linkClass}>
-            Réinitialisations
-          </NavLink>
-          <NavLink to="/logs" className={linkClass}>
-            Logs
-          </NavLink>
-          <NavLink to="/settings" className={linkClass}>
-            Paramètres
-          </NavLink>
-          <NavLink to="/settings/notifications" className={linkClass}>
-            Notifications
-          </NavLink>
-          <NavLink to="/templates" className={linkClass}>
-            Templates
-          </NavLink>
-          <NavLink to="/monitoring" className={linkClass}>
-            Monitoring
-          </NavLink>
-          <NavLink to="/servers" className={linkClass}>
-            Serveurs
-          </NavLink>
-          <NavLink to="/vms" className={linkClass}>
-            VMs
-          </NavLink>
-          <NavLink to="/terraform" className={linkClass}>
-            Terraform
-          </NavLink>
-          <NavLink to="/ai-tools" className={linkClass}>
-            Outils IA
-          </NavLink>
-          <NavLink to="/ai-cache" className={linkClass}>
-            AI Cache
-          </NavLink>
-          <NavLink to="/assistant" className={linkClass}>
-            Assistant
-          </NavLink>
-          <NavLink to="/account" className={linkClass}>
-            Mon Profil
-          </NavLink>
+          <Link href="/dashboard" className={linkClass('/dashboard')}>Dashboard</Link>
+          <Link href="/dashboard/alerts" className={linkClass('/dashboard/alerts')}>Alertes</Link>
+          <Link href="/users" className={linkClass('/users')}>Utilisateurs</Link>
+          <Link href="/roles" className={linkClass('/roles')}>Rôles</Link>
+          <Link href="/permissions" className={linkClass('/permissions')}>Permissions</Link>
+          <Link href="/reset-history" className={linkClass('/reset-history')}>Réinitialisations</Link>
+          <Link href="/logs" className={linkClass('/logs')}>Logs</Link>
+          <Link href="/settings" className={linkClass('/settings')}>Paramètres</Link>
+          <Link href="/settings/notifications" className={linkClass('/settings/notifications')}>Notifications</Link>
+          <Link href="/templates" className={linkClass('/templates')}>Templates</Link>
+          <Link href="/monitoring" className={linkClass('/monitoring')}>Monitoring</Link>
+          <Link href="/servers" className={linkClass('/servers')}>Serveurs</Link>
+          <Link href="/vms" className={linkClass('/vms')}>VMs</Link>
+          <Link href="/terraform" className={linkClass('/terraform')}>Terraform</Link>
+          <Link href="/ai-tools" className={linkClass('/ai-tools')}>Outils IA</Link>
+          <Link href="/ai-cache" className={linkClass('/ai-cache')}>AI Cache</Link>
+          <Link href="/assistant" className={linkClass('/assistant')}>Assistant</Link>
+          <Link href="/account" className={linkClass('/account')}>Mon Profil</Link>
         </div>
         <button
           onClick={handleLogout}
@@ -81,9 +47,7 @@ export default function Layout() {
           Déconnexion
         </button>
       </nav>
-      <main className="p-4">
-        <Outlet />
-      </main>
+      <main className="p-4">{children}</main>
       <ChatbotLauncher />
     </div>
   );

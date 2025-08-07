@@ -17,6 +17,16 @@ Node.js backend with Express and Sequelize providing user, role, and permission 
    node app.js
    ```
 
+### Environment variables
+
+| Name | Description | Default |
+|------|-------------|---------|
+| `PORT` | Port HTTP du serveur | `3000` |
+| `JWT_SECRET` | Clé pour signer les jetons JWT | _none_ |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | Paramètres de connexion base de données | _required_ |
+| `CORS_ORIGINS` | Liste d'origines autorisées séparées par des virgules | `http://localhost:5173` |
+| `SMTP_USER`, `SMTP_PASS` | Identifiants SMTP pour l'envoi de mails | _optional_ |
+
 ## Testing with Postman
 A Postman collection is available in `postman_collection.json`. Import it and set the `baseUrl` and `token` variables. Login to obtain a token before accessing protected routes.
 

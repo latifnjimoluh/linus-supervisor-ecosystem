@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Log } = require('../models');
+const logger = require('../utils/logger');
 
 const filePath = path.join(__dirname, '..', 'logs', 'app.log');
 
@@ -8,7 +9,7 @@ const filePath = path.join(__dirname, '..', 'logs', 'app.log');
 const writeToFile = (entry) => {
   fs.appendFile(filePath, entry + '\n', (err) => {
     if (err) {
-      console.error('❌ Erreur écriture fichier log:', err);
+      logger.error('Erreur écriture fichier log', err);
     }
   });
 };
@@ -23,9 +24,9 @@ const logRequest = async (req, res, next) => {
     };
     await Log.create({ ...entry, details: JSON.stringify(entry.details) });
     writeToFile(`REQUEST ${entry.user_id || 'anonyme'} ${entry.action} ${JSON.stringify(entry.details)}`);
-    console.log('📝 Log sauvegardé:', req.method, req.originalUrl);
+    logger.info('Log sauvegardé', { method: req.method, url: req.originalUrl });
   } catch (err) {
-    console.error('❌ Erreur sauvegarde log:', err);
+    logger.error('Erreur sauvegarde log', err);
   }
   next();
 };
@@ -40,9 +41,9 @@ const logAction = async (req, action, details = {}) => {
     };
     await Log.create({ ...entry, details: JSON.stringify(details) });
     writeToFile(`ACTION ${entry.user_id || 'anonyme'} ${action} ${JSON.stringify(details)}`);
-    console.log('📝 Log action sauvegardé:', action);
+    logger.info('Log action sauvegardé', action);
   } catch (err) {
-    console.error('❌ Erreur logAction:', err);
+    logger.error('Erreur logAction', err);
   }
 };
 

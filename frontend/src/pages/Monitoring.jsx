@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { overview } from '../api/monitoring';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '../lib/router';
 
 export default function Monitoring() {
   const [summary, setSummary] = useState({});

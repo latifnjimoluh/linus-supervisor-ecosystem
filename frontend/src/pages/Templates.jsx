@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '../lib/router';
 import {
   listTemplates,
   createTemplate,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '../lib/router';
 import { get } from '../api/servers';
 
 export default function MonitoringDetail() {

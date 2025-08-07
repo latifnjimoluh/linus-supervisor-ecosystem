@@ -1,12 +1,20 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+let GoogleGenerativeAI;
+try {
+  ({ GoogleGenerativeAI } = require('@google/generative-ai'));
+} catch (err) {
+  GoogleGenerativeAI = null;
+}
 const crypto = require('crypto');
 const { AiCache } = require('../models');
 
 const apiKey = process.env.GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+const genAI = GoogleGenerativeAI ? new GoogleGenerativeAI(apiKey) : null;
+const model = genAI ? genAI.getGenerativeModel({ model: 'gemini-2.5-pro' }) : null;
 
 async function callGemini(prompt) {
+  if (!model) {
+    throw new Error('Google Generative AI SDK not configured');
+  }
   const result = await model.generateContent(prompt);
   const response = await result.response;
   return response.text();
