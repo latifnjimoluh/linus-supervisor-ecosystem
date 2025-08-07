@@ -136,7 +136,7 @@ export default function Login() {
           </label>
           <button
             type="button"
-            onClick={() => navigate('/request-reset')}
+            onClick={() => navigate('/forgot-password')}
             className="text-sm text-indigo-600 underline"
           >
             Mot de passe oublié ?
@@ -172,4 +172,3 @@ export default function Login() {
     </div>
   );
 }
-

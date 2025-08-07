@@ -1,3 +1,6 @@
++12
+-3
+
 import axios from 'axios';
 
 // Vite exposes env variables under import.meta.env
@@ -16,10 +19,18 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // Optional: redirect to login or emit event
-      localStorage.removeItem('token');
-      localStorage.removeItem('tokenExpiry');
+    if (error.response) {
+      if (error.response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('tokenExpiry');
+      } else if (error.response.status === 403) {
+        window.location = '/403';
+      } else if (error.response.status >= 500) {
+        const msg =
+          error.response.data?.message || 'Erreur interne du serveur';
+        localStorage.setItem('lastError', msg);
+        window.location = '/error';
+      }
     }
     return Promise.reject(error);
   }

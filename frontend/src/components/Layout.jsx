@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import ChatbotLauncher from './ChatbotLauncher';
 
 export default function Layout() {
   const navigate = useNavigate();
@@ -21,6 +22,9 @@ export default function Layout() {
           <NavLink to="/dashboard" className={linkClass}>
             Dashboard
           </NavLink>
+          <NavLink to="/dashboard/alerts" className={linkClass}>
+            Alertes
+          </NavLink>
           <NavLink to="/users" className={linkClass}>
             Utilisateurs
           </NavLink>
@@ -39,11 +43,17 @@ export default function Layout() {
           <NavLink to="/settings" className={linkClass}>
             Paramètres
           </NavLink>
+          <NavLink to="/settings/notifications" className={linkClass}>
+            Notifications
+          </NavLink>
           <NavLink to="/templates" className={linkClass}>
             Templates
           </NavLink>
           <NavLink to="/monitoring" className={linkClass}>
             Monitoring
+          </NavLink>
+          <NavLink to="/servers" className={linkClass}>
+            Serveurs
           </NavLink>
           <NavLink to="/vms" className={linkClass}>
             VMs
@@ -57,6 +67,12 @@ export default function Layout() {
           <NavLink to="/ai-cache" className={linkClass}>
             AI Cache
           </NavLink>
+          <NavLink to="/assistant" className={linkClass}>
+            Assistant
+          </NavLink>
+          <NavLink to="/account" className={linkClass}>
+            Mon Profil
+          </NavLink>
         </div>
         <button
           onClick={handleLogout}
@@ -68,6 +84,7 @@ export default function Layout() {
       <main className="p-4">
         <Outlet />
       </main>
+      <ChatbotLauncher />
     </div>
   );
 }

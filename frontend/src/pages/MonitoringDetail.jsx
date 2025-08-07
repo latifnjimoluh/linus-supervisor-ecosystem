@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getMonitoring } from '../api/monitoring';
+import { get } from '../api/servers';
 
 export default function MonitoringDetail() {
   const { id } = useParams();
@@ -11,7 +11,7 @@ export default function MonitoringDetail() {
     const load = async () => {
       setError('');
       try {
-        const res = await getMonitoring(id);
+        const res = await get(id);
         setRecord(res.data);
       } catch (err) {
         const msg = err.response?.data?.message || 'Erreur de chargement';
@@ -25,8 +25,8 @@ export default function MonitoringDetail() {
     return <p>Chargement...</p>;
   }
 
-  const system = record?.system_status || {};
-  const services = record?.services_status?.services || [];
+  const system = record?.system || {};
+  const services = record?.services_status?.services || record?.services || [];
 
   const memTotal = system.memory?.total_kb;
   const memAvail = system.memory?.available_kb;
@@ -40,7 +40,7 @@ export default function MonitoringDetail() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">
-        Monitoring {record?.vm_ip ? `(${record.vm_ip})` : `#${id}`}
+        Monitoring {record?.name ? `(${record.name})` : `#${id}`}
       </h1>
       {error && <p className="text-red-500 mb-2">{error}</p>}
       {record && (
@@ -48,7 +48,7 @@ export default function MonitoringDetail() {
           <section className="bg-white p-4 rounded shadow">
             <h2 className="font-semibold mb-2">Système</h2>
             <p>
-              <strong>IP :</strong> {system.ip_address || record.ip_address}
+              <strong>IP :</strong> {system.ip_address || record.ip}
             </p>
             <p>
               <strong>Charge :</strong> {system.load_average}
@@ -137,4 +137,3 @@ export default function MonitoringDetail() {
     </div>
   );
 }
-

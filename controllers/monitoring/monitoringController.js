@@ -161,6 +161,74 @@ exports.getMonitoringRecordById = async (req, res) => {
   }
 };
 
+// 🌐 Vue d'ensemble du monitoring pour chaque serveur
+exports.getOverview = async (req, res) => {
+  try {
+    const deployments = await Deployment.findAll();
+
+    // Regrouper les services par serveur
+    const serversMap = {};
+    deployments.forEach((d) => {
+      if (!serversMap[d.vm_id]) {
+        serversMap[d.vm_id] = {
+          id: d.vm_id,
+          name: d.vm_name,
+          ip: d.vm_ip,
+          zone: d.zone,
+          services: new Set(),
+        };
+      }
+      if (d.service_name) serversMap[d.vm_id].services.add(d.service_name);
+    });
+
+    // Dernier enregistrement de monitoring par IP
+    const records = await Monitoring.findAll({
+      order: [['vm_ip', 'ASC'], ['retrieved_at', 'DESC']],
+    });
+    const latest = {};
+    records.forEach((rec) => {
+      if (!latest[rec.vm_ip]) latest[rec.vm_ip] = rec;
+    });
+
+    const servers = Object.values(serversMap).map((s) => {
+      const monitor = latest[s.ip];
+      let status = 'unknown';
+      let system = {};
+      let supervised = false;
+      if (monitor) {
+        supervised = true;
+        system = monitor.system_status || {};
+        const services = monitor.services_status?.services || [];
+        const hasAlert = services.some((sv) => sv.active !== 'active');
+        status = hasAlert ? 'alert' : 'active';
+      }
+      return {
+        id: s.id,
+        name: s.name,
+        ip: s.ip,
+        zone: s.zone,
+        services: Array.from(s.services),
+        status,
+        supervised,
+        system,
+      };
+    });
+
+    const summary = {
+      total: servers.length,
+      active: servers.filter((s) => s.status === 'active').length,
+      alert: servers.filter((s) => s.status === 'alert').length,
+      unsupervised: servers.filter((s) => !s.supervised).length,
+    };
+
+    res.json({ summary, servers });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Erreur lors de l'obtention de l'aperçu", error: err.message });
+  }
+};
+
 // 🔁 Mettre à jour l'IP d'une VM dans la table deployments
 exports.syncDeploymentIP = async (req, res) => {
   const { instance_id, vm_ip } = req.body;

@@ -172,6 +172,20 @@ CREATE TABLE monitorings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE alerts (
+  id SERIAL PRIMARY KEY,
+  server VARCHAR(255),
+  service VARCHAR(255),
+  severity VARCHAR(50),
+  status VARCHAR(50) DEFAULT 'en_cours',
+  description VARCHAR(255),
+  comment TEXT,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+
 CREATE TABLE "GeneratedScripts" (
   "id" SERIAL PRIMARY KEY,
   "template_id" INTEGER NOT NULL REFERENCES "ServiceTemplates"(id) ON DELETE CASCADE,
@@ -230,7 +244,14 @@ INSERT INTO permissions (name, description, status) VALUES
   ('vm.start', 'Start VM', 'actif'),
   ('vm.status.check', 'Check VM status', 'actif'),
   ('vm.stop', 'Stop VM', 'actif'),
-  ('vm.delete', 'Delete VM', 'actif');
+  ('vm.delete', 'Delete VM', 'actif'),
+  ('dashboard.view', 'View dashboard data', 'actif'),
+  ('alert.list', 'List alerts', 'actif'),
+  ('alert.update', 'Update alert', 'actif'),
+  ('servers.view', 'View servers', 'actif'),
+  ('servers.add', 'Add server', 'actif'),
+  ('servers.edit', 'Edit server', 'actif'),
+  ('servers.delete', 'Delete server', 'actif');
 
 INSERT INTO assigned_permissions (role_id, permission_id)
 SELECT 1, id FROM permissions;
