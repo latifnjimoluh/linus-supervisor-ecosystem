@@ -6,7 +6,12 @@ import { Home, Server, LayoutDashboard, Users, FileText, Settings, Code, Map, Te
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  isOpen: boolean
+  onClose?: () => void
+}
+
+export function AppSidebar({ isOpen }: AppSidebarProps) {
   const pathname = usePathname()
 
   const navItems = [
@@ -25,8 +30,13 @@ export function AppSidebar() {
   ]
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
-      <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-40 w-16 flex-col border-r bg-background transition-transform duration-300",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}
+    >
+      <nav className="flex flex-col items-center gap-4 px-2 py-5">
         <Link
           href="#"
           className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
