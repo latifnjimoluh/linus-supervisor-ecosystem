@@ -1,20 +1,21 @@
 "use client"
 
 import * as React from "react"
-import { Code, Save, Play, Download, Upload, FileText, Sparkles, Copy, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react'
-import { motion } from "framer-motion"
+import dynamic from "next/dynamic"
+import { useTheme } from "next-themes"
+import { Code, Save, Play, Download, Upload, FileText, Copy, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { cn } from "@/lib/utils"
+
+const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
 interface Script {
   id: string
@@ -144,6 +145,7 @@ ${!hasLogging ? "📝 **Ajouter du logging**\n```bash\nLOG_FILE=\"/var/log/scrip
 }
 
 export default function CodeEditorPage() {
+  const { theme } = useTheme()
   const [selectedScript, setSelectedScript] = React.useState<Script | null>(mockScripts[0])
   const [scriptContent, setScriptContent] = React.useState(mockScripts[0].content)
   const [scriptName, setScriptName] = React.useState(mockScripts[0].name)
@@ -448,12 +450,14 @@ export default function CodeEditorPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="relative">
-                <Textarea
+              <div className="relative rounded-xl overflow-hidden">
+                <MonacoEditor
                   value={scriptContent}
-                  onChange={(e) => handleContentChange(e.target.value)}
-                  className="font-mono text-sm min-h-[400px] resize-none rounded-xl bg-muted/30"
-                  placeholder="Écrivez votre script ici..."
+                  language={selectedScript?.language || "bash"}
+                  onChange={(value) => handleContentChange(value || "")}
+                  height="400px"
+                  theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                  options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true }}
                 />
                 <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
                   {scriptContent.split('\n').length} lignes
