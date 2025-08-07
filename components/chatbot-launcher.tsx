@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Bot, Send, X, Minimize2, MessageCircle, Sparkles } from 'lucide-react'
+import { Bot, Send, X, Minimize2, MessageCircle, Sparkles, Image as ImageIcon, Paperclip, Mic } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,11 +11,18 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { ChatbotModal } from "@/components/chatbot-modal"
 
+interface Attachment {
+  type: "image" | "file" | "audio"
+  url: string
+  name: string
+}
+
 interface ChatMessage {
   id: string
   type: "user" | "bot"
   content: string
   timestamp: Date
+  attachment?: Attachment
 }
 
 interface ChatbotLauncherProps {
@@ -58,6 +65,11 @@ export function ChatbotLauncher({ className }: ChatbotLauncherProps) {
   const { toast } = useToast()
   const scrollAreaRef = React.useRef<HTMLDivElement>(null)
   const [isModalOpen, setIsModalOpen] = React.useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const imageInputRef = React.useRef<HTMLInputElement>(null)
+  const [isRecording, setIsRecording] = React.useState(false)
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null)
+  const recordingChunks = React.useRef<Blob[]>([])
 
   // Auto-scroll to bottom when new messages arrive
   React.useEffect(() => {
@@ -107,6 +119,59 @@ export function ChatbotLauncher({ className }: ChatbotLauncherProps) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSendMessage()
+    }
+  }
+
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: "file" | "image"
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = URL.createObjectURL(file)
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: "user",
+      content: "",
+      timestamp: new Date(),
+      attachment: { type, url, name: file.name }
+    }
+    setMessages(prev => [...prev, userMessage])
+    e.target.value = ""
+  }
+
+  const handleToggleRecording = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop()
+      setIsRecording(false)
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        const recorder = new MediaRecorder(stream)
+        mediaRecorderRef.current = recorder
+        recordingChunks.current = []
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            recordingChunks.current.push(event.data)
+          }
+        }
+        recorder.onstop = () => {
+          const blob = new Blob(recordingChunks.current, { type: 'audio/webm' })
+          const url = URL.createObjectURL(blob)
+          const userMessage: ChatMessage = {
+            id: Date.now().toString(),
+            type: 'user',
+            content: '',
+            timestamp: new Date(),
+            attachment: { type: 'audio', url, name: 'enregistrement.webm' }
+          }
+          setMessages(prev => [...prev, userMessage])
+        }
+        recorder.start()
+        setIsRecording(true)
+      } catch (error) {
+        console.error('Audio recording error:', error)
+      }
     }
   }
 
@@ -211,7 +276,7 @@ export function ChatbotLauncher({ className }: ChatbotLauncherProps) {
                   >
                     <CardContent className="flex-1 p-0 flex flex-col">
                       {/* Messages Area */}
-                      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+                      <ScrollArea className="flex-1 p-4 overflow-y-auto" ref={scrollAreaRef}>
                         <div className="space-y-4">
                           {messages.map((message) => (
                             <div
@@ -223,13 +288,33 @@ export function ChatbotLauncher({ className }: ChatbotLauncherProps) {
                             >
                               <div
                                 className={cn(
-                                  "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
+                                  "max-w-[80%] rounded-2xl px-4 py-2 text-sm break-words",
                                   message.type === "user"
                                     ? "bg-primary text-primary-foreground"
-                                    : "bg-muted text-foreground"
+                                    : "bg-muted text-foreground",
                                 )}
                               >
-                                <div className="whitespace-pre-wrap">{message.content}</div>
+                                {message.attachment ? (
+                                  message.attachment.type === "image" ? (
+                                    <img
+                                      src={message.attachment.url}
+                                      alt={message.attachment.name}
+                                      className="rounded-md max-w-full"
+                                    />
+                                  ) : message.attachment.type === "audio" ? (
+                                    <audio controls src={message.attachment.url} className="w-full" />
+                                  ) : (
+                                    <a
+                                      href={message.attachment.url}
+                                      download={message.attachment.name}
+                                      className="underline"
+                                    >
+                                      {message.attachment.name}
+                                    </a>
+                                  )
+                                ) : (
+                                  <div className="whitespace-pre-wrap break-words">{message.content}</div>
+                                )}
                                 <div className="text-xs opacity-70 mt-1">
                                   {message.timestamp.toLocaleTimeString("fr-FR", {
                                     hour: "2-digit",
@@ -259,7 +344,44 @@ export function ChatbotLauncher({ className }: ChatbotLauncherProps) {
 
                       {/* Input Area */}
                       <div className="p-4 border-t">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-end">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            ref={imageInputRef}
+                            className="hidden"
+                            onChange={(e) => handleFileChange(e, "image")}
+                          />
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            onChange={(e) => handleFileChange(e, "file")}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => imageInputRef.current?.click()}
+                          >
+                            <ImageIcon className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <Paperclip className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={isRecording ? "destructive" : "ghost"}
+                            size="icon"
+                            onClick={handleToggleRecording}
+                          >
+                            <Mic className="h-4 w-4" />
+                          </Button>
                           <Input
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}

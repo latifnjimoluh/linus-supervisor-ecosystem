@@ -2,11 +2,9 @@ import type { Metadata } from "next"
 import { Inter } from 'next/font/google'
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { AppHeader } from "@/components/app-header"
-import { AppSidebar } from "@/components/app-sidebar"
 import { Toaster } from "@/components/ui/toaster"
-import { ChatbotLauncher } from "@/components/chatbot-launcher"
 import { ToastProvider } from "@/hooks/use-toast" // ✅ Ajout
+import { AppLayout } from "@/components/app-layout"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -31,17 +29,10 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <div className="flex min-h-screen w-full flex-col">
-              <AppHeader />
-              <div className="flex flex-1">
-                <AppSidebar />
-                <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-                  {children}
-                </main>
-              </div>
-            </div>
+            <AppLayout>
+              {children}
+            </AppLayout>
             <Toaster />
-            <ChatbotLauncher />
           </ThemeProvider>
         </ToastProvider>
       </body>
