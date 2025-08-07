@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Server, Globe, HardDrive, Network, AlertTriangle, CheckCircle, XCircle, Info, RefreshCw, Plus } from 'lucide-react'
+import { Server, Globe, HardDrive, Network, AlertTriangle, CheckCircle, XCircle, Info, RefreshCw, Plus, Activity, Shield } from 'lucide-react'
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
