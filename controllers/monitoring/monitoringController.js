@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { getRemoteFileContent, getRemoteJSON } = require('../../utils/sshClient');
 const { Monitoring, UserSetting, Deployment } = require('../../models');
+const { Op } = require('sequelize');
 
 exports.collectMonitoringData = async (req, res) => {
   const user = req.user;
@@ -110,10 +111,42 @@ exports.collectMonitoringData = async (req, res) => {
 // 📋 Lister tous les enregistrements de monitoring
 exports.getMonitoringRecords = async (req, res) => {
   try {
-    const records = await Monitoring.findAll({ order: [['retrieved_at', 'DESC']] });
-    res.json(records);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const { q, vm_ip } = req.query;
+
+    const where = {};
+    if (vm_ip) where.vm_ip = vm_ip;
+    if (q) {
+      where[Op.or] = [
+        { vm_ip: { [Op.iLike]: `%${q}%` } },
+        { ip_address: { [Op.iLike]: `%${q}%` } },
+        { instance_id: { [Op.iLike]: `%${q}%` } },
+      ];
+    }
+
+    const { count, rows } = await Monitoring.findAndCountAll({
+      where,
+      order: [['retrieved_at', 'DESC']],
+      limit,
+      offset,
+    });
+
+    res.json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        pages: Math.ceil(count / limit),
+        limit,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Erreur lors de la récupération des données', error: err.message });
+    res.status(500).json({
+      message: 'Erreur lors de la récupération des données',
+      error: err.message,
+    });
   }
 };
 
@@ -125,6 +158,74 @@ exports.getMonitoringRecordById = async (req, res) => {
     res.json(record);
   } catch (err) {
     res.status(500).json({ message: 'Erreur lors de la récupération', error: err.message });
+  }
+};
+
+// 🌐 Vue d'ensemble du monitoring pour chaque serveur
+exports.getOverview = async (req, res) => {
+  try {
+    const deployments = await Deployment.findAll();
+
+    // Regrouper les services par serveur
+    const serversMap = {};
+    deployments.forEach((d) => {
+      if (!serversMap[d.vm_id]) {
+        serversMap[d.vm_id] = {
+          id: d.vm_id,
+          name: d.vm_name,
+          ip: d.vm_ip,
+          zone: d.zone,
+          services: new Set(),
+        };
+      }
+      if (d.service_name) serversMap[d.vm_id].services.add(d.service_name);
+    });
+
+    // Dernier enregistrement de monitoring par IP
+    const records = await Monitoring.findAll({
+      order: [['vm_ip', 'ASC'], ['retrieved_at', 'DESC']],
+    });
+    const latest = {};
+    records.forEach((rec) => {
+      if (!latest[rec.vm_ip]) latest[rec.vm_ip] = rec;
+    });
+
+    const servers = Object.values(serversMap).map((s) => {
+      const monitor = latest[s.ip];
+      let status = 'unknown';
+      let system = {};
+      let supervised = false;
+      if (monitor) {
+        supervised = true;
+        system = monitor.system_status || {};
+        const services = monitor.services_status?.services || [];
+        const hasAlert = services.some((sv) => sv.active !== 'active');
+        status = hasAlert ? 'alert' : 'active';
+      }
+      return {
+        id: s.id,
+        name: s.name,
+        ip: s.ip,
+        zone: s.zone,
+        services: Array.from(s.services),
+        status,
+        supervised,
+        system,
+      };
+    });
+
+    const summary = {
+      total: servers.length,
+      active: servers.filter((s) => s.status === 'active').length,
+      alert: servers.filter((s) => s.status === 'alert').length,
+      unsupervised: servers.filter((s) => !s.supervised).length,
+    };
+
+    res.json({ summary, servers });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Erreur lors de l'obtention de l'aperçu", error: err.message });
   }
 };
 

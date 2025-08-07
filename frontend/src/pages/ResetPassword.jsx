@@ -5,21 +5,29 @@ import { resetPassword } from '../api/auth';
 export default function ResetPassword() {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
+  const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const canSubmit = code.trim() && password && status !== 'loading';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
+    if (!code.trim() || !password) return;
+
+    setStatus('loading');
     try {
       const { data } = await resetPassword(code, password);
       setMessage(data.message || 'Mot de passe modifié');
+      setStatus('success');
       setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
       const msg = err.response?.data?.message || 'Réinitialisation échouée';
       setError(msg);
+      setStatus('error');
     }
   };
 
@@ -52,9 +60,14 @@ export default function ResetPassword() {
         />
         <button
           type="submit"
-          className="w-full bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700"
+          disabled={!canSubmit}
+          className={`w-full text-white p-2 rounded ${
+            !canSubmit
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-indigo-600 hover:bg-indigo-700'
+          }`}
         >
-          Réinitialiser
+          {status === 'loading' ? 'Envoi...' : 'Réinitialiser'}
         </button>
         <p className="text-sm text-center">
           <button

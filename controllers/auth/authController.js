@@ -75,7 +75,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     console.log('🔐 Tentative de connexion:', req.body.email);
-    const { email, password } = req.body;
+    const { email, password, remember } = req.body;
 
     const user = await User.findOne({
       where: { email },
@@ -108,11 +108,14 @@ exports.login = async (req, res) => {
       role_id: user.role_id,
     };
 
-    const token = createToken({
-      id: user.id,
-      email: user.email,
-      role_id: user.role?.id,
-    });
+    const token = createToken(
+      {
+        id: user.id,
+        email: user.email,
+        role_id: user.role?.id,
+      },
+      remember ? '7d' : '24h'
+    );
 
     await logAction(req, 'login', { user_id: user.id });
 
@@ -140,28 +143,35 @@ exports.requestReset = async (req, res) => {
     const { email } = req.body;
     if (!email) {
       console.log('❌ Email requis');
-      return res.status(400).json({ message: 'Email requis' });
+      return res.status(400).json({ message: "L'adresse e-mail est requise" });
+    }
+
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (!emailRegex.test(email)) {
+      console.log('❌ Format email invalide');
+      return res.status(400).json({ message: "Format d'e-mail incorrect" });
     }
 
     const user = await User.findOne({ where: { email } });
-    if (!user) {
-      console.log('❌ Utilisateur introuvable');
-      return res.status(404).json({ message: 'Utilisateur introuvable' });
+
+    if (user) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expires = new Date(Date.now() + 15 * 60 * 1000);
+
+      user.reset_token = code;
+      user.reset_expires_at = expires;
+      await user.save();
+
+      await sendResetCode(email, code);
+
+      req.user = { id: user.id };
+      await logAction(req, 'request_reset_code', { user_id: user.id });
     }
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = new Date(Date.now() + 15 * 60 * 1000);
-
-    user.reset_token = code;
-    user.reset_expires_at = expires;
-    await user.save();
-
-    await sendResetCode(email, code);
-
-    req.user = { id: user.id };
-    await logAction(req, 'request_reset_code', { user_id: user.id });
-
-    res.json({ message: 'Code envoyé par email' });
+    res.json({
+      message:
+        "Si un compte est associé, un lien a été envoyé à votre adresse e-mail.",
+    });
   } catch (error) {
     console.error('🔥 Erreur requestReset:', error);
     res.status(500).json({ message: 'Erreur serveur.' });
@@ -205,6 +215,49 @@ exports.resetPassword = async (req, res) => {
   } catch (error) {
     console.error('🔥 Erreur resetPassword:', error);
     res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+exports.getMe = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      include: [{ model: Role, as: 'role' }],
+    });
+    if (!user) return res.status(404).json({ message: 'Utilisateur introuvable' });
+    res.json({
+      id: user.id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      role: user.role?.name,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur lors de la récupération du profil', error: err.message });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Champs requis' });
+    }
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ message: 'Le nouveau mot de passe doit être différent' });
+    }
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Utilisateur introuvable' });
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) {
+      return res.status(400).json({ message: 'Mot de passe actuel invalide' });
+    }
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    await user.save();
+    await logAction(req, 'change_password', { user_id: user.id });
+    res.json({ message: 'Mot de passe mis à jour' });
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur lors du changement de mot de passe', error: err.message });
   }
 };
 

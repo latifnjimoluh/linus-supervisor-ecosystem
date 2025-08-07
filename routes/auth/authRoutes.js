@@ -26,6 +26,16 @@ router.post('/reset-password', logRequest, (req, res, next) => {
   next();
 }, authController.resetPassword);
 
+router.get('/me', verifyToken, logRequest, (req, res, next) => {
+  console.log('➡️ [Route] GET /auth/me');
+  next();
+}, authController.getMe);
+
+router.post('/change-password', verifyToken, logRequest, (req, res, next) => {
+  console.log('➡️ [Route] POST /auth/change-password');
+  next();
+}, authController.changePassword);
+
 router.get('/reset-history', verifyToken, checkPermission('auth.reset-history'), logRequest, (req, res, next) => {
   console.log('➡️ [Route] GET /auth/reset-history');
   next();

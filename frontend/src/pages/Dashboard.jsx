@@ -1,130 +1,138 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { listUsers } from '../api/users';
-import { listRoles } from '../api/roles';
-import { listPermissions } from '../api/permissions';
-import { getLogs } from '../api/logs';
-import { listTemplates } from '../api/templates';
-import { listVms } from '../api/vms';
-import { listMonitoring } from '../api/monitoring';
+import { getDashboardSummary, listServers } from '../api/dashboard';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    users: 0,
-    roles: 0,
-    permissions: 0,
-    logs: 0,
-    templates: 0,
-    vms: 0,
-    monitoring: 0,
+  const [summary, setSummary] = useState({
+    totalServers: 0,
+    totalServices: 0,
+    serversInAlert: 0,
+    supervisedPercentage: 0,
   });
+  const [servers, setServers] = useState([]);
 
   useEffect(() => {
-    async function fetchStats() {
+    async function fetchData() {
       try {
-        const [u, r, p, l, t, v, m] = await Promise.all([
-          listUsers(),
-          listRoles(),
-          listPermissions(),
-          getLogs(),
-          listTemplates(),
-          listVms(),
-          listMonitoring(),
+        const [s, srv] = await Promise.all([
+          getDashboardSummary(),
+          listServers(),
         ]);
-
-        const extractCount = (res) => {
-          const data = res.data;
-          if (Array.isArray(data)) return data.length;
-          if (Array.isArray(data?.data)) return data.data.length;
-          return 0;
-        };
-
-        setStats({
-          users: extractCount(u),
-          roles: extractCount(r),
-          permissions: extractCount(p),
-          logs: extractCount(l),
-          templates: extractCount(t),
-          vms: extractCount(v),
-          monitoring: extractCount(m),
-        });
+        setSummary(s.data);
+        setServers(srv.data);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error(err);
       }
     }
-
-    fetchStats();
+    fetchData();
   }, []);
 
-  const statItems = [
-    { label: 'Utilisateurs', value: stats.users },
-    { label: 'Rôles', value: stats.roles },
-    { label: 'Permissions', value: stats.permissions },
-    { label: 'Logs', value: stats.logs },
-    { label: 'Templates', value: stats.templates },
-    { label: 'VMs', value: stats.vms },
-    { label: 'Monitoring', value: stats.monitoring },
-  ];
-
-  const links = [
-    {
-      to: '/users',
-      title: 'Utilisateurs',
-      desc: 'Créer, rechercher et modifier les comptes.',
-    },
-    {
-      to: '/roles',
-      title: 'Rôles',
-      desc: 'Définir les rôles et leurs permissions.',
-    },
-    {
-      to: '/permissions',
-      title: 'Permissions',
-      desc: 'Attribuer ou retirer les accès.',
-    },
-    { to: '/vms', title: 'Machines virtuelles', desc: 'Contrôler les VMs Proxmox.' },
-    { to: '/templates', title: 'Templates', desc: 'Générer ou auditer des scripts.' },
-    {
-      to: '/monitoring',
-      title: 'Monitoring',
-      desc: 'Collecter et consulter les métriques.',
-    },
-    { to: '/logs', title: 'Logs', desc: "Analyser l'activité du système." },
-    {
-      to: '/terraform',
-      title: 'Terraform',
-      desc: 'Déployer des infrastructures.',
-    },
-    { to: '/ai-tools', title: 'Outils IA', desc: 'Expliquer, analyser et simuler.' },
-    { to: '/ai-cache', title: 'Cache IA', desc: 'Gérer les réponses générées.' },
-    { to: '/settings', title: 'Paramètres', desc: 'Configurer vos informations Proxmox.' },
-  ];
+  const alertServers = servers.filter((s) => s.status === 'alert');
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Tableau de bord</h1>
 
       <div className="grid gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-4">
-        {statItems.map((s) => (
-          <div key={s.label} className="p-4 bg-white rounded shadow">
-            <p className="text-sm text-gray-500">{s.label}</p>
-            <p className="text-2xl font-semibold">{s.value}</p>
-          </div>
-        ))}
+        <div className="p-4 bg-white rounded shadow">
+          <p className="text-sm text-gray-500">Serveurs</p>
+          <p className="text-2xl font-semibold">{summary.totalServers}</p>
+        </div>
+        <div className="p-4 bg-white rounded shadow">
+          <p className="text-sm text-gray-500">Services déployés</p>
+          <p className="text-2xl font-semibold">{summary.totalServices}</p>
+        </div>
+        <div className="p-4 bg-white rounded shadow">
+          <p className="text-sm text-gray-500">Serveurs en alerte</p>
+          <p className="text-2xl font-semibold">{summary.serversInAlert}</p>
+        </div>
+        <div className="p-4 bg-white rounded shadow">
+          <p className="text-sm text-gray-500">Supervision active</p>
+          <p className="text-2xl font-semibold">{summary.supervisedPercentage}%</p>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {links.map((link) => (
-          <Link
-            key={link.to}
-            to={link.to}
-            className="p-6 bg-white rounded shadow hover:shadow-md transition-shadow"
-          >
-            <h2 className="text-xl font-semibold mb-2">{link.title}</h2>
-            <p className="text-gray-600">{link.desc}</p>
-          </Link>
-        ))}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">Serveurs</h2>
+        {servers.length === 0 ? (
+          <div className="p-6 bg-white rounded shadow text-center">
+            <p className="mb-4">Aucun serveur enregistré</p>
+            <Link className="text-blue-600" to="/terraform">Créer un premier serveur</Link>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white rounded shadow">
+              <thead>
+                <tr className="text-left">
+                  <th className="p-2">Nom</th>
+                  <th className="p-2">IP</th>
+                  <th className="p-2">Zone</th>
+                  <th className="p-2">Services</th>
+                  <th className="p-2">Supervision</th>
+                  <th className="p-2">Statut</th>
+                  <th className="p-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {servers.map((s) => (
+                  <tr key={s.id} className="border-t">
+                    <td className="p-2 text-blue-600 underline">
+                      <Link to={`/monitoring?vm_ip=${s.ip}`}>{s.name}</Link>
+                    </td>
+                    <td className="p-2">{s.ip}</td>
+                    <td className="p-2">{s.zone || '-'}</td>
+                    <td className="p-2">{s.services.join(', ')}</td>
+                    <td className="p-2">{s.supervised ? '🟢 oui' : '🔴 non'}</td>
+                    <td className="p-2">
+                      {s.status === 'active' && <span className="text-green-600">🟢 Actif</span>}
+                      {s.status === 'alert' && <span className="text-red-600">🔴 Alerte</span>}
+                      {s.status === 'unknown' && <span className="text-gray-600">🟡 Inconnu</span>}
+                    </td>
+                    <td className="p-2 space-x-2">
+                      <Link to={`/monitoring?vm_ip=${s.ip}`} title="Voir">🔍</Link>
+                      <Link to={`/configure/${s.id}`} title="Configurer">⚙️</Link>
+                      <Link to={`/deploy/${s.id}`} title="Déployer">🚀</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {alertServers.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Alertes récentes</h2>
+          <ul className="bg-white rounded shadow">
+            {alertServers.map((s) => (
+              <li key={s.id} className="p-2 border-t first:border-t-0">
+                <Link to={`/monitoring?vm_ip=${s.ip}`} className="text-red-600">
+                  {s.name} - {s.ip}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Link to="/vms" className="p-4 bg-white rounded shadow text-center">
+          ➕ Ajouter un serveur
+        </Link>
+        <Link to="/templates" className="p-4 bg-white rounded shadow text-center">
+          ⚙️ Configurer un service
+        </Link>
+        <Link to="/terraform" className="p-4 bg-white rounded shadow text-center">
+          🚀 Lancer un déploiement
+        </Link>
+        <Link to="/monitoring" className="p-4 bg-white rounded shadow text-center">
+          📊 Voir supervision globale
+        </Link>
+        <Link to="/dashboard/map" className="p-4 bg-white rounded shadow text-center">
+          🌐 Vue carte
+        </Link>
       </div>
     </div>
   );
