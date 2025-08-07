@@ -1,29 +1,38 @@
 # Suggestions d'amélioration
 
-Ce document liste plusieurs pistes pour améliorer la plateforme **Linusupervisor** et la qualité du code, côté backend et frontend.
+Ce document regroupe des pistes pour renforcer la plateforme **Linusupervisor** et faciliter sa maintenance.
 
-## Général
-- Mettre en place une **intégration continue** (GitHub Actions, GitLab CI, etc.) pour exécuter lint, tests et build automatiquement à chaque commit.
-- Harmoniser les styles de code avec des outils comme **ESLint** et **Prettier**, et ajouter une configuration commune pour le backend et le frontend.
-- Envisager une migration progressive vers **TypeScript** afin de profiter du typage statique et d'une meilleure maintenance.
+## Architecture générale
+- Structurer le dépôt en monorepo (npm workspaces, pnpm) afin de partager les dépendances et les scripts entre backend et frontend.
+- Documenter clairement l'arborescence et le flux de déploiement pour que les nouveaux contributeurs s'orientent rapidement.
+
+## Qualité du code
+- Ajouter une configuration ESLint + Prettier commune et un script `lint` exécuté en CI.
+- Utiliser Husky/lint-staged pour exécuter les vérifications avant chaque commit.
+- Introduire progressivement TypeScript pour bénéficier du typage et d'une meilleure documentation du code.
 
 ## Backend
-- Le script `npm test` retourne actuellement une erreur car aucun test n'est défini ; ajouter une base de **tests unitaires** (Jest, Mocha) et éventuellement des tests d'intégration pour les routes principales.
-- Centraliser la **gestion des erreurs** avec un middleware dédié et remplacer les `console.log` par un logger (Winston, Pino) configurable selon l'environnement.
-- Utiliser une bibliothèque de **validation de données** (Joi, Zod) pour vérifier systématiquement les entrées utilisateur dans les contrôleurs.
-- Séparer davantage la logique métier et l'accès aux données en introduisant un **layer de services** ou de repositories afin de limiter la duplication dans les contrôleurs.
-- Documenter les variables d'environnement attendues et fournir un fichier `README` spécifique au backend.
+- Couvrir les services, contrôleurs et middlewares par des tests unitaires et d'intégration (Jest, supertest).
+- Remplacer les `console.log` par un logger (Winston, Pino) avec niveaux paramétrables selon l'environnement.
+- Centraliser la gestion des erreurs via un middleware et des classes d'erreur dédiées.
+- Valider systématiquement les entrées utilisateur (Joi, Zod) et isoler la logique métier dans un layer de services/repositories.
+- Ajouter des migrations et des seeds versionnées pour la base de données.
 
 ## Frontend
-- Le test script affiche "No tests" : ajouter des **tests unitaires** (Jest, React Testing Library) et des tests end-to-end (Playwright, Cypress).
-- Continuer la conversion des anciennes pages React Router en **composants App Router** natifs et retirer les wrappers transitoires.
-- Centraliser les appels API avec une solution de **gestion de requêtes** (React Query, SWR) pour profiter du cache et d'un meilleur état de chargement/erreur.
-- Mutualiser l'état d'authentification (ex : context ou middleware Next.js) plutôt que d'accéder directement à `localStorage` dans `layout.jsx`.
-- Ajouter des **tests de performance** et optimiser le bundle via l'analyseur `next-bundle-analyzer`.
+- Finaliser la migration vers l'App Router de Next.js et supprimer les reliquats de React Router.
+- Centraliser les appels API avec React Query/SWR pour bénéficier du cache et d'un suivi d'état standardisé.
+- Mutualiser l'état d'authentification via un contexte ou des middleware Next.js plutôt que d'accéder directement à `localStorage`.
+- Écrire des tests unitaires (Jest, React Testing Library) et des tests end-to-end (Playwright, Cypress).
+- Mettre en place une analyse de bundle (`next-bundle-analyzer`) et suivre les métriques Core Web Vitals.
 
-## DevOps & Sécurité
-- Paramétrer des **environnements de staging** afin de valider les déploiements avant la mise en production.
-- Mettre en place une **vérification automatique des dépendances** (npm audit, Dependabot) pour surveiller les vulnérabilités.
-- Ajouter des politiques de **CORS** et de sécurité plus fines (ex: Helmet, rate limiting) et auditer régulièrement l'authentification JWT.
+## Observabilité & sécurité
+- Intégrer des outils de surveillance (Sentry, Prometheus/Grafana) pour suivre les erreurs et la performance.
+- Renforcer les protections CORS, ajouter Helmet et un rate limiter.
+- Auditer régulièrement les dépendances (npm audit, Dependabot) et les permissions JWT.
 
-Ces améliorations permettront d'augmenter la robustesse, la maintenabilité et la sécurité de la plateforme.
+## DevOps
+- Créer un environnement de staging pour valider les déploiements.
+- Automatiser les builds et tests via une pipeline CI/CD complète.
+- Préparer des scripts de déploiement containerisés (Docker, docker-compose ou Kubernetes).
+
+Ces améliorations accroîtront la robustesse, la sécurité et la maintenabilité de la plateforme.
