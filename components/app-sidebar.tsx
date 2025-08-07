@@ -33,63 +33,62 @@ interface NavItem {
   children?: { label: string; href: string; icon: LucideIcon }[]
 }
 
+const navItems: NavItem[] = [
+  {
+    label: "Tableau de bord",
+    icon: LayoutDashboard,
+    children: [
+      { href: "/dashboard", icon: LayoutDashboard, label: "Vue d'ensemble" },
+      { href: "/dashboard/map", icon: Map, label: "Carte Infra" },
+    ],
+  },
+  {
+    label: "Supervision",
+    icon: Activity,
+    children: [{ href: "/monitoring", icon: Activity, label: "Monitoring" }],
+  },
+  {
+    label: "Déploiement",
+    icon: Server,
+    children: [{ href: "/deploy", icon: Server, label: "Déployer" }],
+  },
+  {
+    label: "Scripts & Templates",
+    icon: Code,
+    children: [{ href: "/templates", icon: Code, label: "Liste" }],
+  },
+  {
+    label: "Utilisateurs",
+    icon: Users,
+    children: [
+      { href: "/users", icon: Users, label: "Utilisateurs" },
+      { href: "/users/roles", icon: Shield, label: "Rôles" },
+      { href: "/users/permissions", icon: Key, label: "Permissions" },
+    ],
+  },
+  {
+    label: "Logs",
+    icon: FileText,
+    children: [{ href: "/logs", icon: FileText, label: "Logs" }],
+  },
+  {
+    label: "Terminal",
+    icon: Terminal,
+    children: [{ href: "/terminal", icon: Terminal, label: "Terminal" }],
+  },
+  {
+    label: "Éditeur de code",
+    icon: Edit,
+    children: [{ href: "/editor", icon: Edit, label: "Éditeur" }],
+  },
+  {
+    label: "Paramètres",
+    icon: Settings,
+    children: [{ href: "/settings", icon: Settings, label: "Paramètres" }],
+  },
+]
 export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
   const pathname = usePathname()
-
-  const navItems: NavItem[] = [
-    {
-      label: "Tableau de bord",
-      icon: LayoutDashboard,
-      children: [
-        { href: "/dashboard", icon: LayoutDashboard, label: "Vue d'ensemble" },
-        { href: "/dashboard/map", icon: Map, label: "Carte Infra" },
-      ],
-    },
-    {
-      label: "Supervision",
-      icon: Activity,
-      children: [{ href: "/monitoring", icon: Activity, label: "Monitoring" }],
-    },
-    {
-      label: "Déploiement",
-      icon: Server,
-      children: [{ href: "/deploy", icon: Server, label: "Déployer" }],
-    },
-    {
-      label: "Scripts & Templates",
-      icon: Code,
-      children: [{ href: "/templates", icon: Code, label: "Liste" }],
-    },
-    {
-      label: "Utilisateurs",
-      icon: Users,
-      children: [
-        { href: "/users", icon: Users, label: "Utilisateurs" },
-        { href: "/users/roles", icon: Shield, label: "Rôles" },
-        { href: "/users/permissions", icon: Key, label: "Permissions" },
-      ],
-    },
-    {
-      label: "Logs",
-      icon: FileText,
-      children: [{ href: "/logs", icon: FileText, label: "Logs" }],
-    },
-    {
-      label: "Terminal",
-      icon: Terminal,
-      children: [{ href: "/terminal", icon: Terminal, label: "Terminal" }],
-    },
-    {
-      label: "Éditeur de code",
-      icon: Edit,
-      children: [{ href: "/editor", icon: Edit, label: "Éditeur" }],
-    },
-    {
-      label: "Paramètres",
-      icon: Settings,
-      children: [{ href: "/settings", icon: Settings, label: "Paramètres" }],
-    },
-  ]
 
   return (
     <aside
@@ -99,7 +98,7 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
       )}
     >
       <div className="flex h-16 items-center justify-between border-b px-4">
-        <Link href="#" className="flex items-center gap-2 text-lg font-semibold">
+        <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
           LS
           <span className="sr-only">LinuSupervisor</span>
         </Link>
@@ -138,3 +137,4 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
     </aside>
   )
 }
+

@@ -14,48 +14,48 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast"
 
 interface Role {
-  id: number // Changed to number
+  id: number
   name: string
   description: string
-  userCount: number
-  isSystem: boolean
-  createdAt: string
+  user_count: number
+  is_system: boolean
+  created_at: string
 }
 
 // Mock data for roles
 const generateMockRoles = (): Role[] => {
   return [
     {
-      id: 1, // Numeric ID
+      id: 1,
       name: "admin",
       description: "Accès complet à toutes les fonctionnalités de la plateforme",
-      userCount: 2,
-      isSystem: true,
-      createdAt: "2024-01-01T00:00:00Z",
+      user_count: 2,
+      is_system: true,
+      created_at: "2024-01-01T00:00:00Z",
     },
     {
-      id: 2, // Numeric ID
+      id: 2,
       name: "technicien",
       description: "Gestion des VMs, déploiements et supervision technique",
-      userCount: 4,
-      isSystem: true,
-      createdAt: "2024-01-01T00:00:00Z",
+      user_count: 4,
+      is_system: true,
+      created_at: "2024-01-01T00:00:00Z",
     },
     {
-      id: 3, // Numeric ID
+      id: 3,
       name: "auditeur",
       description: "Consultation des logs, rapports et données de supervision",
-      userCount: 3,
-      isSystem: true,
-      createdAt: "2024-01-01T00:00:00Z",
+      user_count: 3,
+      is_system: true,
+      created_at: "2024-01-01T00:00:00Z",
     },
     {
-      id: 4, // Numeric ID
+      id: 4,
       name: "visiteur",
       description: "Accès en lecture seule aux tableaux de bord",
-      userCount: 0,
-      isSystem: false,
-      createdAt: "2024-06-15T10:30:00Z",
+      user_count: 0,
+      is_system: false,
+      created_at: "2024-06-15T10:30:00Z",
     },
   ]
 }
@@ -113,12 +113,12 @@ export default function RolesPage() {
       await new Promise(resolve => setTimeout(resolve, 1500))
 
       const newRole: Role = {
-        id: roles.length > 0 ? Math.max(...roles.map(r => r.id)) + 1 : 1, // Generate new numeric ID
+        id: roles.length > 0 ? Math.max(...roles.map(r => r.id)) + 1 : 1,
         name: formData.name,
         description: formData.description,
-        userCount: 0,
-        isSystem: false,
-        createdAt: new Date().toISOString(),
+        user_count: 0,
+        is_system: false,
+        created_at: new Date().toISOString(),
       }
 
       setRoles(prev => [...prev, newRole])
@@ -313,7 +313,7 @@ export default function RolesPage() {
                       {role.name}
                     </CardTitle>
                     <div className="flex items-center gap-2">
-                      {role.isSystem && (
+                      {role.is_system && (
                         <Badge variant="outline" className="text-xs">
                           <Lock className="mr-1 h-3 w-3" />
                           Système
@@ -321,7 +321,7 @@ export default function RolesPage() {
                       )}
                       <Badge variant="secondary" className="text-xs">
                         <Users className="mr-1 h-3 w-3" />
-                        {role.userCount}
+                        {role.user_count}
                       </Badge>
                     </div>
                   </div>
@@ -330,7 +330,7 @@ export default function RolesPage() {
                   <p className="text-sm text-muted-foreground">{role.description}</p>
                   
                   <div className="text-xs text-muted-foreground">
-                    Créé le {new Date(role.createdAt).toLocaleDateString("fr-FR")}
+                    Créé le {new Date(role.created_at).toLocaleDateString("fr-FR")}
                   </div>
 
                   <div className="flex gap-2 pt-2 border-t">
@@ -339,7 +339,7 @@ export default function RolesPage() {
                       size="sm"
                       className="flex-1 rounded-xl"
                       onClick={() => openEditDialog(role)}
-                      disabled={role.isSystem}
+                      disabled={role.is_system}
                     >
                       <Edit className="mr-2 h-4 w-4" />
                       Modifier
@@ -350,7 +350,7 @@ export default function RolesPage() {
                           variant="destructive"
                           size="sm"
                           className="rounded-xl"
-                          disabled={role.isSystem || role.userCount > 0}
+                          disabled={role.is_system || role.user_count > 0}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -375,9 +375,9 @@ export default function RolesPage() {
                     </AlertDialog>
                   </div>
 
-                  {role.userCount > 0 && (
+                  {role.user_count > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      ⚠️ Ce rôle ne peut pas être supprimé car il est utilisé par {role.userCount} utilisateur(s)
+                      ⚠️ Ce rôle ne peut pas être supprimé car il est utilisé par {role.user_count} utilisateur(s)
                     </p>
                   )}
                 </CardContent>

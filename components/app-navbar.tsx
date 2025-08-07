@@ -13,10 +13,11 @@ import { logout } from "@/actions/auth"
 
 interface AppNavbarProps {
   user?: {
-    id: string
+    id: number
     email: string
-    role_id: string
-    name: string
+    role_id: number
+    first_name: string
+    last_name: string
     avatar: string
   }
 }
@@ -28,29 +29,33 @@ export function AppNavbar({ user }: AppNavbarProps) {
 
   // Use user data if provided, otherwise fallback to mock
   const currentUser = user || {
-    name: "Jean Dupont",
+    first_name: "Jean",
+    last_name: "Dupont",
     email: "admin@example.com",
-    role_id: "admin",
-    avatar: "/placeholder-user.jpg"
+    role_id: 1,
+    avatar: "/placeholder-user.jpg",
+    id: 1,
   }
 
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case "admin": return "destructive"
-      case "technicien": return "warning"
-      case "auditeur": return "info"
+  const getRoleBadgeVariant = (roleId: number) => {
+    switch (roleId) {
+      case 1: return "destructive"
+      case 2: return "warning"
+      case 3: return "info"
       default: return "default"
     }
   }
 
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case "admin": return "Administrateur"
-      case "technicien": return "Technicien"
-      case "auditeur": return "Auditeur"
-      default: return role
+  const getRoleLabel = (roleId: number) => {
+    switch (roleId) {
+      case 1: return "Administrateur"
+      case 2: return "Technicien"
+      case 3: return "Auditeur"
+      default: return "Inconnu"
     }
   }
+
+  const displayName = `${currentUser.first_name} ${currentUser.last_name}`
 
   return (
     <header className="flex justify-between items-center h-16 px-4 border-b bg-background">
@@ -75,14 +80,14 @@ export function AppNavbar({ user }: AppNavbarProps) {
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={currentUser.avatar || "/placeholder.svg"} alt="User Avatar" />
-                <AvatarFallback>{currentUser.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                <AvatarFallback>{currentUser.first_name[0]}{currentUser.last_name[0]}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{currentUser.name}</p>
+                <p className="text-sm font-medium leading-none">{displayName}</p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {currentUser.email}
                 </p>

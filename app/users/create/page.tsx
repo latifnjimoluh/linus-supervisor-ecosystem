@@ -12,11 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 
 interface CreateUserForm {
-  firstName: string
-  lastName: string
+  first_name: string
+  last_name: string
   email: string
   password: string
-  role_id: number // Changed to role_id
+  role_id: number
 }
 
 // Mock roles for the select dropdown
@@ -31,22 +31,22 @@ export default function CreateUserPage() {
   const { toast } = useToast()
   const [loading, setLoading] = React.useState(false)
   const [formData, setFormData] = React.useState<CreateUserForm>({
-    firstName: "",
-    lastName: "",
+    first_name: "",
+    last_name: "",
     email: "",
     password: "",
-    role_id: 0, // Default to 0 or a sensible default ID
+    role_id: 0,
   })
   const [errors, setErrors] = React.useState<Partial<CreateUserForm>>({})
 
   const validateForm = (): boolean => {
     const newErrors: Partial<CreateUserForm> = {}
 
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = "Le prénom est requis"
+    if (!formData.first_name.trim()) {
+      newErrors.first_name = "Le prénom est requis"
     }
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "Le nom est requis"
+    if (!formData.last_name.trim()) {
+      newErrors.last_name = "Le nom est requis"
     }
     if (!formData.email.trim()) {
       newErrors.email = "L'email est requis"
@@ -58,7 +58,7 @@ export default function CreateUserPage() {
     } else if (formData.password.length < 8) {
       newErrors.password = "Le mot de passe doit contenir au moins 8 caractères"
     }
-    if (!formData.role_id) { // Check for role_id
+    if (!formData.role_id) {
       newErrors.role_id = "Le rôle est requis"
     }
 
@@ -78,14 +78,7 @@ export default function CreateUserPage() {
     try {
       // Simulate API call with the new payload structure
       // Example payload: { first_name: "Jane", last_name: "Doe", email: "jane@example.com", password: "secret", role_id: 2 }
-      const payload = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        email: formData.email,
-        password: formData.password,
-        role_id: formData.role_id,
-      };
-      console.log("Sending payload:", payload);
+      console.log("Sending payload:", formData);
 
       await new Promise(resolve => setTimeout(resolve, 2000))
       
@@ -102,7 +95,7 @@ export default function CreateUserPage() {
 
       toast({
         title: "Utilisateur créé",
-        description: `Le compte de ${formData.firstName} ${formData.lastName} a été créé avec succès`,
+        description: `Le compte de ${formData.first_name} ${formData.last_name} a été créé avec succès`,
         variant: "success",
       })
 
@@ -124,7 +117,6 @@ export default function CreateUserPage() {
 
   const handleInputChange = (field: keyof CreateUserForm, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }))
     }
@@ -156,29 +148,29 @@ export default function CreateUserPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">Prénom *</Label>
+                  <Label htmlFor="first_name">Prénom *</Label>
                   <Input
-                    id="firstName"
-                    value={formData.firstName}
-                    onChange={(e) => handleInputChange("firstName", e.target.value)}
-                    className={`rounded-xl ${errors.firstName ? "border-destructive" : ""}`}
+                    id="first_name"
+                    value={formData.first_name}
+                    onChange={(e) => handleInputChange("first_name", e.target.value)}
+                    className={`rounded-xl ${errors.first_name ? "border-destructive" : ""}`}
                     placeholder="Jean"
                   />
-                  {errors.firstName && (
-                    <p className="text-sm text-destructive">{errors.firstName}</p>
+                  {errors.first_name && (
+                    <p className="text-sm text-destructive">{errors.first_name}</p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Nom *</Label>
+                  <Label htmlFor="last_name">Nom *</Label>
                   <Input
-                    id="lastName"
-                    value={formData.lastName}
-                    onChange={(e) => handleInputChange("lastName", e.target.value)}
-                    className={`rounded-xl ${errors.lastName ? "border-destructive" : ""}`}
+                    id="last_name"
+                    value={formData.last_name}
+                    onChange={(e) => handleInputChange("last_name", e.target.value)}
+                    className={`rounded-xl ${errors.last_name ? "border-destructive" : ""}`}
                     placeholder="Dupont"
                   />
-                  {errors.lastName && (
-                    <p className="text-sm text-destructive">{errors.lastName}</p>
+                  {errors.last_name && (
+                    <p className="text-sm text-destructive">{errors.last_name}</p>
                   )}
                 </div>
               </div>

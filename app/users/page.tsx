@@ -14,14 +14,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast"
 
 interface UserAccount {
-  id: string
-  firstName: string
-  lastName: string
+  id: number
+  first_name: string
+  last_name: string
   email: string
-  role_id: number // Changed to role_id
+  role_id: number
   status: "active" | "inactive"
-  createdAt: string
-  lastLogin?: string
+  created_at: string
+  last_login?: string
   avatar?: string
 }
 
@@ -35,23 +35,23 @@ const mockRoles = [
 // Mock data generator for users
 const generateMockUsers = (): UserAccount[] => {
   const users = [
-    { firstName: "Jean", lastName: "Dupont", email: "admin@example.com", role_id: 1 },
-    { firstName: "Marie", lastName: "Martin", email: "tech@example.com", role_id: 2 },
-    { firstName: "Pierre", lastName: "Durand", email: "auditor@example.com", role_id: 3 },
-    { firstName: "Sophie", lastName: "Bernard", email: "sophie.bernard@example.com", role_id: 2 },
-    { firstName: "Lucas", lastName: "Moreau", email: "lucas.moreau@example.com", role_id: 3 },
-    { firstName: "Emma", lastName: "Leroy", email: "emma.leroy@example.com", role_id: 2 },
-    { firstName: "Thomas", lastName: "Roux", email: "thomas.roux@example.com", role_id: 1 },
-    { firstName: "Camille", lastName: "Fournier", email: "camille.fournier@example.com", role_id: 3 },
+    { first_name: "Jean", last_name: "Dupont", email: "admin@example.com", role_id: 1 },
+    { first_name: "Marie", last_name: "Martin", email: "tech@example.com", role_id: 2 },
+    { first_name: "Pierre", last_name: "Durand", email: "auditor@example.com", role_id: 3 },
+    { first_name: "Sophie", last_name: "Bernard", email: "sophie.bernard@example.com", role_id: 2 },
+    { first_name: "Lucas", last_name: "Moreau", email: "lucas.moreau@example.com", role_id: 3 },
+    { first_name: "Emma", last_name: "Leroy", email: "emma.leroy@example.com", role_id: 2 },
+    { first_name: "Thomas", last_name: "Roux", email: "thomas.roux@example.com", role_id: 1 },
+    { first_name: "Camille", last_name: "Fournier", email: "camille.fournier@example.com", role_id: 3 },
   ]
 
   return users.map((user, index) => ({
-    id: `user-${String(index + 1).padStart(3, '0')}`,
+    id: index + 1,
     ...user,
     status: Math.random() > 0.1 ? "active" as const : "inactive" as const,
-    createdAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-    lastLogin: Math.random() > 0.2 ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
-    avatar: `/placeholder.svg?height=40&width=40&text=${user.firstName[0]}${user.lastName[0]}`,
+    created_at: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
+    last_login: Math.random() > 0.2 ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
+    avatar: `/placeholder.svg?height=40&width=40&text=${user.first_name[0]}${user.last_name[0]}`,
   }))
 }
 
@@ -77,15 +77,15 @@ export default function UsersPage() {
   }, [fetchUsers])
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesRole = roleFilter === "all" || user.role_id === parseInt(roleFilter)
     const matchesStatus = statusFilter === "all" || user.status === statusFilter
     return matchesSearch && matchesRole && matchesStatus
   })
 
-  const handleUserAction = async (action: string, userId: string, userEmail: string) => {
+  const handleUserAction = async (action: string, userId: number, userEmail: string) => {
     setActionLoading(`${action}-${userId}`)
     
     // Simulate API call
@@ -272,12 +272,12 @@ export default function UsersPage() {
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                       <span className="text-sm font-medium">
-                        {user.firstName[0]}{user.lastName[0]}
+                        {user.first_name[0]}{user.last_name[0]}
                       </span>
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-medium">{user.firstName} {user.lastName}</h4>
+                        <h4 className="font-medium">{user.first_name} {user.last_name}</h4>
                         <Badge variant={user.status === "active" ? "success" : "warning"} className="text-xs">
                           {user.status === "active" ? "Actif" : "Inactif"}
                         </Badge>
@@ -292,10 +292,10 @@ export default function UsersPage() {
                         </Badge>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Créé le {new Date(user.createdAt).toLocaleDateString("fr-FR")}
-                        {user.lastLogin && (
+                        Créé le {new Date(user.created_at).toLocaleDateString("fr-FR")}
+                        {user.last_login && (
                           <span className="ml-4">
-                            Dernière connexion: {new Date(user.lastLogin).toLocaleDateString("fr-FR")}
+                            Dernière connexion: {new Date(user.last_login).toLocaleDateString("fr-FR")}
                           </span>
                         )}
                       </div>
@@ -345,7 +345,7 @@ export default function UsersPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Supprimer l'utilisateur</AlertDialogTitle>
                           <AlertDialogDescription>
-                            ⚠️ Cette action est irréversible ! L'utilisateur "{user.firstName} {user.lastName}" ({user.email}) sera définitivement supprimé.
+                            ⚠️ Cette action est irréversible ! L'utilisateur "{user.first_name} {user.last_name}" ({user.email}) sera définitivement supprimé.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

@@ -3,42 +3,56 @@
 import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
 
-// Simulate a user database with more realistic data
-const users = [
-  { 
-    id: "1", 
-    email: "admin@example.com", 
-    password: "password123", 
-    role: "admin", 
+interface UserRecord {
+  id: number
+  email: string
+  password: string
+  role_id: number
+  status: "actif" | "inactif"
+  first_name: string
+  last_name: string
+  avatar: string
+}
+
+const users: UserRecord[] = [
+  {
+    id: 1,
+    email: "admin@example.com",
+    password: "password123",
+    role_id: 1,
     status: "actif",
-    name: "Jean Dupont",
+    first_name: "Jean",
+    last_name: "Dupont",
     avatar: "/placeholder-user.jpg"
   },
-  { 
-    id: "2", 
-    email: "tech@example.com", 
-    password: "password123", 
-    role: "technicien", 
+  {
+    id: 2,
+    email: "tech@example.com",
+    password: "password123",
+    role_id: 2,
     status: "actif",
-    name: "Marie Martin",
+    first_name: "Marie",
+    last_name: "Martin",
     avatar: "/placeholder-user.jpg"
   },
-  { 
-    id: "3", 
-    email: "auditor@example.com", 
-    password: "password123", 
-    role: "auditeur", 
+  {
+    id: 3,
+    email: "auditor@example.com",
+    password: "password123",
+    role_id: 3,
     status: "actif",
-    name: "Pierre Durand",
+    first_name: "Pierre",
+    last_name: "Durand",
     avatar: "/placeholder-user.jpg"
   },
-  { 
-    id: "4", 
-    email: "inactive@example.com", 
-    password: "password123", 
-    role: "technicien", 
+  {
+    id: 4,
+    email: "inactive@example.com",
+    password: "password123",
+    role_id: 2,
     status: "inactif",
-    name: "Sophie Inactive",
+    first_name: "Sophie",
+    last_name: "Inactive",
     avatar: "/placeholder-user.jpg"
   },
 ]
@@ -92,13 +106,14 @@ export async function login(prevState: any, formData: FormData) {
   failedLoginAttempts.delete(email)
 
   // Create JWT payload with user info
-  const jwtPayload = { 
-    id: user.id, 
-    email: user.email, 
-    role_id: user.role,
-    name: user.name,
+  const jwtPayload = {
+    id: user.id,
+    email: user.email,
+    role_id: user.role_id,
+    first_name: user.first_name,
+    last_name: user.last_name,
     avatar: user.avatar,
-    exp: Date.now() + (rememberMe ? 7 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000) 
+    exp: Date.now() + (rememberMe ? 7 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000)
   }
   
   // Store in secure HttpOnly cookie
@@ -111,17 +126,14 @@ export async function login(prevState: any, formData: FormData) {
   })
 
   // Log the attempt
-  console.log(`Login successful for ${email} (${user.role})`)
+  const roleLabels: Record<number, string> = { 1: "admin", 2: "technicien", 3: "auditeur" }
+  console.log(`Login successful for ${email} (${roleLabels[user.role_id]})`)
 
-  // Redirect based on role
-  let redirectTo = "/dashboard"
-  if (user.role === "technicien") {
-    redirectTo = "/monitoring"
-  } else if (user.role === "auditeur") {
-    redirectTo = "/logs"
-  }
+  const roleRedirects: Record<number, string> = { 2: "/monitoring", 3: "/logs" }
+  const redirectTo = roleRedirects[user.role_id] || "/dashboard"
+  const displayName = `${user.first_name} ${user.last_name}`
 
-  return { success: true, message: `Bienvenue, ${user.name}!`, redirectTo }
+  return { success: true, message: `Bienvenue, ${displayName}!`, redirectTo }
 }
 
 export async function requestPasswordReset(prevState: any, formData: FormData) {
