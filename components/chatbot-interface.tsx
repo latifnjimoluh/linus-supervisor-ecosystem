@@ -1,16 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { X, Send, Bot, User } from 'lucide-react'
+import { X, Send, Bot, User, Image as ImageIcon, Mic } from 'lucide-react'
 
 interface Message {
   id: string
   type: "user" | "bot"
-  content: string
+  content?: string
   timestamp: Date
+  imageUrl?: string
+  audioUrl?: string
 }
 
 interface ChatbotInterfaceProps {
@@ -27,6 +29,14 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
     }
   ])
   const [input, setInput] = useState("")
+
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const audioInputRef = useRef<HTMLInputElement>(null)
+  const endRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
 
   const handleSend = () => {
     if (!input.trim()) return
@@ -51,6 +61,26 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
       }
       setMessages(prev => [...prev, botMessage])
     }, 1000)
+  }
+
+  const handleImageUpload = (file: File) => {
+    const imageMessage: Message = {
+      id: Date.now().toString(),
+      type: "user",
+      imageUrl: URL.createObjectURL(file),
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, imageMessage])
+  }
+
+  const handleAudioUpload = (file: File) => {
+    const audioMessage: Message = {
+      id: Date.now().toString(),
+      type: "user",
+      audioUrl: URL.createObjectURL(file),
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, audioMessage])
   }
 
   return (
@@ -86,6 +116,16 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
                     : "bg-accent text-accent-foreground"
                 }`}
               >
+                {message.imageUrl && (
+                  <img
+                    src={message.imageUrl}
+                    alt="Image envoyée"
+                    className="rounded-md mb-2 max-w-full h-auto"
+                  />
+                )}
+                {message.audioUrl && (
+                  <audio controls src={message.audioUrl} className="mb-2 max-w-full" />
+                )}
                 {message.content}
               </div>
               {message.type === "user" && (
@@ -95,12 +135,33 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
               )}
             </div>
           ))}
+          <div ref={endRef} />
         </div>
       </ScrollArea>
 
       {/* Input */}
       <div className="p-4 border-t border-border">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <input
+            type="file"
+            accept="image/*"
+            ref={imageInputRef}
+            onChange={(e) => e.target.files && handleImageUpload(e.target.files[0])}
+            className="hidden"
+          />
+          <input
+            type="file"
+            accept="audio/*"
+            ref={audioInputRef}
+            onChange={(e) => e.target.files && handleAudioUpload(e.target.files[0])}
+            className="hidden"
+          />
+          <Button variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()}>
+            <ImageIcon className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => audioInputRef.current?.click()}>
+            <Mic className="h-4 w-4" />
+          </Button>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
