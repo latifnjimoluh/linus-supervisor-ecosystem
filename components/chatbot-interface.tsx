@@ -34,7 +34,6 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
   const audioInputRef = useRef<HTMLInputElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
