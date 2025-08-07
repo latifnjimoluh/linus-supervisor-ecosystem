@@ -3,11 +3,12 @@ const router = express.Router();
 const userController = require('../../controllers/users/userController');
 const { verifyToken, checkPermission } = require('../../middlewares/auth');
 const { logRequest } = require('../../middlewares/log');
+const logger = require('../../utils/logger');
 
-console.log('🚦 userRoutes initialisé');
+logger.info('userRoutes initialisé');
 
 router.use((req, res, next) => {
-  console.log(`➡️ [Route Users] ${req.method} ${req.originalUrl}`);
+  logger.debug('[Route Users]', { method: req.method, url: req.originalUrl });
   next();
 });
 

@@ -1,6 +1,6 @@
 # Frontend Linusupervisor
 
-Ce dossier contient l'interface web d'administration de Linusupervisor. L'application est développée en React avec Vite et stylisée par Tailwind CSS.
+Cette interface web d'administration repose désormais sur **Next.js** (App Router) et **Tailwind CSS**. La migration depuis l'ancien stack React Router/Vite est encore en cours.
 
 ## Démarrage rapide
 
@@ -10,23 +10,31 @@ npm install
 npm run dev
 ```
 
-Créez un fichier `.env` à la racine du dossier `frontend` et ajoutez la variable `VITE_API_URL` pointant vers l'URL de l'API backend (par exemple `http://localhost:3000`).
+Créez un fichier `.env.local` dans `frontend` et ajoutez la variable `NEXT_PUBLIC_API_URL` pointant vers l'URL de l'API backend (par exemple `http://localhost:3000`).
 
-## Fonctionnalités
+## Interfaces à implémenter
 
-- Authentification avec gestion du token JWT
-- Tableau de bord récapitulatif
-- Gestion des utilisateurs, rôles et permissions
+Les routes suivantes existent comme squelettes dans `app/(app)` mais doivent encore être complétées avec leur logique métier et leur design :
+
+- Tableau de bord et carte (`/dashboard`, `/dashboard/map`)
+- Gestion des utilisateurs : liste, ajout, édition, détail
+- Gestion des rôles et des permissions
+- Historique des réinitialisations de mot de passe
 - Consultation des logs système
-- Paramètres personnels pour l'accès Proxmox
-- Supervision des machines virtuelles Proxmox
-- Templates de services avec assistance IA et génération de scripts
-- Monitoring des instances et synchronisation des IP
-- Déploiement Terraform et outils IA divers
+- Paramètres généraux et notifications
+- Modèles de scripts et tests de modèles
+- Supervision et détails de monitoring, alertes
+- Profil utilisateur (`/account`)
+- Gestion des serveurs : liste, ajout, édition, détail
+- Prévisualisation de scripts et déploiement
+- Assistant IA
+- Machines virtuelles et conversions
+- Outils Terraform
+- Outils IA et cache IA
 
 ## Scripts utiles
 
-- `npm run dev` : démarre le serveur de développement
-- `npm run build` : génère la version de production
-- `npm run preview` : sert la version de production localement
+- `npm run dev` : démarre le serveur de développement
+- `npm run build` : génère la version de production
+- `npm start` : lance la version de production
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from '../lib/router';
 import { listUsers, searchUsers, deleteUser, patchUser } from '../api/users';
 
 export default function Users() {

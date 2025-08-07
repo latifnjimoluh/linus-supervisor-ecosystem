@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { servers } from '../api';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from '../lib/router';
 
 export default function Servers() {
   const [list, setList] = useState([]);

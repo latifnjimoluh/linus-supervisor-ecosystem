@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '../lib/router';
 import { createUser } from '../api/users';
 import { listRoles } from '../api/roles';
 

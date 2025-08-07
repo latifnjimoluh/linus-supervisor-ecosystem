@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '../lib/router';
 import { resetPassword } from '../api/auth';
 
 export default function ResetPassword() {
