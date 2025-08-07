@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { getRemoteFileContent, getRemoteJSON } = require('../../utils/sshClient');
 const { Monitoring, UserSetting, Deployment } = require('../../models');
+const { Op } = require('sequelize');
 
 exports.collectMonitoringData = async (req, res) => {
   const user = req.user;
@@ -110,10 +111,42 @@ exports.collectMonitoringData = async (req, res) => {
 // 📋 Lister tous les enregistrements de monitoring
 exports.getMonitoringRecords = async (req, res) => {
   try {
-    const records = await Monitoring.findAll({ order: [['retrieved_at', 'DESC']] });
-    res.json(records);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const { q, vm_ip } = req.query;
+
+    const where = {};
+    if (vm_ip) where.vm_ip = vm_ip;
+    if (q) {
+      where[Op.or] = [
+        { vm_ip: { [Op.iLike]: `%${q}%` } },
+        { ip_address: { [Op.iLike]: `%${q}%` } },
+        { instance_id: { [Op.iLike]: `%${q}%` } },
+      ];
+    }
+
+    const { count, rows } = await Monitoring.findAndCountAll({
+      where,
+      order: [['retrieved_at', 'DESC']],
+      limit,
+      offset,
+    });
+
+    res.json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        pages: Math.ceil(count / limit),
+        limit,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Erreur lors de la récupération des données', error: err.message });
+    res.status(500).json({
+      message: 'Erreur lors de la récupération des données',
+      error: err.message,
+    });
   }
 };
 

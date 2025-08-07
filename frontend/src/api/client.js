@@ -19,6 +19,7 @@ client.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       // Optional: redirect to login or emit event
       localStorage.removeItem('token');
+      localStorage.removeItem('tokenExpiry');
     }
     return Promise.reject(error);
   }

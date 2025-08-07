@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   listPermissions,
   createPermission,
+  updatePermission,
   deletePermission,
 } from '../api/permissions';
 
@@ -11,15 +12,19 @@ export default function Permissions() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: '', description: '' });
+  const [pagination, setPagination] = useState({ page: 1, pages: 1 });
+  const [page, setPage] = useState(1);
 
-  const fetchData = async () => {
+  const fetchData = async (p = 1) => {
     setLoading(true);
     setError('');
     try {
-      const res = await listPermissions();
+      const res = await listPermissions({ page: p });
       const data = res.data?.data || res.data || [];
       setPermissions(data);
+      setPagination(res.data?.pagination || { page: p, pages: 1 });
     } catch (err) {
       const message = err.response?.data?.message || 'Erreur de chargement';
       setError(message);
@@ -29,9 +34,9 @@ export default function Permissions() {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [page]);
 
   return (
     <div>
@@ -70,11 +75,20 @@ export default function Permissions() {
                       Voir
                     </Link>
                     <button
+                      onClick={() => {
+                        setEditing(p);
+                        setForm({ name: p.name, description: p.description });
+                      }}
+                      className="text-yellow-600 hover:underline"
+                    >
+                      Modifier
+                    </button>
+                    <button
                       onClick={async () => {
                         if (window.confirm('Supprimer cette permission ?')) {
                           try {
                             await deletePermission(p.id);
-                            fetchData();
+                            fetchData(page);
                           } catch (err) {
                             const message =
                               err.response?.data?.message || 'Erreur de suppression';
@@ -112,7 +126,7 @@ export default function Permissions() {
                   await createPermission(form);
                   setShowCreate(false);
                   setForm({ name: '', description: '' });
-                  fetchData();
+                  fetchData(page);
                 } catch (err) {
                   const message =
                     err.response?.data?.message || 'Erreur de création';
@@ -154,6 +168,84 @@ export default function Permissions() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {editing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded shadow w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Modifier la permission</h2>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await updatePermission(editing.id, form);
+                  setEditing(null);
+                  setForm({ name: '', description: '' });
+                  fetchData(page);
+                } catch (err) {
+                  const message =
+                    err.response?.data?.message || 'Erreur de mise à jour';
+                  setError(message);
+                }
+              }}
+              className="space-y-2"
+            >
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Nom"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+              />
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Description"
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
+                required
+              />
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditing(null)}
+                  className="px-4 py-2 rounded border"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-blue-600 text-white"
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {!loading && (
+        <div className="flex justify-center mt-4 space-x-2">
+          <button
+            className="px-3 py-1 border rounded disabled:opacity-50"
+            disabled={pagination.page <= 1}
+            onClick={() => setPage(pagination.page - 1)}
+          >
+            Précédent
+          </button>
+          <span className="px-2 py-1">
+            Page {pagination.page} / {pagination.pages}
+          </span>
+          <button
+            className="px-3 py-1 border rounded disabled:opacity-50"
+            disabled={pagination.page >= pagination.pages}
+            onClick={() => setPage(pagination.page + 1)}
+          >
+            Suivant
+          </button>
         </div>
       )}
     </div>
