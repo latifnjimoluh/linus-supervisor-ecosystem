@@ -10,14 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { loginUser } from "@/services/api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [passwordShake, setPasswordShake] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +28,7 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const data = await loginUser(email, password, remember);
+      const data = await loginUser(email, password);
       toast({ title: "Connexion réussie", description: data.message, variant: "success" });
       router.push(redirectTo);
     } catch (error: any) {
@@ -90,15 +88,6 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </motion.div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="rememberMe"
-                checked={remember}
-                onCheckedChange={(v) => setRemember(v === true)}
-                className="rounded-md"
-              />
-              <Label htmlFor="rememberMe">Se souvenir de moi</Label>
             </div>
             <Button type="submit" className="w-full rounded-xl" disabled={isLoading}>
               {isLoading ? (

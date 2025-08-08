@@ -56,13 +56,11 @@ api.interceptors.response.use(
 
 export const loginUser = async (
   email: string,
-  password: string,
-  remember?: boolean
+  password: string
 ): Promise<any> => {
   const response = await api.post("/auth/login", {
     email,
     password,
-    remember,
   });
   if (response.data && response.data.token) {
     setAuthToken(response.data.token);
@@ -79,11 +77,10 @@ export const updateUserProfile = async (
   id: number,
   data: { first_name?: string; last_name?: string; email?: string }
 ): Promise<any> => {
-  const response = await api.put(`/users/${id}`, data);
+  const response = await api.put(`/api/users/${id}`, data);
   return response.data;
 };
 
 export const logoutUser = (): void => {
   removeAuthToken();
 };
-
