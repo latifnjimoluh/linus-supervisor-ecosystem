@@ -14,8 +14,9 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname()
-  const publicRoutes = ["/", "/login", "/reset"]
-  const isPublic = publicRoutes.some((route) => pathname.startsWith(route))
+  const publicRoutes = ["/login", "/reset"]
+  const isPublic =
+    pathname === "/" || publicRoutes.some((route) => pathname.startsWith(route))
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false)
 
   useAuth(undefined, !isPublic)

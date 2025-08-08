@@ -77,7 +77,7 @@ export const updateUserProfile = async (
   id: number,
   data: { first_name?: string; last_name?: string; email?: string }
 ): Promise<any> => {
-  const response = await api.put(`/api/users/${id}`, data);
+  const response = await api.put(`/users/${id}`, data);
   return response.data;
 };
 
