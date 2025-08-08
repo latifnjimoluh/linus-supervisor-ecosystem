@@ -1,49 +1,45 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useActionState } from "react"
-import { Eye, EyeOff } from 'lucide-react'
-import { motion } from "framer-motion"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useToast } from "@/hooks/use-toast"
-import { login } from "@/actions/auth"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { loginUser } from "@/services/api";
 
 export default function LoginPage() {
-  const [state, action] = useActionState(login, null)
-  const [showPassword, setShowPassword] = useState(false)
-  const [passwordShake, setPasswordShake] = useState(false)
-  const { toast } = useToast()
-  const router = useRouter()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordShake, setPasswordShake] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
 
-  useEffect(() => {
-    if (state) {
-      if (state.success) {
-        toast({
-          title: "Connexion réussie",
-          description: state.message,
-          variant: "success",
-        })
-        router.push(state.redirectTo || "/dashboard")
-      } else {
-        toast({
-          title: "Erreur de connexion",
-          description: state.message,
-          variant: "destructive",
-        })
-        if (state.message === "Identifiants incorrects.") {
-          setPasswordShake(true)
-          setTimeout(() => setPasswordShake(false), 500)
-        }
-      }
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const data = await loginUser(email, password);
+      toast({ title: "Connexion réussie", description: data.message, variant: "success" });
+      router.push(redirectTo);
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Identifiants incorrects.";
+      toast({ title: "Erreur de connexion", description: message, variant: "destructive" });
+      setPasswordShake(true);
+      setTimeout(() => setPasswordShake(false), 500);
+    } finally {
+      setIsLoading(false);
     }
-  }, [state, toast, router])
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -53,15 +49,16 @@ export default function LoginPage() {
           <CardDescription>Connectez-vous à votre compte Linusupervisor</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={action} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                name="email"
                 type="email"
                 placeholder="votre@email.com"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="rounded-xl focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
@@ -74,9 +71,10 @@ export default function LoginPage() {
               >
                 <Input
                   id="password"
-                  name="password"
                   type={showPassword ? "text" : "password"}
                   required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="rounded-xl focus-visible:ring-2 focus-visible:ring-primary pr-10"
                 />
                 <Button
@@ -91,21 +89,10 @@ export default function LoginPage() {
                 </Button>
               </motion.div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox id="rememberMe" name="rememberMe" className="rounded-md" />
-              <Label htmlFor="rememberMe">Se souvenir de moi</Label>
-            </div>
-            <Button
-              type="submit"
-              className="w-full rounded-xl"
-              disabled={state?.pending}
-            >
-              {state?.pending ? (
+            <Button type="submit" className="w-full rounded-xl" disabled={isLoading}>
+              {isLoading ? (
                 <span className="flex items-center">
-                  <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Connexion...
                 </span>
               ) : (
@@ -121,5 +108,6 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
+
