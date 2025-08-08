@@ -9,7 +9,7 @@ const errorHandler = require('./middlewares/errorHandler');
 const app = express();
 logger.info("Initialisation de l'application Express");
 
-const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3001')
   .split(',')
   .map((o) => o.trim());
 
