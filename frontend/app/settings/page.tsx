@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { User, FileText, Server, HardDrive } from 'lucide-react'
+import { User, FileText, Server, HardDrive, Shield, Key } from 'lucide-react'
 
 import { BackButton } from "@/components/back-button"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
@@ -28,6 +28,20 @@ const settingsCards = [
     icon: <Server className="h-8 w-8 text-primary" />,
     href: "/settings/proxmox",
     cta: "Configurer",
+  },
+  {
+    title: "Gestion des Rôles",
+    description: "Définissez et organisez les rôles des utilisateurs.",
+    icon: <Shield className="h-8 w-8 text-primary" />,
+    href: "/settings/roles",
+    cta: "Gérer",
+  },
+  {
+    title: "Gestion des Permissions",
+    description: "Contrôlez les permissions associées aux rôles.",
+    icon: <Key className="h-8 w-8 text-primary" />,
+    href: "/settings/permissions",
+    cta: "Gérer",
   },
   {
     title: "Gestion du Stockage",

@@ -16,6 +16,7 @@ import {
   Shield,
   Terminal,
   Users,
+  Bell,
   X,
   ChevronDown,
 } from "lucide-react"
@@ -53,6 +54,21 @@ const navItems: NavItem[] = [
     label: "Déploiement",
     icon: Server,
     children: [{ href: "/deploy", icon: Server, label: "Déployer" }],
+  },
+  {
+    label: "Serveurs",
+    icon: Server,
+    children: [{ href: "/servers", icon: Server, label: "Liste" }],
+  },
+  {
+    label: "Proxmox",
+    icon: Server,
+    children: [{ href: "/vms", icon: Server, label: "VMs" }],
+  },
+  {
+    label: "Alertes",
+    icon: Bell,
+    children: [{ href: "/alerts", icon: Bell, label: "Liste" }],
   },
   {
     label: "Scripts & Templates",

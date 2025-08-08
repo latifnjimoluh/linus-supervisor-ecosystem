@@ -201,25 +201,6 @@ exports.assignPermissionsToRole = async (req, res) => {
   }
 };
 
-exports.getPermissionsByRole = async (req, res) => {
-  console.log('📥 getPermissionsByRole called', req.params.role_id);
-  try {
-    const { role_id } = req.params;
-    const role = await Role.findByPk(role_id, {
-      include: [{ model: Permission, as: 'permissions' }],
-    });
-
-    if (!role) {
-      console.log('⚠️ Rôle introuvable');
-      return res.status(404).json({ message: 'Rôle introuvable.' });
-    }
-    console.log(`📤 ${role.permissions.length} permissions pour le rôle ${role_id}`);
-    res.json(role.permissions);
-  } catch (error) {
-    console.error('Erreur getPermissionsByRole:', error);
-    res.status(500).json({ message: 'Erreur serveur.' });
-  }
-};
 
 exports.unassignPermissionsFromRole = async (req, res) => {
   console.log('📥 unassignPermissionsFromRole called', req.body);

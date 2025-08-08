@@ -7,13 +7,13 @@ import { BackButton } from "@/components/back-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { listTemplates, type Template } from "@/lib/templates"
+import { listTemplates, type Template } from "@/services/api"
 
 export default function SettingsTemplatesPage() {
   const [rows, setRows] = React.useState<Template[]>([])
 
   React.useEffect(() => {
-    listTemplates().then(setRows).catch(() => setRows([]))
+    listTemplates().then((data) => setRows(data.data || data || [])).catch(() => setRows([]))
   }, [])
 
   return (
