@@ -15,49 +15,29 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { useToast } from "@/hooks/use-toast"
+import {
+  getPermissions,
+  createPermission,
+  deletePermission,
+  getRoles,
+  assignPermissions,
+  unassignPermissions,
+  getPermissionsByRole,
+} from "@/services/api"
 
 interface Permission {
   id: number
   name: string
-  description: string
+  description?: string
   module: string
   is_active: boolean
-  created_at: string
+  created_at?: string
 }
 
 interface Role {
-  id: number // Changed to number
+  id: number
   name: string
-  permissions: number[] // Changed to number[]
-}
-
-// Mock data for permissions
-const generateMockPermissions = (): Permission[] => {
-  return [
-    { id: 1, name: "vm.create", description: "Créer des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 2, name: "vm.delete", description: "Supprimer des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 3, name: "vm.start", description: "Démarrer des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 4, name: "vm.stop", description: "Arrêter des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 5, name: "vm.monitor", description: "Superviser les machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 6, name: "template.create", description: "Créer des templates", module: "Templates", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 7, name: "template.delete", description: "Supprimer des templates", module: "Templates", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 8, name: "template.analyze", description: "Analyser des templates avec l'IA", module: "Templates", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 9, name: "logs.read", description: "Consulter les logs système", module: "Logs", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 10, name: "logs.export", description: "Exporter les logs", module: "Logs", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 11, name: "users.create", description: "Créer des utilisateurs", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 12, name: "users.delete", description: "Supprimer des utilisateurs", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 13, name: "roles.manage", description: "Gérer les rôles", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 14, name: "permissions.manage", description: "Gérer les permissions", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 15, name: "system.config", description: "Configurer le système", module: "System", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-  ]
-}
-
-const generateMockRoles = (): Role[] => {
-  return [
-    { id: 1, name: "admin", permissions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] },
-    { id: 2, name: "technicien", permissions: [1, 3, 4, 5, 6, 8, 9] },
-    { id: 3, name: "auditeur", permissions: [5, 9, 10] },
-  ]
+  permissions: number[]
 }
 
 // Simulate AI analysis for permissions
@@ -115,20 +95,46 @@ export default function PermissionsPage() {
 
   const fetchData = React.useCallback(() => {
     setLoading(true)
-    setTimeout(() => {
-      setPermissions(generateMockPermissions())
-      setRoles(generateMockRoles())
-      setLoading(false)
-    }, 1000)
-  }, [])
+    Promise.all([getPermissions(), getRoles()])
+      .then(async ([permData, roleData]) => {
+        const formattedPermissions = permData.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          module: p.name.split('.')[0],
+          is_active: p.status === 'actif',
+          created_at: p.created_at,
+        }))
+
+        const rolesWithPerms = await Promise.all(
+          roleData.map(async (r: any) => {
+            const perms = await getPermissionsByRole(r.id)
+            const permIds = Array.isArray(perms) ? perms.map((pr: any) => pr.id) : []
+            return { ...r, permissions: permIds }
+          })
+        )
+
+        setPermissions(formattedPermissions)
+        setRoles(rolesWithPerms)
+      })
+      .catch(() => {
+        toast({
+          title: 'Erreur',
+          description: 'Impossible de charger les permissions',
+          variant: 'destructive',
+        })
+      })
+      .finally(() => setLoading(false))
+  }, [toast])
 
   React.useEffect(() => {
     fetchData()
   }, [fetchData])
 
   const filteredPermissions = permissions.filter(permission => {
-    const matchesSearch = permission.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         permission.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch =
+      permission.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (permission.description || "").toLowerCase().includes(searchTerm.toLowerCase())
     const matchesModule = moduleFilter === "all" || permission.module === moduleFilter
     return matchesSearch && matchesModule
   })
@@ -168,15 +174,18 @@ export default function PermissionsPage() {
     setFormLoading(true)
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      const newPermission: Permission = {
-        id: permissions.length > 0 ? Math.max(...permissions.map(p => p.id)) + 1 : 1,
+      const created = await createPermission({
         name: formData.name,
         description: formData.description,
-        module: formData.module,
-        is_active: true,
-        created_at: new Date().toISOString(),
+      })
+
+      const newPermission: Permission = {
+        id: created.id,
+        name: created.name,
+        description: created.description,
+        module: created.name.split('.')[0],
+        is_active: created.status === 'actif',
+        created_at: created.created_at,
       }
 
       setPermissions(prev => [...prev, newPermission])
@@ -213,7 +222,7 @@ export default function PermissionsPage() {
     }
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await deletePermission(permissionId)
 
       setPermissions(prev => prev.filter(p => p.id !== permissionId))
 
@@ -235,17 +244,24 @@ export default function PermissionsPage() {
     setAssignLoading(true)
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 800))
+      const payload = [{ role_id: roleId, permission_ids: [permissionId] }]
+      if (isAssigned) {
+        await unassignPermissions(payload)
+      } else {
+        await assignPermissions(payload)
+      }
 
-      setRoles(prev => prev.map(role => {
-        if (role.id === roleId) {
-          const newPermissions = isAssigned
-            ? role.permissions.filter(p => p !== permissionId)
-            : [...role.permissions, permissionId]
-          return { ...role, permissions: newPermissions }
-        }
-        return role
-      }))
+      setRoles(prev =>
+        prev.map(role => {
+          if (role.id === roleId) {
+            const newPermissions = isAssigned
+              ? role.permissions.filter(p => p !== permissionId)
+              : [...role.permissions, permissionId]
+            return { ...role, permissions: newPermissions }
+          }
+          return role
+        })
+      )
 
       const permission = permissions.find(p => p.id === permissionId)
       const role = roles.find(r => r.id === roleId)

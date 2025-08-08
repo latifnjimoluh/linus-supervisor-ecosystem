@@ -12,52 +12,15 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { getRoles, createRole, updateRole, deleteRole } from "@/services/api"
 
 interface Role {
   id: number
   name: string
-  description: string
-  user_count: number
-  is_system: boolean
-  created_at: string
-}
-
-// Mock data for roles
-const generateMockRoles = (): Role[] => {
-  return [
-    {
-      id: 1,
-      name: "admin",
-      description: "Accès complet à toutes les fonctionnalités de la plateforme",
-      user_count: 2,
-      is_system: true,
-      created_at: "2024-01-01T00:00:00Z",
-    },
-    {
-      id: 2,
-      name: "technicien",
-      description: "Gestion des VMs, déploiements et supervision technique",
-      user_count: 4,
-      is_system: true,
-      created_at: "2024-01-01T00:00:00Z",
-    },
-    {
-      id: 3,
-      name: "auditeur",
-      description: "Consultation des logs, rapports et données de supervision",
-      user_count: 3,
-      is_system: true,
-      created_at: "2024-01-01T00:00:00Z",
-    },
-    {
-      id: 4,
-      name: "visiteur",
-      description: "Accès en lecture seule aux tableaux de bord",
-      user_count: 0,
-      is_system: false,
-      created_at: "2024-06-15T10:30:00Z",
-    },
-  ]
+  description?: string
+  user_count?: number
+  is_system?: boolean
+  created_at?: string
 }
 
 export default function RolesPage() {
@@ -72,11 +35,19 @@ export default function RolesPage() {
 
   const fetchRoles = React.useCallback(() => {
     setLoading(true)
-    setTimeout(() => {
-      setRoles(generateMockRoles())
-      setLoading(false)
-    }, 1000)
-  }, [])
+    getRoles()
+      .then((data) => {
+        setRoles(data)
+      })
+      .catch(() => {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les rôles",
+          variant: "destructive",
+        })
+      })
+      .finally(() => setLoading(false))
+  }, [toast])
 
   React.useEffect(() => {
     fetchRoles()
@@ -84,7 +55,7 @@ export default function RolesPage() {
 
   const filteredRoles = roles.filter(role =>
     role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    role.description.toLowerCase().includes(searchTerm.toLowerCase())
+    (role.description || "").toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const handleCreateRole = async () => {
@@ -110,16 +81,10 @@ export default function RolesPage() {
     setFormLoading(true)
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      const newRole: Role = {
-        id: roles.length > 0 ? Math.max(...roles.map(r => r.id)) + 1 : 1,
+      const newRole = await createRole({
         name: formData.name,
         description: formData.description,
-        user_count: 0,
-        is_system: false,
-        created_at: new Date().toISOString(),
-      }
+      })
 
       setRoles(prev => [...prev, newRole])
       setFormData({ name: "", description: "" })
@@ -149,12 +114,13 @@ export default function RolesPage() {
     setFormLoading(true)
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      const updated = await updateRole(editingRole.id, {
+        name: formData.name,
+        description: formData.description,
+      })
 
-      setRoles(prev => prev.map(role => 
-        role.id === editingRole.id 
-          ? { ...role, name: formData.name, description: formData.description }
-          : role
+      setRoles(prev => prev.map(role =>
+        role.id === editingRole.id ? { ...role, ...updated } : role
       ))
 
       setEditingRole(null)
@@ -178,7 +144,7 @@ export default function RolesPage() {
 
   const handleDeleteRole = async (roleId: number, roleName: string) => { // Changed roleId to number
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await deleteRole(roleId)
 
       setRoles(prev => prev.filter(role => role.id !== roleId))
 
@@ -321,17 +287,19 @@ export default function RolesPage() {
                       )}
                       <Badge variant="secondary" className="text-xs">
                         <Users className="mr-1 h-3 w-3" />
-                        {role.user_count}
+                        {role.user_count ?? 0}
                       </Badge>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">{role.description}</p>
-                  
-                  <div className="text-xs text-muted-foreground">
-                    Créé le {new Date(role.created_at).toLocaleDateString("fr-FR")}
-                  </div>
+
+                  {role.created_at && (
+                    <div className="text-xs text-muted-foreground">
+                      Créé le {new Date(role.created_at).toLocaleDateString("fr-FR")}
+                    </div>
+                  )}
 
                   <div className="flex gap-2 pt-2 border-t">
                     <Button
@@ -375,7 +343,7 @@ export default function RolesPage() {
                     </AlertDialog>
                   </div>
 
-                  {role.user_count > 0 && (
+                  {role.user_count && role.user_count > 0 && (
                     <p className="text-xs text-muted-foreground">
                       ⚠️ Ce rôle ne peut pas être supprimé car il est utilisé par {role.user_count} utilisateur(s)
                     </p>

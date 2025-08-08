@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
-import { listTemplates, type Template } from "@/lib/templates"
+import { listTemplates, type Template } from "@/services/api"
 
 export default function TemplatesPage() {
   const [searchTerm, setSearchTerm] = React.useState("")
@@ -25,8 +25,15 @@ export default function TemplatesPage() {
   React.useEffect(() => {
     listTemplates()
       .then(setTemplates)
-      .catch(() => setTemplates([]))
-  }, [])
+      .catch(() => {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les templates",
+          variant: "destructive",
+        })
+        setTemplates([])
+      })
+  }, [toast])
 
   const filtered = templates.filter(
     (t) =>
@@ -34,7 +41,7 @@ export default function TemplatesPage() {
       t.description.toLowerCase().includes(searchTerm.toLowerCase())
   )
   const filteredScripts = filtered.filter((t) => t.type === "script")
-  const filteredTemplateList = filtered.filter((t) => t.type === "template")
+  const filteredTemplateList = filtered.filter((t) => t.type !== "script")
 
   const copyContent = (content: string) => {
     navigator.clipboard.writeText(content)
@@ -59,8 +66,8 @@ export default function TemplatesPage() {
                 <CardTitle className="text-lg">{template.name}</CardTitle>
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Badge variant="secondary">{template.category}</Badge>
-                  <Badge variant={template.type === "template" ? "default" : "outline"}>
-                    {template.type === "template" ? "Paramétrable" : "Script simple"}
+                  <Badge variant={template.type === "script" ? "outline" : "default"}>
+                    {template.type === "script" ? "Script simple" : "Paramétrable"}
                   </Badge>
                 </div>
               </CardHeader>
