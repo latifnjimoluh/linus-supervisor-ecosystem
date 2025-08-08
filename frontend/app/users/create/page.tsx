@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { getRoles, createUser } from "@/services/api"
 
 interface CreateUserForm {
   first_name: string
@@ -19,6 +18,13 @@ interface CreateUserForm {
   password: string
   role_id: number
 }
+
+// Mock roles for the select dropdown
+const mockRoles = [
+  { id: 1, name: "Administrateur" },
+  { id: 2, name: "Technicien" },
+  { id: 3, name: "Auditeur" },
+];
 
 export default function CreateUserPage() {
   const router = useRouter()
@@ -32,7 +38,6 @@ export default function CreateUserPage() {
     role_id: 0,
   })
   const [errors, setErrors] = React.useState<Partial<CreateUserForm>>({})
-  const [roles, setRoles] = React.useState<{id:number; name:string}[]>([])
 
   const validateForm = (): boolean => {
     const newErrors: Partial<CreateUserForm> = {}
@@ -61,13 +66,9 @@ export default function CreateUserPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  React.useEffect(() => {
-    getRoles().then((data) => setRoles(data.data || data || [])).catch(() => setRoles([]))
-  }, [])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
+    
     if (!validateForm()) {
       return
     }
@@ -75,20 +76,40 @@ export default function CreateUserPage() {
     setLoading(true)
 
     try {
-      const res = await createUser(formData)
-      const user = res.user || res
+      // Simulate API call with the new payload structure
+      // Example payload: { first_name: "Jane", last_name: "Doe", email: "jane@example.com", password: "secret", role_id: 2 }
+      console.log("Sending payload:", formData);
+
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Simulate email already exists error (10% chance)
+      if (Math.random() < 0.1) {
+        setErrors({ email: "Ce compte existe déjà" })
+        toast({
+          title: "Erreur",
+          description: "Un compte avec cet email existe déjà",
+          variant: "destructive",
+        })
+        return
+      }
+
       toast({
         title: "Utilisateur créé",
-        description: `Le compte de ${user.first_name} ${user.last_name} a été créé avec succès`,
+        description: `Le compte de ${formData.first_name} ${formData.last_name} a été créé avec succès`,
         variant: "success",
       })
-      setTimeout(() => { router.push('/users') }, 1000)
-    } catch (error: any) {
-      const message = error.message || "Erreur lors de la création du compte"
-      if (message.includes('Email')) {
-        setErrors({ email: message })
-      }
-      toast({ title: "Erreur", description: message, variant: "destructive" })
+
+      // Redirect to users list
+      setTimeout(() => {
+        router.push("/users")
+      }, 1000)
+
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la création du compte",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -203,7 +224,7 @@ export default function CreateUserPage() {
                     </div>
                   </SelectTrigger>
                   <SelectContent>
-                    {roles.map(role => (
+                    {mockRoles.map(role => (
                       <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
                     ))}
                   </SelectContent>

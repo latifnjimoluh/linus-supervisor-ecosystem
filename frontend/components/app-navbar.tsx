@@ -25,14 +25,18 @@ interface AppNavbarProps {
 
 export function AppNavbar({ user }: AppNavbarProps) {
   const handleLogout = async () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token')
-    }
     await logout()
   }
 
-  const currentUser = user
-  if (!currentUser) return null
+  // Use user data if provided, otherwise fallback to mock
+  const currentUser = user || {
+    first_name: "Jean",
+    last_name: "Dupont",
+    email: "admin@example.com",
+    role_id: 1,
+    avatar: "/placeholder-user.jpg",
+    id: 1,
+  }
 
   const getRoleBadgeVariant = (roleId: number) => {
     switch (roleId) {
@@ -95,7 +99,7 @@ export function AppNavbar({ user }: AppNavbarProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/settings/account" className="flex items-center">
+              <Link href="/profile" className="flex items-center">
                 <User className="mr-2 h-4 w-4" />
                 <span>Profil</span>
               </Link>

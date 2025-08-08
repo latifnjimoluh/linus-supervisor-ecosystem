@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
-import { listTemplates, type Template } from "@/services/api"
+import { listTemplates, type Template } from "@/lib/templates"
 
 export default function TemplatesPage() {
   const [searchTerm, setSearchTerm] = React.useState("")
@@ -24,7 +24,7 @@ export default function TemplatesPage() {
 
   React.useEffect(() => {
     listTemplates()
-      .then((data) => setTemplates(data.data || data || []))
+      .then(setTemplates)
       .catch(() => setTemplates([]))
   }, [])
 

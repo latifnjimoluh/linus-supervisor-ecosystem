@@ -30,9 +30,6 @@ export default function LoginPage() {
           description: state.message,
           variant: "success",
         })
-        if (state.token) {
-          localStorage.setItem('auth_token', state.token)
-        }
         router.push(state.redirectTo || "/dashboard")
       } else {
         toast({
