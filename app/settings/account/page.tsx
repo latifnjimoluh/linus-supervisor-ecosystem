@@ -8,6 +8,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import Link from "next/link"
+import { ChevronLeft } from "lucide-react"
 import { useTheme } from "next-themes"
 
 export default function AccountSettingsPage() {
@@ -15,19 +17,52 @@ export default function AccountSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Paramètres du Compte</h1>
-        <p className="text-muted-foreground">
-          Gérez les paramètres de votre profil, sécurité, notifications et intégrations.
-        </p>
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" asChild>
+          <Link href="/settings">
+            <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Retour</span>
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Paramètres du Compte</h1>
+          <p className="text-muted-foreground">
+            Gérez les paramètres de votre profil, sécurité, notifications et intégrations.
+          </p>
+        </div>
       </div>
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
-          <TabsTrigger value="general">Général</TabsTrigger>
-          <TabsTrigger value="appearance">Apparence</TabsTrigger>
-          <TabsTrigger value="security">Sécurité</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="integrations">Intégrations</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 gap-2">
+          <TabsTrigger
+            value="general"
+            className="border border-blue-200 bg-blue-50 text-blue-700 data-[state=active]:bg-blue-200 data-[state=active]:text-blue-900 rounded-md"
+          >
+            Général
+          </TabsTrigger>
+          <TabsTrigger
+            value="appearance"
+            className="border border-purple-200 bg-purple-50 text-purple-700 data-[state=active]:bg-purple-200 data-[state=active]:text-purple-900 rounded-md"
+          >
+            Apparence
+          </TabsTrigger>
+          <TabsTrigger
+            value="security"
+            className="border border-red-200 bg-red-50 text-red-700 data-[state=active]:bg-red-200 data-[state=active]:text-red-900 rounded-md"
+          >
+            Sécurité
+          </TabsTrigger>
+          <TabsTrigger
+            value="notifications"
+            className="border border-green-200 bg-green-50 text-green-700 data-[state=active]:bg-green-200 data-[state=active]:text-green-900 rounded-md"
+          >
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger
+            value="integrations"
+            className="border border-yellow-200 bg-yellow-50 text-yellow-700 data-[state=active]:bg-yellow-200 data-[state=active]:text-yellow-900 rounded-md"
+          >
+            Intégrations
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="general">

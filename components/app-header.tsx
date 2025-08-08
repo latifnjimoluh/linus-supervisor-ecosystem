@@ -56,7 +56,7 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
           <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link href="/settings/account" className="flex items-center">
+            <Link href="/profile" className="flex items-center">
               <User className="mr-2 h-4 w-4" /> Profil
             </Link>
           </DropdownMenuItem>
