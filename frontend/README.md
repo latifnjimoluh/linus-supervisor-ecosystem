@@ -1,40 +1,30 @@
-# Frontend Linusupervisor
+# Linusupervisor-Frontend
 
-Cette interface web d'administration repose désormais sur **Next.js** (App Router) et **Tailwind CSS**. La migration depuis l'ancien stack React Router/Vite est encore en cours.
+*Automatically synced with your [v0.dev](https://v0.dev) deployments*
 
-## Démarrage rapide
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/matangabrooklyn-gmailcoms-projects/v0-linusupervisor-frontend)
+[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/8Q1imjPovjU)
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## Overview
 
-Créez un fichier `.env.local` dans `frontend` et ajoutez la variable `NEXT_PUBLIC_API_URL` pointant vers l'URL de l'API backend (par exemple `http://localhost:3000`).
+This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
+Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
 
-## Interfaces à implémenter
+## Deployment
 
-Les routes suivantes existent comme squelettes dans `app/(app)` mais doivent encore être complétées avec leur logique métier et leur design :
+Your project is live at:
 
-- Tableau de bord et carte (`/dashboard`, `/dashboard/map`)
-- Gestion des utilisateurs : liste, ajout, édition, détail
-- Gestion des rôles et des permissions
-- Historique des réinitialisations de mot de passe
-- Consultation des logs système
-- Paramètres généraux et notifications
-- Modèles de scripts et tests de modèles
-- Supervision et détails de monitoring, alertes
-- Profil utilisateur (`/account`)
-- Gestion des serveurs : liste, ajout, édition, détail
-- Prévisualisation de scripts et déploiement
-- Assistant IA
-- Machines virtuelles et conversions
-- Outils Terraform
-- Outils IA et cache IA
+**[https://vercel.com/matangabrooklyn-gmailcoms-projects/v0-linusupervisor-frontend](https://vercel.com/matangabrooklyn-gmailcoms-projects/v0-linusupervisor-frontend)**
 
-## Scripts utiles
+## Build your app
 
-- `npm run dev` : démarre le serveur de développement
-- `npm run build` : génère la version de production
-- `npm start` : lance la version de production
+Continue building your app on:
 
+**[https://v0.dev/chat/projects/8Q1imjPovjU](https://v0.dev/chat/projects/8Q1imjPovjU)**
+
+## How It Works
+
+1. Create and modify your project using [v0.dev](https://v0.dev)  
+2. Deploy your chats from the v0 interface  
+3. Changes are automatically pushed to this repository  
+4. Vercel deploys the latest version from this repository

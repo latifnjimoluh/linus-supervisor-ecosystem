@@ -1,9 +1,0 @@
-[
-  {"name": "dashboard.view", "description": "View dashboard data"},
-  {"name": "alert.list", "description": "List alerts"},
-  {"name": "alert.update", "description": "Update alert"},
-  {"name": "servers.view", "description": "View servers"},
-  {"name": "servers.add", "description": "Add server"},
-  {"name": "servers.edit", "description": "Edit server"},
-  {"name": "servers.delete", "description": "Delete server"}
-]

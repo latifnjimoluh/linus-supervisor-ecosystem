@@ -1,0 +1,49 @@
+{
+  "name": "linusupervisor",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "main": "app.js",
+  "scripts": {
+    "dev:backend": "nodemon app.js",
+    "dev:frontend": "npm --workspace frontend run dev",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "jest",
+    "test:frontend": "npm --workspace frontend test",
+    "dev": "nodemon app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.11.0",
+    "bcrypt": "^6.0.0",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "express-async-handler": "^1.2.0",
+    "fs": "^0.0.1-security",
+    "fs-extra": "^11.3.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
+    "mysql2": "^3.14.3",
+    "nodemailer": "^7.0.5",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
+    "ping": "^0.4.4",
+    "sequelize": "^6.37.7",
+    "ssh2": "^1.16.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.10",
+    "sequelize-cli": "^6.6.3",
+    "supertest": "^6.3.3"
+  }
+}
