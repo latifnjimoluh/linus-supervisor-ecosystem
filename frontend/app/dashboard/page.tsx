@@ -12,6 +12,8 @@ import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
+import { getDashboardSummary } from "@/services/api"
+import { useToast } from "@/hooks/use-toast"
 
 interface DashboardData {
   totalVms: number
@@ -33,59 +35,6 @@ interface DashboardData {
     timestamp: string
   }>
   lastUpdated: string
-  apiError: boolean
-}
-
-const mockDashboardData = (): DashboardData => {
-  const now = new Date()
-  const randomVms = Math.floor(Math.random() * 20) + 15
-  const randomServices = Math.floor(Math.random() * 50) + 80
-  const randomCritical = Math.floor(Math.random() * 3)
-  const randomMajor = Math.floor(Math.random() * 5) + 1
-  const randomMinor = Math.floor(Math.random() * 8) + 2
-
-  return {
-    totalVms: randomVms,
-    activeServices: randomServices,
-    alerts: {
-      critical: randomCritical,
-      major: randomMajor,
-      minor: randomMinor,
-    },
-    systemHealth: Math.floor(Math.random() * 30) + 70, // 70-100%
-    networkTraffic: {
-      incoming: Math.floor(Math.random() * 1000) + 500, // MB/s
-      outgoing: Math.floor(Math.random() * 800) + 300,
-    },
-    recentActivity: [
-      {
-        id: "1",
-        type: "vm_created",
-        message: "VM 'web-server-03' créée avec succès",
-        timestamp: "Il y a 5 minutes"
-      },
-      {
-        id: "2", 
-        type: "alert_resolved",
-        message: "Alerte CPU résolue sur 'db-server-01'",
-        timestamp: "Il y a 12 minutes"
-      },
-      {
-        id: "3",
-        type: "script_executed",
-        message: "Script de monitoring exécuté sur 5 VMs",
-        timestamp: "Il y a 18 minutes"
-      },
-      {
-        id: "4",
-        type: "vm_stopped",
-        message: "VM 'test-env-02' arrêtée pour maintenance",
-        timestamp: "Il y a 25 minutes"
-      }
-    ],
-    lastUpdated: now.toLocaleTimeString("fr-FR"),
-    apiError: Math.random() < 0.05, // 5% chance of error
-  }
 }
 
 // Simulate AI analysis for dashboard
@@ -129,24 +78,38 @@ ${criticalCount > 0 ?
 export default function DashboardPage() {
   const [data, setData] = React.useState<DashboardData | null>(null)
   const [loading, setLoading] = React.useState(true)
+  const [apiError, setApiError] = React.useState(false)
+  const { toast } = useToast()
 
   const fetchData = React.useCallback(() => {
     setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      const newData = mockDashboardData()
-      setData(newData)
-      setLoading(false)
-    }, 800)
-  }, [])
+    getDashboardSummary()
+      .then((res) => {
+        setData({
+          totalVms: res.total_vms ?? res.totalVms ?? 0,
+          activeServices: res.active_services ?? res.activeServices ?? 0,
+          alerts: res.alerts ?? { critical: 0, major: 0, minor: 0 },
+          systemHealth: res.system_health ?? res.systemHealth ?? 0,
+          networkTraffic: res.network_traffic ?? res.networkTraffic ?? { incoming: 0, outgoing: 0 },
+          recentActivity: res.recent_activity ?? res.recentActivity ?? [],
+          lastUpdated: res.last_updated ?? res.lastUpdated ?? new Date().toLocaleTimeString("fr-FR"),
+        })
+        setApiError(false)
+      })
+      .catch(() => {
+        setApiError(true)
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les données du tableau de bord",
+          variant: "destructive",
+        })
+      })
+      .finally(() => setLoading(false))
+  }, [toast])
 
   React.useEffect(() => {
-    fetchData() // Initial fetch
-
-    const interval = setInterval(() => {
-      fetchData()
-    }, 10000) // Refresh every 10 seconds as per UC04
-
+    fetchData()
+    const interval = setInterval(fetchData, 10000)
     return () => clearInterval(interval)
   }, [fetchData])
 
@@ -181,7 +144,7 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {data?.apiError && (
+      {apiError && (
         <Alert variant="destructive" className="rounded-2xl">
           <XCircle className="h-4 w-4" />
           <AlertTitle>Erreur de l'API</AlertTitle>

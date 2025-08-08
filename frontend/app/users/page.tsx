@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Plus, Search, Filter, RefreshCw, User, Edit, Trash2, Lock, CheckCircle, XCircle, Mail, Shield, Loader2 } from 'lucide-react'
+import { Plus, Search, RefreshCw, User, Edit, Trash2, Lock, CheckCircle, XCircle, Mail, Shield, Loader2 } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { getUsers, searchUsers, deleteUser, patchUser, getRoles, requestPasswordReset } from "@/services/api"
 
 interface UserAccount {
   id: number
@@ -25,38 +26,9 @@ interface UserAccount {
   avatar?: string
 }
 
-// Mock data for roles to map role_id to name
-const mockRoles = [
-  { id: 1, name: "admin", label: "Administrateur", badgeVariant: "destructive" },
-  { id: 2, name: "technicien", label: "Technicien", badgeVariant: "warning" },
-  { id: 3, name: "auditeur", label: "Auditeur", badgeVariant: "info" },
-];
-
-// Mock data generator for users
-const generateMockUsers = (): UserAccount[] => {
-  const users = [
-    { first_name: "Jean", last_name: "Dupont", email: "admin@example.com", role_id: 1 },
-    { first_name: "Marie", last_name: "Martin", email: "tech@example.com", role_id: 2 },
-    { first_name: "Pierre", last_name: "Durand", email: "auditor@example.com", role_id: 3 },
-    { first_name: "Sophie", last_name: "Bernard", email: "sophie.bernard@example.com", role_id: 2 },
-    { first_name: "Lucas", last_name: "Moreau", email: "lucas.moreau@example.com", role_id: 3 },
-    { first_name: "Emma", last_name: "Leroy", email: "emma.leroy@example.com", role_id: 2 },
-    { first_name: "Thomas", last_name: "Roux", email: "thomas.roux@example.com", role_id: 1 },
-    { first_name: "Camille", last_name: "Fournier", email: "camille.fournier@example.com", role_id: 3 },
-  ]
-
-  return users.map((user, index) => ({
-    id: index + 1,
-    ...user,
-    status: Math.random() > 0.1 ? "active" as const : "inactive" as const,
-    created_at: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-    last_login: Math.random() > 0.2 ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
-    avatar: `/placeholder.svg?height=40&width=40&text=${user.first_name[0]}${user.last_name[0]}`,
-  }))
-}
-
 export default function UsersPage() {
   const [users, setUsers] = React.useState<UserAccount[]>([])
+  const [roles, setRoles] = React.useState<{ id: number; name: string }[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState<string>("all")
@@ -64,81 +36,110 @@ export default function UsersPage() {
   const [actionLoading, setActionLoading] = React.useState<string | null>(null)
   const { toast } = useToast()
 
-  const fetchUsers = React.useCallback(() => {
+  const fetchUsers = React.useCallback(async (query?: string) => {
     setLoading(true)
-    setTimeout(() => {
-      setUsers(generateMockUsers())
+    try {
+      const data = query ? await searchUsers(query) : await getUsers()
+      setUsers(data)
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Impossible de charger les utilisateurs"
+      toast({ title: "Erreur", description: message, variant: "destructive" })
+    } finally {
       setLoading(false)
-    }, 1000)
-  }, [])
+    }
+  }, [toast])
 
   React.useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
 
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchUsers(searchTerm || undefined)
+    }, 300)
+    return () => clearTimeout(timeout)
+  }, [searchTerm, fetchUsers])
+
+  React.useEffect(() => {
+    getRoles()
+      .then(setRoles)
+      .catch(() => {
+        toast({ title: "Erreur", description: "Impossible de charger les rôles", variant: "destructive" })
+      })
+  }, [toast])
+
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesRole = roleFilter === "all" || user.role_id === parseInt(roleFilter)
     const matchesStatus = statusFilter === "all" || user.status === statusFilter
-    return matchesSearch && matchesRole && matchesStatus
+    return matchesRole && matchesStatus
   })
 
   const handleUserAction = async (action: string, userId: number, userEmail: string) => {
     setActionLoading(`${action}-${userId}`)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    let message = ""
-    let variant: "success" | "destructive" | "info" = "success"
-    
-    switch (action) {
-      case "deactivate":
-        message = `Utilisateur ${userEmail} désactivé avec succès`
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "inactive" as const } : u))
-        break
-      case "activate":
-        message = `Utilisateur ${userEmail} activé avec succès`
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "active" as const } : u))
-        break
-      case "reset-password":
-        message = `Lien de réinitialisation envoyé à ${userEmail}`
-        variant = "info"
-        break
-      case "delete":
-        message = `Utilisateur ${userEmail} supprimé avec succès`
-        setUsers(prev => prev.filter(u => u.id !== userId))
-        break
-      default:
-        message = "Action effectuée avec succès"
+    try {
+      let message = ""
+      let variant: "success" | "destructive" | "info" = "success"
+
+      switch (action) {
+        case "deactivate":
+          await patchUser(userId, { status: "inactive" })
+          message = `Utilisateur ${userEmail} désactivé avec succès`
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "inactive" as const } : u))
+          break
+        case "activate":
+          await patchUser(userId, { status: "active" })
+          message = `Utilisateur ${userEmail} activé avec succès`
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "active" as const } : u))
+          break
+        case "reset-password":
+          await requestPasswordReset(userEmail)
+          message = `Lien de réinitialisation envoyé à ${userEmail}`
+          variant = "info"
+          break
+        case "delete":
+          await deleteUser(userId)
+          message = `Utilisateur ${userEmail} supprimé avec succès`
+          setUsers(prev => prev.filter(u => u.id !== userId))
+          break
+        default:
+          message = "Action effectuée avec succès"
+      }
+
+      toast({
+        title: "Action réussie",
+        description: message,
+        variant,
+      })
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Une erreur est survenue"
+      toast({ title: "Erreur", description: message, variant: "destructive" })
+    } finally {
+      setActionLoading(null)
     }
-    
-    toast({
-      title: "Action réussie",
-      description: message,
-      variant,
-    })
-    
-    setActionLoading(null)
+  }
+
+  const roleBadgeVariants: Record<string, string> = {
+    admin: "destructive",
+    technicien: "warning",
+    auditeur: "info",
   }
 
   const getRoleBadgeVariant = (roleId: number) => {
-    const role = mockRoles.find(r => r.id === roleId);
-    return role ? role.badgeVariant : "default";
+    const role = roles.find(r => r.id === roleId)
+    return role ? roleBadgeVariants[role.name] || "default" : "default"
   }
 
   const getRoleLabel = (roleId: number) => {
-    const role = mockRoles.find(r => r.id === roleId);
-    return role ? role.label : "Inconnu";
+    const role = roles.find(r => r.id === roleId)
+    return role ? role.name : "Inconnu"
   }
 
+  const adminRole = roles.find(r => r.name === "admin")
   const stats = {
     total: users.length,
     active: users.filter(user => user.status === "active").length,
     inactive: users.filter(user => user.status === "inactive").length,
-    admins: users.filter(user => user.role_id === 1).length, // Filter by role_id 1 for admin
+    admins: adminRole ? users.filter(user => user.role_id === adminRole.id).length : 0,
   }
 
   return (
@@ -147,7 +148,7 @@ export default function UsersPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-4xl font-semibold">Gestion des utilisateurs</h1>
         <div className="flex gap-3">
-          <Button onClick={fetchUsers} variant="outline" size="sm" className="rounded-xl">
+          <Button onClick={() => fetchUsers(searchTerm || undefined)} variant="outline" size="sm" className="rounded-xl">
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Actualiser
           </Button>
@@ -225,8 +226,8 @@ export default function UsersPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les rôles</SelectItem>
-            {mockRoles.map(role => (
-              <SelectItem key={role.id} value={String(role.id)}>{role.label}</SelectItem>
+            {roles.map(role => (
+              <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
