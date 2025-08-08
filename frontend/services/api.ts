@@ -58,7 +58,7 @@ export const loginUser = async (
   email: string,
   password: string
 ): Promise<any> => {
-  const response = await api.post("/api/auth/login", {
+  const response = await api.post("/auth/login", {
     email,
     password,
   });
@@ -69,7 +69,7 @@ export const loginUser = async (
 };
 
 export const getUserProfile = async (): Promise<any> => {
-  const response = await api.get("/api/auth/me");
+  const response = await api.get("/auth/me");
   return response.data;
 };
 
@@ -84,4 +84,3 @@ export const updateUserProfile = async (
 export const logoutUser = (): void => {
   removeAuthToken();
 };
-
