@@ -21,7 +21,6 @@ import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
 import { Checkbox } from "@/components/ui/checkbox"
-import { listTemplates, Template, runDeployment } from "@/services/api"
 
 // Schema de validation avec Zod
 const deploymentSchema = z.object({
@@ -43,7 +42,18 @@ const deploymentSchema = z.object({
 
 type DeploymentFormData = z.infer<typeof deploymentSchema>;
 
-const serviceTypes = ["web", "database", "monitoring", "security", "custom"];
+// Données Mock
+const mockTemplates = ["ubuntu-22.04-template", "debian-12-template", "rocky-9-template"];
+const mockServiceTypes = ["web", "database", "monitoring", "security", "custom"];
+const mockScripts = [
+  { id: 20, type: "script", name: "Initialisation SSH" },
+  { id: 21, type: "script", name: "Mise à jour système" },
+  { id: 22, type: "script", name: "Configuration Nginx" },
+  { id: 23, type: "script", name: "Installation Docker" },
+  { id: 24, type: "template", name: "Agent de supervision" },
+  { id: 25, type: "script", name: "Configuration Firewall" },
+  { id: 26, type: "template", name: "Setup Cronjobs" },
+];
 
 export default function DeployPage() {
   const { toast } = useToast();
@@ -51,8 +61,6 @@ export default function DeployPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [showTfvars, setShowTfvars] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
-  const [templates, setTemplates] = React.useState<Template[]>([]);
-  const [scripts, setScripts] = React.useState<Template[]>([]);
 
   const { register, handleSubmit, control, watch, setValue, formState: { errors, isValid } } = useForm<DeploymentFormData>({
     resolver: zodResolver(deploymentSchema),
@@ -69,53 +77,29 @@ export default function DeployPage() {
 
   const formData = watch();
 
-  React.useEffect(() => {
-    listTemplates()
-      .then((data) => {
-        setTemplates(data.filter((t) => t.type !== "script"));
-        setScripts(data.filter((t) => t.type === "script"));
-      })
-      .catch(() => {
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les templates",
-          variant: "destructive",
-        });
-      });
-  }, [toast]);
-
   const onSubmit = async (data: DeploymentFormData) => {
     setIsSubmitting(true);
     toast({
       title: "Déploiement en cours...",
       description: `Lancement du déploiement pour ${data.vm_names}.`,
-      variant: "info",
+      variant: "info"
     });
 
-    try {
-      const payload = {
-        ...data,
-        vm_names: data.vm_names.split(",").map((n) => n.trim()),
-        disk_size: `${data.disk_size}G`,
-      };
-      const res = await runDeployment(payload);
-      toast({
-        title: "Déploiement lancé !",
-        description: "Déploiement soumis avec succès",
-        variant: "success",
-      });
-      if (res?.deployment_id) {
-        router.push(`/deployments/${res.deployment_id}`);
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.response?.data?.message || "Échec du déploiement",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    console.log("Payload envoyé:", data);
+
+    const deploymentId = `dep-${Date.now()}`;
+
+    toast({
+      title: "Déploiement lancé !",
+      description: "Vous allez être redirigé vers la page de suivi.",
+      variant: "success"
+    });
+    
+    router.push(`/deployments/${deploymentId}`);
+    setIsSubmitting(false);
   };
 
   const generateTfvars = () => {
@@ -134,7 +118,7 @@ export default function DeployPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const aiContext = `Génération de configuration pour un service. Template: ${formData.template_name}, RAM: ${formData.memory_mb}MB, CPU: ${formData.vcpu_cores} coeurs. Service Type: ${formData.service_type}. Scripts: ${formData.script_refs?.map(s => scripts.find(ms => ms.id === s.id)?.name).join(', ') || 'None'}.`;
+  const aiContext = `Génération de configuration pour un service. Template: ${formData.template_name}, RAM: ${formData.memory_mb}MB, CPU: ${formData.vcpu_cores} coeurs. Service Type: ${formData.service_type}. Scripts: ${formData.script_refs?.map(s => mockScripts.find(ms => ms.id === s.id)?.name).join(', ') || 'None'}.`;
 
   return (
     <div className="space-y-6">
@@ -167,11 +151,7 @@ export default function DeployPage() {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <SelectTrigger><SelectValue placeholder="Sélectionner un template..." /></SelectTrigger>
                       <SelectContent>
-                        {templates.map(t => (
-                          <SelectItem key={t.id} value={t.name}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
+                        {mockTemplates.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   )}
@@ -187,11 +167,7 @@ export default function DeployPage() {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <SelectTrigger><SelectValue placeholder="Sélectionner un type de service..." /></SelectTrigger>
                       <SelectContent>
-                        {serviceTypes.map(type => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
+                        {mockServiceTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   )}
@@ -218,7 +194,7 @@ export default function DeployPage() {
                           <CommandInput placeholder="Rechercher un script..." />
                           <CommandEmpty>Aucun script trouvé.</CommandEmpty>
                           <CommandGroup>
-                            {scripts.map((script) => {
+                            {mockScripts.map((script) => {
                               const isSelected = field.value?.some(s => s.id === script.id);
                               return (
                                 <CommandItem

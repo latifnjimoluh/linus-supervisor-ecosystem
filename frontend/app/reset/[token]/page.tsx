@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useActionState } from "react"
 import { Eye, EyeOff } from 'lucide-react'
 import { motion } from "framer-motion"
 
@@ -11,15 +12,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { resetPassword } from "@/services/api"
+import { resetPassword } from "@/actions/auth"
 
 export default function SetNewPasswordPage({ params }: { params: { token: string } }) {
+  const [state, action] = useActionState(resetPassword, null)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [confirmShake, setConfirmShake] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -28,30 +29,29 @@ export default function SetNewPasswordPage({ params }: { params: { token: string
   }
 
   useEffect(() => {
-    if (confirmShake) {
-      const timer = setTimeout(() => setConfirmShake(false), 500)
-      return () => clearTimeout(timer)
+    if (state) {
+      if (state.success) {
+        toast({
+          title: "Succès",
+          description: state.message,
+          variant: "success",
+        })
+        setTimeout(() => {
+          router.push("/login")
+        }, 5000) // Redirect after 5 seconds
+      } else {
+        toast({
+          title: "Erreur",
+          description: state.message,
+          variant: "destructive",
+        })
+        if (state.message === "Les deux mots de passe ne sont pas identiques.") {
+          setConfirmShake(true)
+          setTimeout(() => setConfirmShake(false), 500)
+        }
+      }
     }
-  }, [confirmShake])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (newPassword !== confirmPassword) {
-      setConfirmShake(true)
-      return
-    }
-    setIsLoading(true)
-    try {
-      const res = await resetPassword(params.token, newPassword)
-      toast({ title: "Succès", description: res.message, variant: "success" })
-      setTimeout(() => router.push("/login"), 5000)
-    } catch (err: any) {
-      const message = err.response?.data?.message || "Erreur lors de la réinitialisation"
-      toast({ title: "Erreur", description: message, variant: "destructive" })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [state, toast, router])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -61,12 +61,14 @@ export default function SetNewPasswordPage({ params }: { params: { token: string
           <CardDescription>Saisissez votre nouveau mot de passe.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form action={action} className="space-y-6">
+            <input type="hidden" name="token" value={params.token} />
             <div className="space-y-2">
               <Label htmlFor="newPassword">Nouveau mot de passe</Label>
               <div className="relative">
                 <Input
                   id="newPassword"
+                  name="newPassword"
                   type={showNewPassword ? "text" : "password"}
                   required
                   value={newPassword}
@@ -104,6 +106,7 @@ export default function SetNewPasswordPage({ params }: { params: { token: string
               >
                 <Input
                   id="confirmPassword"
+                  name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   required
                   value={confirmPassword}
@@ -125,15 +128,13 @@ export default function SetNewPasswordPage({ params }: { params: { token: string
             <Button
               type="submit"
               className="w-full rounded-xl"
-              disabled={
-                isLoading || !isPasswordStrong(newPassword) || newPassword !== confirmPassword
-              }
+              disabled={state?.pending || !isPasswordStrong(newPassword) || newPassword !== confirmPassword}
             >
-              {isLoading ? (
+              {state?.pending ? (
                 <span className="flex items-center">
                   <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.96 2 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   Changement...
                 </span>

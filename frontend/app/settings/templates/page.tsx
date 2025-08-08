@@ -7,25 +7,14 @@ import { BackButton } from "@/components/back-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { listTemplates, type Template } from "@/services/api"
-import { useToast } from "@/hooks/use-toast"
+import { listTemplates, type Template } from "@/lib/templates"
 
 export default function SettingsTemplatesPage() {
   const [rows, setRows] = React.useState<Template[]>([])
-  const { toast } = useToast()
 
   React.useEffect(() => {
-    listTemplates()
-      .then(setRows)
-      .catch(() => {
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les templates",
-          variant: "destructive",
-        })
-        setRows([])
-      })
-  }, [toast])
+    listTemplates().then(setRows).catch(() => setRows([]))
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -64,7 +53,7 @@ export default function SettingsTemplatesPage() {
                 <TableRow key={t.id}>
                   <TableCell className="font-medium">{t.name}</TableCell>
                   <TableCell>{t.category}</TableCell>
-                  <TableCell className="capitalize">{t.type || "template"}</TableCell>
+                  <TableCell className="capitalize">{t.type}</TableCell>
                   <TableCell className="text-muted-foreground">{t.description}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" aria-label={`Actions pour ${t.name}`}>

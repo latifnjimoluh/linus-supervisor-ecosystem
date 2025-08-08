@@ -18,7 +18,6 @@ import {
   Users,
   X,
   ChevronDown,
-  AlertTriangle,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -49,14 +48,6 @@ const navItems: NavItem[] = [
     label: "Supervision",
     icon: Activity,
     children: [{ href: "/monitoring", icon: Activity, label: "Monitoring" }],
-  },
-  {
-    label: "Infrastructure",
-    icon: Server,
-    children: [
-      { href: "/servers", icon: Server, label: "Serveurs" },
-      { href: "/alerts", icon: AlertTriangle, label: "Alertes" },
-    ],
   },
   {
     label: "Déploiement",

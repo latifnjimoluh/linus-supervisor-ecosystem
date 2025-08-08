@@ -1,15 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Menu, Bell, User, Settings, LogOut, HelpCircle } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
-import { getUserProfile, logoutUser } from "@/services/api"
 
 interface AppHeaderProps {
   onToggleSidebar?: () => void
@@ -17,21 +14,15 @@ interface AppHeaderProps {
 
 export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
   const { toast } = useToast()
-  const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-
-  useEffect(() => {
-    getUserProfile().then(setUser).catch(() => {})
-  }, [])
 
   const handleLogout = () => {
-    logoutUser()
     toast({
       title: "Déconnexion",
       description: "Vous avez été déconnecté avec succès.",
       variant: "success",
     })
-    router.push("/login")
+    // Simulate logout action, e.g., redirect to login page
+    // router.push('/login');
   }
 
   return (
@@ -55,10 +46,8 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-9 w-9 rounded-full">
             <Avatar className="h-9 w-9">
-              <AvatarImage src={user?.avatar || "/placeholder-user.jpg"} alt="User Avatar" />
-              <AvatarFallback>
-                {user ? `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}` : ""}
-              </AvatarFallback>
+              <AvatarImage src="/placeholder-user.jpg" alt="User Avatar" />
+              <AvatarFallback>LS</AvatarFallback>
             </Avatar>
             <span className="sr-only">Toggle user menu</span>
           </Button>
