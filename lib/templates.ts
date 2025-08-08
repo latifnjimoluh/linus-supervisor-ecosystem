@@ -1,111 +1,73 @@
-export interface TemplateField {
-  name: string;
-  label: string;
-  type: 'text' | 'number' | 'password';
-  required: boolean;
-  default?: string | number;
+export type FieldSchemaField = {
+  name: string
+  label: string
+  type: "text" | "number" | "boolean" | "select"
+  required?: boolean
+  default?: string | number | boolean
 }
 
-export interface Template {
-  id: number;
-  name: string;
-  description: string;
-  category: string;
-  service_type: string;
-  type: 'script' | 'template';
-  template_content: string;
-  script_path: string;
-  fields_schema?: {
-    fields: TemplateField[];
-  };
+export type FieldSchema = {
+  fields: FieldSchemaField[]
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
-
-function authHeader(token?: string) {
-  return token ? { Authorization: `Bearer ${token}` } : {};
+export type Template = {
+  id: number
+  name: string
+  service_type?: string
+  category: string
+  description: string
+  type: "template" | "script"
+  template_content: string
+  script_path?: string
+  fields_schema?: FieldSchema
 }
 
-export async function listTemplates(token?: string): Promise<Template[]> {
-  const res = await fetch(`${API_BASE_URL}/templates`, {
-    headers: {
-      ...authHeader(token),
-    },
-  });
-  if (!res.ok) {
-    throw new Error('Failed to fetch templates');
-  }
-  return res.json();
+const BASE = "/api/templates"
+
+export async function listTemplates(): Promise<Template[]> {
+  const res = await fetch(BASE, { cache: "no-store" })
+  if (!res.ok) throw new Error("Failed to list templates")
+  return res.json()
 }
 
-export async function getTemplate(id: number, token?: string): Promise<Template> {
-  const res = await fetch(`${API_BASE_URL}/templates/${id}`, {
-    headers: {
-      ...authHeader(token),
-    },
-  });
-  if (!res.ok) {
-    throw new Error('Failed to fetch template');
-  }
-  return res.json();
-}
-
-export async function createTemplate(data: Partial<Template>, token: string): Promise<Template> {
-  const res = await fetch(`${API_BASE_URL}/templates`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeader(token),
-    },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    throw new Error('Failed to create template');
-  }
-  return res.json();
-}
-
-export async function updateTemplate(id: number, data: Partial<Template>, token: string): Promise<Template> {
-  const res = await fetch(`${API_BASE_URL}/templates/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeader(token),
-    },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    throw new Error('Failed to update template');
-  }
-  return res.json();
-}
-
-export async function deleteTemplate(id: number, token: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/templates/${id}`, {
-    method: 'DELETE',
-    headers: {
-      ...authHeader(token),
-    },
-  });
-  if (!res.ok) {
-    throw new Error('Failed to delete template');
-  }
-}
-
-export async function generateScript(
-  payload: { template_id: number; config_data: Record<string, any> },
-  token: string,
-): Promise<{ script: string }> {
-  const res = await fetch(`${API_BASE_URL}/templates/generate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeader(token),
-    },
+export async function createTemplate(payload: Omit<Template, "id">): Promise<Template> {
+  const res = await fetch(BASE, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    throw new Error('Failed to generate script');
-  }
-  return res.json();
+  })
+  if (!res.ok) throw new Error("Failed to create template")
+  return res.json()
+}
+
+export async function getTemplate(id: number): Promise<Template> {
+  const res = await fetch(`${BASE}/${id}`, { cache: "no-store" })
+  if (!res.ok) throw new Error("Template not found")
+  return res.json()
+}
+
+export async function updateTemplate(id: number, payload: Partial<Omit<Template, "id">>): Promise<Template> {
+  const res = await fetch(`${BASE}/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error("Failed to update template")
+  return res.json()
+}
+
+export async function deleteTemplate(id: number): Promise<{ success: boolean }> {
+  const res = await fetch(`${BASE}/${id}`, { method: "DELETE" })
+  if (!res.ok) throw new Error("Failed to delete template")
+  return res.json()
+}
+
+export async function generateScript(template_id: number, config_data: Record<string, string | number>) {
+  const res = await fetch(`${BASE}/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ template_id, config_data }),
+  })
+  if (!res.ok) throw new Error("Failed to generate script")
+  return res.json() as Promise<{ script: string; template_id: number }>
 }

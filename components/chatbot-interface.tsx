@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { X, Send, Bot, User, Image as ImageIcon, Mic } from 'lucide-react'
+import { X, Send, Bot, User, ImageIcon, Mic } from 'lucide-react'
 
 interface Message {
   id: string
@@ -25,8 +25,8 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
       id: "1",
       type: "bot",
       content: "Bonjour ! Je suis votre assistant IA. Comment puis-je vous aider avec votre infrastructure ?",
-      timestamp: new Date()
-    }
+      timestamp: new Date(),
+    },
   ])
   const [input, setInput] = useState("")
 
@@ -46,10 +46,10 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
       id: Date.now().toString(),
       type: "user",
       content: input,
-      timestamp: new Date()
+      timestamp: new Date(),
     }
 
-    setMessages(prev => [...prev, userMessage])
+    setMessages((prev) => [...prev, userMessage])
     setInput("")
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"
@@ -59,11 +59,12 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "bot",
-        content: "Je comprends votre question. Laissez-moi analyser vos données...",
-        timestamp: new Date()
+        content:
+          "Je comprends votre question. Laissez-moi analyser vos données et vous proposer des actions concrètes en quelques instants…",
+        timestamp: new Date(),
       }
-      setMessages(prev => [...prev, botMessage])
-    }, 1000)
+      setMessages((prev) => [...prev, botMessage])
+    }, 800)
   }
 
   const handleImageUpload = (file: File) => {
@@ -71,9 +72,9 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
       id: Date.now().toString(),
       type: "user",
       imageUrl: URL.createObjectURL(file),
-      timestamp: new Date()
+      timestamp: new Date(),
     }
-    setMessages(prev => [...prev, imageMessage])
+    setMessages((prev) => [...prev, imageMessage])
   }
 
   const handleAudioUpload = (file: File) => {
@@ -81,83 +82,76 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
       id: Date.now().toString(),
       type: "user",
       audioUrl: URL.createObjectURL(file),
-      timestamp: new Date()
+      timestamp: new Date(),
     }
-    setMessages(prev => [...prev, audioMessage])
+    setMessages((prev) => [...prev, audioMessage])
   }
 
   return (
-    <div className="flex flex-col h-full w-full">
-      {/* ✅ Réduction de la largeur de l'interface ici */}
-      <div className="w-full max-w-[600px] mx-auto flex flex-col h-full shadow-lg border border-border rounded-xl bg-background">
-        
+    <div className="flex w-full justify-center">
+      {/* Strict frame to ensure conversation stays inside */}
+      <div className="w-full max-w-[640px] h-[80vh] flex flex-col rounded-xl border bg-background shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
+              <Bot className="h-4 w-4 text-primary" />
+            </div>
             <h3 className="font-semibold">Assistant IA</h3>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fermer l’assistant">
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Messages */}
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
-{messages.map((message) => (
-  <div
-    key={message.id}
-    className={`flex w-full ${message.type === "user" ? "justify-end" : "justify-start"} px-1`}
-  >
-    {/* BOT MESSAGE */}
-    {message.type === "bot" && (
-      <div className="flex items-start gap-2 max-w-[75%]">
-        {/* Icône bot à gauche */}
-        <div className="flex-shrink-0 h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
-          <Bot className="h-4 w-4 text-primary" />
+        {/* Messages area with hard height and scrolling */}
+        <div className="flex-1 min-h-0">
+          <ScrollArea className="h-full p-4">
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex w-full ${message.type === "user" ? "justify-end" : "justify-start"} px-1`}
+                >
+                  {message.type === "bot" && (
+                    <div className="flex items-start gap-2 max-w-[80%]">
+                      <div className="flex-shrink-0 h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Bot className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="bg-accent text-accent-foreground px-4 py-2 rounded-2xl text-sm break-words break-all whitespace-pre-wrap overflow-hidden">
+                        {message.content}
+                      </div>
+                    </div>
+                  )}
+
+                  {message.type === "user" && (
+                    <div className="relative bg-primary text-primary-foreground px-4 py-2 rounded-2xl max-w-[80%] text-sm break-words break-all whitespace-pre-wrap pr-7 overflow-hidden">
+                      <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-accent flex items-center justify-center shadow">
+                        <User className="h-3.5 w-3.5 text-foreground" />
+                      </div>
+
+                      {message.imageUrl && (
+                        <img
+                          src={message.imageUrl || "/placeholder.svg"}
+                          alt="Image envoyée"
+                          className="rounded-md mb-2 max-w-full max-h-64 object-contain"
+                        />
+                      )}
+                      {message.audioUrl && (
+                        <audio controls src={message.audioUrl} className="mb-2 max-w-full" />
+                      )}
+                      {message.content}
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div ref={endRef} />
+            </div>
+          </ScrollArea>
         </div>
 
-        {/* Bulle bot */}
-        <div className="bg-accent text-accent-foreground px-4 py-2 rounded-2xl text-sm break-words whitespace-pre-wrap">
-          {message.content}
-        </div>
-      </div>
-    )}
-
-    {/* USER MESSAGE */}
-    {message.type === "user" && (
-      <div className="relative bg-primary text-primary-foreground px-4 py-2 rounded-2xl max-w-[75%] text-sm break-words whitespace-pre-wrap pr-7">
-        {/* Icône utilisateur dans la bulle, en haut à droite */}
-        <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-accent flex items-center justify-center shadow">
-          <User className="h-3.5 w-3.5 text-foreground" />
-        </div>
-
-        {/* Texte ou médias */}
-        {message.imageUrl && (
-          <img
-            src={message.imageUrl}
-            alt="Image envoyée"
-            className="rounded-md mb-2 max-w-full h-auto"
-          />
-        )}
-        {message.audioUrl && (
-          <audio controls src={message.audioUrl} className="mb-2 max-w-full" />
-        )}
-        {message.content}
-      </div>
-    )}
-  </div>
-))}
-
-
-
-            <div ref={endRef} />
-          </div>
-        </ScrollArea>
-
-        {/* Input */}
-        <div className="p-4 border-t border-border">
+        {/* Composer */}
+        <div className="p-4 border-t">
           <div className="flex gap-2 items-center">
             <input
               type="file"
@@ -165,7 +159,7 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
               ref={imageInputRef}
               onChange={(e) => e.target.files && handleImageUpload(e.target.files[0])}
               className="hidden"
-              title="Télécharger une image"
+              aria-label="Télécharger une image"
             />
             <input
               type="file"
@@ -173,14 +167,15 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
               ref={audioInputRef}
               onChange={(e) => e.target.files && handleAudioUpload(e.target.files[0])}
               className="hidden"
-              title="Télécharger un audio"
+              aria-label="Télécharger un audio"
             />
-            <Button variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()}>
+            <Button variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()} aria-label="Ajouter une image">
               <ImageIcon className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => audioInputRef.current?.click()}>
+            <Button variant="ghost" size="icon" onClick={() => audioInputRef.current?.click()} aria-label="Ajouter un audio">
               <Mic className="h-4 w-4" />
             </Button>
+
             <Textarea
               ref={textareaRef}
               rows={1}
@@ -192,22 +187,21 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
                   textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
                 }
               }}
-              placeholder="Posez votre question…" // ✅ ajout pour accessibilité
-              title="Champ de message" // ✅ ajout pour accessibilité
+              placeholder="Posez votre question…"
+              title="Champ de message"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault()
                   handleSend()
                 }
               }}
-              className="flex-1 h-10 min-h-0 max-h-40 resize-none overflow-auto text-sm break-words"
+              className="flex-1 h-10 min-h-0 max-h-40 resize-none overflow-auto text-sm"
             />
-            <Button onClick={handleSend} size="icon">
+            <Button onClick={handleSend} size="icon" aria-label="Envoyer">
               <Send className="h-4 w-4" />
             </Button>
           </div>
         </div>
-
       </div>
     </div>
   )
