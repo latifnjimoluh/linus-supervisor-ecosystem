@@ -1,9 +1,10 @@
 const { Op } = require('sequelize');
+const { User, Role } = require('../../models');
 const userService = require('../../services/userService');
 const { validateCreate, validateUpdate } = require('../../validators/userValidator');
 const logger = require('../../utils/logger');
 
-exports.getAllUsers = async (req, res) => {
+exports.getAllUsers = async (req, res, next) => {
   logger.info('getAllUsers called', req.query);
   try {
     const { count, rows, page, limit } = await userService.getAllUsers(req.query);
@@ -21,7 +22,7 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-exports.getUserById = async (req, res) => {
+exports.getUserById = async (req, res, next) => {
   logger.info('getUserById called', req.params.id);
   const { id } = req.params;
   try {
@@ -35,20 +36,20 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-exports.searchUsers = async (req, res) => {
-  logger.info('searchUsers called', req.query.q);
-  const { q } = req.query;
-  if (!q) {
+exports.searchUsers = async (req, res, next) => {
+  const search = req.query.query || req.query.q;
+  logger.info('searchUsers called', search);
+  if (!search) {
     logger.warn('Paramètre q manquant');
-    return res.status(400).json({ message: "Paramètre 'q' requis." });
+    return res.status(400).json({ message: "Paramètre 'query' requis." });
   }
   try {
     const users = await User.findAll({
       where: {
         [Op.or]: [
-          { first_name: { [Op.iLike]: `%${q}%` } },
-          { last_name: { [Op.iLike]: `%${q}%` } },
-          { email: { [Op.iLike]: `%${q}%` } },
+          { first_name: { [Op.iLike]: `%${search}%` } },
+          { last_name: { [Op.iLike]: `%${search}%` } },
+          { email: { [Op.iLike]: `%${search}%` } },
         ],
       },
       include: [{ model: Role, as: 'role' }],
@@ -62,7 +63,7 @@ exports.searchUsers = async (req, res) => {
   }
 };
 
-exports.createUser = async (req, res) => {
+exports.createUser = async (req, res, next) => {
   logger.info('createUser called', req.body.email);
   try {
     const { error } = validateCreate(req.body);
@@ -80,7 +81,7 @@ exports.createUser = async (req, res) => {
   }
 };
 
-exports.updateUser = async (req, res) => {
+exports.updateUser = async (req, res, next) => {
   logger.info('updateUser called', req.params.id, req.body);
   const { id } = req.params;
   const { first_name, last_name, phone, status, role_id } = req.body;
@@ -107,7 +108,7 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-exports.patchUser = async (req, res) => {
+exports.patchUser = async (req, res, next) => {
   logger.info('patchUser called', req.params.id, req.body);
   const { id } = req.params;
   try {
@@ -133,7 +134,7 @@ exports.patchUser = async (req, res) => {
   }
 };
 
-exports.softDeleteUser = async (req, res) => {
+exports.softDeleteUser = async (req, res, next) => {
   logger.info('softDeleteUser called', req.params.id);
   const { id } = req.params;
 

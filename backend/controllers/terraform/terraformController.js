@@ -158,6 +158,7 @@ exports.deploy = async (req, res) => {
       vm_names: vmInfo?.vm_names || [],
       ssh_commands: vmInfo?.ssh_commands || {},
       vm_ids: vmInfo?.vm_ids || {},
+      instance_id: instanceId,
     });
   } catch (error) {
     console.error('❌ Erreur :', error);

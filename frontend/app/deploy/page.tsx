@@ -21,6 +21,7 @@ import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
 import { Checkbox } from "@/components/ui/checkbox"
+import { runDeployment } from "@/services/terraform"
 
 // Schema de validation avec Zod
 const deploymentSchema = z.object({
@@ -82,24 +83,41 @@ export default function DeployPage() {
     toast({
       title: "Déploiement en cours...",
       description: `Lancement du déploiement pour ${data.vm_names}.`,
-      variant: "info"
+      variant: "info",
     });
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const payload = {
+        vm_names: data.vm_names.split(",").map((n) => n.trim()),
+        service_type: data.service_type,
+        script_refs: data.script_refs,
+        template_name: data.template_name,
+        memory_mb: data.memory_mb,
+        vcpu_cores: data.vcpu_cores,
+        vcpu_sockets: data.vcpu_sockets,
+        disk_size: `${data.disk_size}G`,
+        use_static_ip: data.use_static_ip,
+        ...(data.use_static_ip ? { static_ip: data.static_ip, gateway: data.gateway } : {}),
+      };
 
-    console.log("Payload envoyé:", data);
+      const res = await runDeployment(payload);
 
-    const deploymentId = `dep-${Date.now()}`;
+      toast({
+        title: "Déploiement lancé !",
+        description: "Vous allez être redirigé vers la page de suivi.",
+        variant: "success",
+      });
 
-    toast({
-      title: "Déploiement lancé !",
-      description: "Vous allez être redirigé vers la page de suivi.",
-      variant: "success"
-    });
-    
-    router.push(`/deployments/${deploymentId}`);
-    setIsSubmitting(false);
+      router.push(`/deployments/${res.instance_id}`);
+    } catch (err: any) {
+      toast({
+        title: "Erreur de déploiement",
+        description: err?.response?.data?.message || err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const generateTfvars = () => {

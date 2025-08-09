@@ -12,51 +12,12 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-
-interface UserAccount {
-  id: number
-  first_name: string
-  last_name: string
-  email: string
-  role_id: number
-  status: "active" | "inactive"
-  created_at: string
-  last_login?: string
-  avatar?: string
-}
-
-// Mock data for roles to map role_id to name
-const mockRoles = [
-  { id: 1, name: "admin", label: "Administrateur", badgeVariant: "destructive" },
-  { id: 2, name: "technicien", label: "Technicien", badgeVariant: "warning" },
-  { id: 3, name: "auditeur", label: "Auditeur", badgeVariant: "info" },
-];
-
-// Mock data generator for users
-const generateMockUsers = (): UserAccount[] => {
-  const users = [
-    { first_name: "Jean", last_name: "Dupont", email: "admin@example.com", role_id: 1 },
-    { first_name: "Marie", last_name: "Martin", email: "tech@example.com", role_id: 2 },
-    { first_name: "Pierre", last_name: "Durand", email: "auditor@example.com", role_id: 3 },
-    { first_name: "Sophie", last_name: "Bernard", email: "sophie.bernard@example.com", role_id: 2 },
-    { first_name: "Lucas", last_name: "Moreau", email: "lucas.moreau@example.com", role_id: 3 },
-    { first_name: "Emma", last_name: "Leroy", email: "emma.leroy@example.com", role_id: 2 },
-    { first_name: "Thomas", last_name: "Roux", email: "thomas.roux@example.com", role_id: 1 },
-    { first_name: "Camille", last_name: "Fournier", email: "camille.fournier@example.com", role_id: 3 },
-  ]
-
-  return users.map((user, index) => ({
-    id: index + 1,
-    ...user,
-    status: Math.random() > 0.1 ? "active" as const : "inactive" as const,
-    created_at: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-    last_login: Math.random() > 0.2 ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
-    avatar: `/placeholder.svg?height=40&width=40&text=${user.first_name[0]}${user.last_name[0]}`,
-  }))
-}
+import { listUsers, patchUser, deleteUser, User as UserAccount } from "@/services/users"
+import { listRoles, Role } from "@/services/roles"
 
 export default function UsersPage() {
   const [users, setUsers] = React.useState<UserAccount[]>([])
+  const [roles, setRoles] = React.useState<Role[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState<string>("all")
@@ -64,12 +25,21 @@ export default function UsersPage() {
   const [actionLoading, setActionLoading] = React.useState<string | null>(null)
   const { toast } = useToast()
 
-  const fetchUsers = React.useCallback(() => {
+  const fetchUsers = React.useCallback(async () => {
     setLoading(true)
-    setTimeout(() => {
-      setUsers(generateMockUsers())
+    try {
+      const [usersData, rolesData] = await Promise.all([listUsers(), listRoles()])
+      const mappedUsers = usersData.map(u => ({
+        ...u,
+        status: u.status === 'actif' ? 'active' : u.status === 'inactif' ? 'inactive' : u.status,
+      }))
+      setUsers(mappedUsers)
+      setRoles(rolesData)
+    } catch (err) {
+      console.error('fetchUsers error', err)
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }, [])
 
   React.useEffect(() => {
@@ -87,51 +57,57 @@ export default function UsersPage() {
 
   const handleUserAction = async (action: string, userId: number, userEmail: string) => {
     setActionLoading(`${action}-${userId}`)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
+
     let message = ""
     let variant: "success" | "destructive" | "info" = "success"
-    
-    switch (action) {
-      case "deactivate":
-        message = `Utilisateur ${userEmail} désactivé avec succès`
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "inactive" as const } : u))
-        break
-      case "activate":
-        message = `Utilisateur ${userEmail} activé avec succès`
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "active" as const } : u))
-        break
-      case "reset-password":
-        message = `Lien de réinitialisation envoyé à ${userEmail}`
-        variant = "info"
-        break
-      case "delete":
-        message = `Utilisateur ${userEmail} supprimé avec succès`
-        setUsers(prev => prev.filter(u => u.id !== userId))
-        break
-      default:
-        message = "Action effectuée avec succès"
+    try {
+      switch (action) {
+        case "deactivate":
+          await patchUser(userId, { status: "inactif" })
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "inactive" as const } : u))
+          message = `Utilisateur ${userEmail} désactivé avec succès`
+          break
+        case "activate":
+          await patchUser(userId, { status: "actif" })
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "active" as const } : u))
+          message = `Utilisateur ${userEmail} activé avec succès`
+          break
+        case "reset-password":
+          message = `Lien de réinitialisation envoyé à ${userEmail}`
+          variant = "info"
+          break
+        case "delete":
+          await deleteUser(userId)
+          setUsers(prev => prev.filter(u => u.id !== userId))
+          message = `Utilisateur ${userEmail} supprimé avec succès`
+          break
+        default:
+          message = "Action effectuée avec succès"
+      }
+
+      toast({
+        title: "Action réussie",
+        description: message,
+        variant,
+      })
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
     }
-    
-    toast({
-      title: "Action réussie",
-      description: message,
-      variant,
-    })
-    
-    setActionLoading(null)
   }
 
   const getRoleBadgeVariant = (roleId: number) => {
-    const role = mockRoles.find(r => r.id === roleId);
-    return role ? role.badgeVariant : "default";
+    return "default"
   }
 
   const getRoleLabel = (roleId: number) => {
-    const role = mockRoles.find(r => r.id === roleId);
-    return role ? role.label : "Inconnu";
+    const role = roles.find(r => r.id === roleId)
+    return role ? role.name : "Inconnu"
   }
 
   const stats = {
@@ -225,8 +201,8 @@ export default function UsersPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les rôles</SelectItem>
-            {mockRoles.map(role => (
-              <SelectItem key={role.id} value={String(role.id)}>{role.label}</SelectItem>
+            {roles.map(role => (
+              <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
