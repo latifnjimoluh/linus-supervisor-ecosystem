@@ -38,6 +38,7 @@ All routes except `POST /auth/login` require a Bearer token obtained from the lo
 
 ## Logs
 - `GET /logs` – list system logs with pagination and search
+- `GET /logs/export` – download logs as CSV or JSON
 
 ## User Settings
 - `GET /settings/me` – retrieve settings for the authenticated user

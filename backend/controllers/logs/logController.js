@@ -72,3 +72,59 @@ exports.getAllLogs = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
+
+// Export all logs as CSV or JSON
+exports.exportLogs = async (req, res) => {
+  try {
+    const { format = 'json' } = req.query;
+
+    const logs = await Log.findAll({
+      include: [{ model: User, as: 'user', attributes: ['email'] }],
+      order: [['created_at', 'DESC']],
+    });
+
+    const deriveType = (action = '') => {
+      if (/deploy/i.test(action)) return 'deployment';
+      if (/delete|destroy/i.test(action)) return 'deletion';
+      if (/restart|reboot/i.test(action)) return 'restart';
+      if (/user/i.test(action)) return 'user_creation';
+      if (/role/i.test(action)) return 'role_change';
+      return 'vm_action';
+    };
+
+    const deriveStatus = (details = '') => (/error|fail/i.test(details) ? 'error' : 'success');
+
+    const mapped = logs.map((log) => ({
+      id: log.id,
+      action: log.action,
+      type: deriveType(log.action),
+      timestamp: log.created_at,
+      user: log.user ? log.user.email : null,
+      entity: null,
+      status: deriveStatus(log.details),
+      description: log.details || '',
+      details: log.details || '',
+      ip_address: null,
+      vm_id: null,
+    }));
+
+    if (format === 'csv') {
+      const header = 'ID,Action,Type,Timestamp,User,Status,Description';
+      const rows = mapped.map(
+        (l) =>
+          `${l.id},${l.action},${l.type},${l.timestamp},${l.user || ''},${l.status},"${(l.description || '').replace(/"/g, '""')}"`
+      );
+      const csv = [header, ...rows].join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="logs.csv"');
+      return res.send(csv);
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="logs.json"');
+    return res.send(JSON.stringify(mapped, null, 2));
+  } catch (err) {
+    console.error('❌ Erreur exportLogs:', err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};

@@ -62,3 +62,8 @@ export async function generateScript(
   const res = await api.post(`/templates/generate`, { template_id, config_data })
   return res.data as { script: string; fileName: string; contentType: string }
 }
+
+export async function simulateScript(script: string) {
+  const res = await api.post(`/templates/simulate`, { script })
+  return res.data as { simulation: string }
+}
