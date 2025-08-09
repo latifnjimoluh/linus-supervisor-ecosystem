@@ -285,7 +285,9 @@ export default function UsersPage() {
                         </Badge>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Créé le {new Date(user.created_at).toLocaleDateString("fr-FR")}
+                        {user.created_at
+                          ? `Créé le ${new Date(user.created_at).toLocaleDateString("fr-FR")}`
+                          : "Date de création inconnue"}
                         {user.last_login && (
                           <span className="ml-4">
                             Dernière connexion: {new Date(user.last_login).toLocaleDateString("fr-FR")}
@@ -401,7 +403,12 @@ export default function UsersPage() {
               <p><strong>Rôle :</strong> {getRoleLabel(detailUser.role_id)}</p>
               <p><strong>Statut :</strong> {detailUser.status === "active" ? "Actif" : "Inactif"}</p>
               <p><strong>Téléphone :</strong> {detailUser.phone || "—"}</p>
-              <p><strong>Créé le :</strong> {new Date(detailUser.created_at).toLocaleDateString("fr-FR")}</p>
+              <p>
+                <strong>Créé le :</strong>{' '}
+                {detailUser.created_at
+                  ? new Date(detailUser.created_at).toLocaleDateString("fr-FR")
+                  : '—'}
+              </p>
               {detailUser.last_login && (
                 <p><strong>Dernière connexion :</strong> {new Date(detailUser.last_login).toLocaleDateString("fr-FR")}</p>
               )}
