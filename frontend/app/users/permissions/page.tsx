@@ -264,7 +264,7 @@ export default function PermissionsPage() {
     modules: modules.length,
   }
 
-  const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, Modules: ${stats.modules}. Répartition par rôle: Admin (${roles.find(r => r.name === 'admin')?.permissions.length || 0}), Technicien (${roles.find(r => r.name === 'technicien')?.permissions.length || 0}), Auditeur (${roles.find(r => r.name === 'auditeur')?.permissions.length || 0}).`
+const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, Modules: ${stats.modules}. Répartition par rôle: Admin (${roles.find(r => r.name === 'admin')?.permissions.length || 0}), Technicien (${roles.find(r => r.name === 'technicien')?.permissions.length || 0}), Auditeur (${roles.find(r => r.name === 'auditeur')?.permissions.length || 0}).`;
 
   return (
     <div className="space-y-6">
@@ -451,6 +451,7 @@ export default function PermissionsPage() {
               <span className="ml-2">Chargement des permissions...</span>
             </div>
           ) : (
+            <>  
             <div className="space-y-4">
               {filteredPermissions.map((permission, index) => {
                 const isAssigned = selectedRoleData?.permissions.includes(permission.id) || false
@@ -551,6 +552,7 @@ export default function PermissionsPage() {
                 Suivant
               </Button>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

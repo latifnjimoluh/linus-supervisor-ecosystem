@@ -14,13 +14,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast"
 import { listRoles, createRole, updateRole, deleteRole, Role } from "@/services/roles"
 
+type RoleForm = {
+  name: string
+  description: string
+}
+
 export default function RolesPage() {
   const [roles, setRoles] = React.useState<Role[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
   const [editingRole, setEditingRole] = React.useState<Role | null>(null)
-  const [formData, setFormData] = React.useState({ name: "", description: "" })
+  const [formData, setFormData] = React.useState<RoleForm>({ name: "", description: "" })
   const [formLoading, setFormLoading] = React.useState(false)
   const { toast } = useToast()
 
@@ -40,13 +45,18 @@ export default function RolesPage() {
     fetchRoles()
   }, [fetchRoles])
 
-  const filteredRoles = roles.filter(role =>
-    role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    role.description.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredRoles = roles.filter(role => {
+    const name = (role.name ?? "").toLowerCase()
+    const desc = (role.description ?? "").toLowerCase()
+    const q = searchTerm.toLowerCase()
+    return name.includes(q) || desc.includes(q)
+  })
 
   const handleCreateRole = async () => {
-    if (!formData.name.trim() || !formData.description.trim()) {
+    const name = (formData.name ?? "").trim()
+    const description = (formData.description ?? "").trim()
+
+    if (!name || !description) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs",
@@ -56,7 +66,7 @@ export default function RolesPage() {
     }
 
     // Check if role name already exists
-    if (roles.some(role => role.name.toLowerCase() === formData.name.toLowerCase())) {
+    if (roles.some(role => (role.name ?? "").toLowerCase() === name.toLowerCase())) {
       toast({
         title: "Erreur",
         description: "Un rôle avec ce nom existe déjà",
@@ -68,7 +78,7 @@ export default function RolesPage() {
     setFormLoading(true)
 
     try {
-      const created = await createRole(formData)
+      const created = await createRole({ name, description })
       const newRole: Role = { user_count: 0, is_system: false, ...created }
       setRoles(prev => [...prev, newRole])
       setFormData({ name: "", description: "" })
@@ -76,7 +86,7 @@ export default function RolesPage() {
 
       toast({
         title: "Rôle créé",
-        description: `Le rôle "${formData.name}" a été créé avec succès`,
+        description: `Le rôle "${name}" a été créé avec succès`,
         variant: "success",
       })
     } catch (error) {
@@ -91,14 +101,17 @@ export default function RolesPage() {
   }
 
   const handleEditRole = async () => {
-    if (!editingRole || !formData.name.trim() || !formData.description.trim()) {
+    const name = (formData.name ?? "").trim()
+    const description = (formData.description ?? "").trim()
+
+    if (!editingRole || !name || !description) {
       return
     }
 
     setFormLoading(true)
 
     try {
-      const updated = await updateRole(editingRole.id, formData)
+      const updated = await updateRole(editingRole.id, { name, description })
       setRoles(prev => prev.map(role =>
         role.id === editingRole.id
           ? { ...role, ...updated }
@@ -145,7 +158,10 @@ export default function RolesPage() {
 
   const openEditDialog = (role: Role) => {
     setEditingRole(role)
-    setFormData({ name: role.name, description: role.description })
+    setFormData({
+      name: role.name ?? "",
+      description: role.description ?? ""
+    })
   }
 
   return (
@@ -274,8 +290,8 @@ export default function RolesPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">{role.description}</p>
-                  
+                  <p className="text-sm text-muted-foreground">{role.description ?? ""}</p>
+
                   <div className="text-xs text-muted-foreground">
                     Créé le {new Date(role.created_at).toLocaleDateString("fr-FR")}
                   </div>
@@ -311,7 +327,7 @@ export default function RolesPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Annuler</AlertDialogCancel>
-                          <AlertDialogAction 
+                          <AlertDialogAction
                             onClick={() => handleDeleteRole(role.id, role.name)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
