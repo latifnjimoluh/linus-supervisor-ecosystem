@@ -22,11 +22,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
 import { Checkbox } from "@/components/ui/checkbox"
 import { runDeployment } from "@/services/terraform"
+import { getGeneratedScripts, getServiceTypes, ScriptGroup } from "@/services/scripts"
 
 // Schema de validation avec Zod
 const deploymentSchema = z.object({
   vm_names: z.string().min(1, "Le nom de la VM est requis."),
   service_type: z.string().min(1, "Le type de service est requis."),
+  zone: z.enum(["LAN", "DMZ", "WAN", "MGMT"]),
   script_refs: z.array(z.object({ type: z.enum(["script", "template"]), id: z.number() })).optional(),
   template_name: z.string().min(1, "Un template est requis."),
   memory_mb: z.number().min(512, "Minimum 512 Mo de RAM requis."),
@@ -43,18 +45,7 @@ const deploymentSchema = z.object({
 
 type DeploymentFormData = z.infer<typeof deploymentSchema>;
 
-// Données Mock
 const mockTemplates = ["ubuntu-22.04-template", "debian-12-template", "rocky-9-template"];
-const mockServiceTypes = ["web", "database", "monitoring", "security", "custom"];
-const mockScripts = [
-  { id: 20, type: "script", name: "Initialisation SSH" },
-  { id: 21, type: "script", name: "Mise à jour système" },
-  { id: 22, type: "script", name: "Configuration Nginx" },
-  { id: 23, type: "script", name: "Installation Docker" },
-  { id: 24, type: "template", name: "Agent de supervision" },
-  { id: 25, type: "script", name: "Configuration Firewall" },
-  { id: 26, type: "template", name: "Setup Cronjobs" },
-];
 
 export default function DeployPage() {
   const { toast } = useToast();
@@ -62,6 +53,8 @@ export default function DeployPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [showTfvars, setShowTfvars] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+  const [serviceTypes, setServiceTypes] = React.useState<string[]>([]);
+  const [scriptGroups, setScriptGroups] = React.useState<ScriptGroup[]>([]);
 
   const { register, handleSubmit, control, watch, setValue, formState: { errors, isValid } } = useForm<DeploymentFormData>({
     resolver: zodResolver(deploymentSchema),
@@ -73,10 +66,29 @@ export default function DeployPage() {
       disk_size: 20,
       use_static_ip: false,
       script_refs: [],
+      zone: "LAN",
     },
   });
 
   const formData = watch();
+
+  const scriptMap = React.useMemo(() => {
+    const map = new Map<number, { name: string }>();
+    scriptGroups.forEach(group => {
+      group.scripts.forEach(s => {
+        const name = s.script_path.split('/').pop() || `script_${s.id}`;
+        map.set(s.id, { name });
+      });
+    });
+    return map;
+    }, [scriptGroups]);
+
+  React.useEffect(() => {
+    Promise.all([getServiceTypes(), getGeneratedScripts()]).then(([types, scripts]) => {
+      setServiceTypes(types);
+      setScriptGroups(scripts);
+    });
+  }, []);
 
   const onSubmit = async (data: DeploymentFormData) => {
     setIsSubmitting(true);
@@ -90,6 +102,7 @@ export default function DeployPage() {
       const payload = {
         vm_names: data.vm_names.split(",").map((n) => n.trim()),
         service_type: data.service_type,
+        zone: data.zone,
         script_refs: data.script_refs,
         template_name: data.template_name,
         memory_mb: data.memory_mb,
@@ -136,7 +149,7 @@ export default function DeployPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const aiContext = `Génération de configuration pour un service. Template: ${formData.template_name}, RAM: ${formData.memory_mb}MB, CPU: ${formData.vcpu_cores} coeurs. Service Type: ${formData.service_type}. Scripts: ${formData.script_refs?.map(s => mockScripts.find(ms => ms.id === s.id)?.name).join(', ') || 'None'}.`;
+  const aiContext = `Génération de configuration pour un service. Template: ${formData.template_name}, RAM: ${formData.memory_mb}MB, CPU: ${formData.vcpu_cores} coeurs. Service Type: ${formData.service_type}. Scripts: ${formData.script_refs?.map(s => scriptMap.get(s.id)?.name).join(', ') || 'None'}.`;
 
   return (
     <div className="space-y-6">
@@ -185,12 +198,28 @@ export default function DeployPage() {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <SelectTrigger><SelectValue placeholder="Sélectionner un type de service..." /></SelectTrigger>
                       <SelectContent>
-                        {mockServiceTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                        {serviceTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   )}
                 />
                 {errors.service_type && <p className="text-sm text-destructive">{errors.service_type.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>Zone</Label>
+                <Controller
+                  name="zone"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionner une zone" /></SelectTrigger>
+                      <SelectContent>
+                        {["LAN", "DMZ", "WAN", "MGMT"].map(z => <SelectItem key={z} value={z}>{z}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.zone && <p className="text-sm text-destructive">{errors.zone.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Scripts à exécuter</Label>
@@ -211,34 +240,37 @@ export default function DeployPage() {
                         <Command>
                           <CommandInput placeholder="Rechercher un script..." />
                           <CommandEmpty>Aucun script trouvé.</CommandEmpty>
-                          <CommandGroup>
-                            {mockScripts.map((script) => {
-                              const isSelected = field.value?.some(s => s.id === script.id);
-                              return (
-                                <CommandItem
-                                  key={script.id}
-                                  onSelect={() => {
-                                    const newSelection = isSelected
-                                      ? field.value?.filter(s => s.id !== script.id)
-                                      : [...(field.value || []), { type: script.type, id: script.id }];
-                                    setValue("script_refs", newSelection);
-                                  }}
-                                >
-                                  <Checkbox
-                                    checked={isSelected}
-                                    onCheckedChange={(checked) => {
-                                      const newSelection = checked
-                                        ? [...(field.value || []), { type: script.type, id: script.id }]
-                                        : field.value?.filter(s => s.id !== script.id);
+                          {scriptGroups.map(group => (
+                            <CommandGroup key={group.category} heading={group.category}>
+                              {group.scripts.map(script => {
+                                const name = script.script_path.split('/').pop() || `script_${script.id}`;
+                                const isSelected = field.value?.some(s => s.id === script.id);
+                                return (
+                                  <CommandItem
+                                    key={script.id}
+                                    onSelect={() => {
+                                      const newSelection = isSelected
+                                        ? field.value?.filter(s => s.id !== script.id)
+                                        : [...(field.value || []), { type: 'script', id: script.id }];
                                       setValue("script_refs", newSelection);
                                     }}
-                                    className="mr-2"
-                                  />
-                                  {script.name} ({script.type})
-                                </CommandItem>
-                              );
-                            })}
-                          </CommandGroup>
+                                  >
+                                    <Checkbox
+                                      checked={isSelected}
+                                      onCheckedChange={(checked) => {
+                                        const newSelection = checked
+                                          ? [...(field.value || []), { type: 'script', id: script.id }]
+                                          : field.value?.filter(s => s.id !== script.id);
+                                        setValue("script_refs", newSelection);
+                                      }}
+                                      className="mr-2"
+                                    />
+                                    {name}
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+                          ))}
                         </Command>
                       </PopoverContent>
                     </Popover>

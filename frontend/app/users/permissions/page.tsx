@@ -86,13 +86,15 @@ export default function PermissionsPage() {
   const [formData, setFormData] = React.useState({ name: "", description: "", module: "" })
   const [formLoading, setFormLoading] = React.useState(false)
   const [assignLoading, setAssignLoading] = React.useState(false)
+  const [pagination, setPagination] = React.useState({ page: 1, pages: 1, total: 0, limit: 10 })
   const { toast } = useToast()
 
-  const fetchData = React.useCallback(async () => {
+  const fetchData = React.useCallback(async (page = 1) => {
     setLoading(true)
     try {
-      const [permData, roleData] = await Promise.all([listPermissions(), listRoles()])
-      const mappedPerms = permData.map(p => ({
+      const permRes = await listPermissions(page, pagination.limit)
+      const roleData = await listRoles()
+      const mappedPerms = permRes.data.map(p => ({
         ...p,
         module: 'general',
         is_active: p.status !== 'inactif',
@@ -105,12 +107,13 @@ export default function PermissionsPage() {
         })
       )
       setRoles(rolesWithPerms)
+      setPagination(permRes.pagination)
     } catch (err) {
       console.error('fetchData error', err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [pagination.limit])
 
   React.useEffect(() => {
     fetchData()
@@ -438,7 +441,7 @@ export default function PermissionsPage() {
             {selectedRole === "all" ? "Toutes les permissions" : `Permissions du rôle "${selectedRoleData?.name}"`}
           </CardTitle>
           <CardDescription>
-            {filteredPermissions.length} permission(s) trouvée(s) sur {permissions.length} au total
+            {filteredPermissions.length} permission(s) trouvée(s) sur {pagination.total} au total
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -529,6 +532,24 @@ export default function PermissionsPage() {
                   </motion.div>
                 )
               })}
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.page <= 1}
+                onClick={() => fetchData(pagination.page - 1)}
+              >
+                Précédent
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.page >= pagination.pages}
+                onClick={() => fetchData(pagination.page + 1)}
+              >
+                Suivant
+              </Button>
             </div>
           )}
         </CardContent>

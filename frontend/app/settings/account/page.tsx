@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
 import { BackButton } from "@/components/back-button"
 import { Button } from "@/components/ui/button"
@@ -10,9 +11,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AccountInfo, getAccountInfo } from "@/services/settings"
 
 export default function AccountSettingsPage() {
   const { setTheme } = useTheme()
+  const [account, setAccount] = useState<AccountInfo | null>(null)
+
+  useEffect(() => {
+    getAccountInfo().then(setAccount)
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -55,12 +62,16 @@ export default function AccountSettingsPage() {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="username">Nom d’utilisateur</Label>
-                <Input id="username" defaultValue="admin" />
+                <Label htmlFor="username">Nom</Label>
+                <Input id="username" value={account?.first_name || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Adresse e-mail</Label>
-                <Input id="email" type="email" defaultValue="admin@example.com" />
+                <Input id="email" type="email" value={account?.email || ""} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Rôle</Label>
+                <Input id="role" value={account?.role?.name || ""} readOnly />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="language">Langue</Label>

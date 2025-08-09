@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Eye, EyeOff } from "lucide-react"
 import useAuth from "@/hooks/useAuth"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -24,6 +25,7 @@ export default function ProxmoxSettingsPage() {
   const [proxmoxUrl, setProxmoxUrl] = useState("")
   const [apiTokenId, setApiTokenId] = useState("")
   const [apiTokenSecret, setApiTokenSecret] = useState("")
+  const [showSecret, setShowSecret] = useState(false)
   const [proxmoxNode, setProxmoxNode] = useState("")
 
   useEffect(() => {
@@ -112,13 +114,25 @@ export default function ProxmoxSettingsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="api-token-secret">Clé secrète du Token API</Label>
-              <Input
-                id="api-token-secret"
-                type="password"
-                value={apiTokenSecret}
-                onChange={(e) => setApiTokenSecret(e.target.value)}
-                disabled={loading}
-              />
+              <div className="relative">
+                <Input
+                  id="api-token-secret"
+                  type={showSecret ? "text" : "password"}
+                  value={apiTokenSecret}
+                  onChange={(e) => setApiTokenSecret(e.target.value)}
+                  disabled={loading}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-1/2 right-2 -translate-y-1/2 h-6 w-6 p-0"
+                  onClick={() => setShowSecret(!showSecret)}
+                  disabled={loading}
+                >
+                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="proxmox-node">Nom du nœud Proxmox cible</Label>
