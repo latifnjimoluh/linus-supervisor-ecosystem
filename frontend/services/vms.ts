@@ -11,6 +11,7 @@ export interface TerminalVM {
   type: string; // 'qemu'
   ip_source: 'db' | 'agent' | null;
   ping_ok: boolean | null;
+  tags?: string[];
 }
 
 export async function fetchTerminalVMs(onlyConnectable = false): Promise<TerminalVM[]> {

@@ -12,59 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { useToast } from "@/hooks/use-toast"
-
-interface LogEntry {
-  id: string
-  action: string
-  type: "deployment" | "deletion" | "error" | "restart" | "user_creation" | "role_change" | "vm_action" | "script_execution"
-  timestamp: string
-  user: string
-  entity: string
-  status: "success" | "error" | "warning"
-  description: string
-  details?: string
-  ip_address?: string
-  vm_id?: string
-}
-
-// Mock data generator for logs
-const generateMockLogs = (): LogEntry[] => {
-  const actions = [
-    { action: "VM Deployment", type: "deployment" as const, entity: "web-server-01" },
-    { action: "VM Deletion", type: "deletion" as const, entity: "test-server-03" },
-    { action: "System Error", type: "error" as const, entity: "db-server-02" },
-    { action: "VM Restart", type: "restart" as const, entity: "api-gateway-04" },
-    { action: "User Creation", type: "user_creation" as const, entity: "marie.martin@example.com" },
-    { action: "Role Assignment", type: "role_change" as const, entity: "pierre.durand@example.com" },
-    { action: "Script Execution", type: "script_execution" as const, entity: "backup-script.sh" },
-    { action: "VM Start", type: "vm_action" as const, entity: "monitoring-05" },
-    { action: "VM Stop", type: "vm_action" as const, entity: "cache-redis-03" },
-    { action: "Template Creation", type: "deployment" as const, entity: "ubuntu-template-v2" },
-  ]
-
-  const users = ["admin@example.com", "tech@example.com", "auditor@example.com", "marie.martin@example.com"]
-  const statuses: Array<"success" | "error" | "warning"> = ["success", "success", "success", "error", "warning"]
-
-  return Array.from({ length: 50 }, (_, index) => {
-    const actionData = actions[Math.floor(Math.random() * actions.length)]
-    const status = statuses[Math.floor(Math.random() * statuses.length)]
-    const timestamp = new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString()
-
-    return {
-      id: `log-${String(index + 1).padStart(3, '0')}`,
-      action: actionData.action,
-      type: actionData.type,
-      timestamp,
-      user: users[Math.floor(Math.random() * users.length)],
-      entity: actionData.entity,
-      status,
-      description: `${actionData.action} ${status === "success" ? "completed successfully" : status === "error" ? "failed with errors" : "completed with warnings"} for ${actionData.entity}`,
-      details: status === "error" ? "Connection timeout after 30 seconds. Please check network configuration." : undefined,
-      ip_address: `192.168.1.${Math.floor(Math.random() * 200) + 10}`,
-      vm_id: actionData.type.includes("vm") || actionData.type === "deployment" ? `vm-${String(Math.floor(Math.random() * 10) + 1).padStart(3, '0')}` : undefined,
-    }
-  }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-}
+import { listLogs, LogEntry } from "@/services/logs"
 
 // Simulate AI analysis for logs
 const simulateLogsAIAnalysis = async (context: string): Promise<string> => {
@@ -111,12 +59,16 @@ export default function LogsPage() {
   const [selectedLog, setSelectedLog] = React.useState<LogEntry | null>(null)
   const { toast } = useToast()
 
-  const fetchLogs = React.useCallback(() => {
-    setLoading(true)
-    setTimeout(() => {
-      setLogs(generateMockLogs())
+  const fetchLogs = React.useCallback(async () => {
+    try {
+      setLoading(true)
+      const res = await listLogs()
+      setLogs(res.results)
+    } catch (err) {
+      console.error('Erreur chargement logs', err)
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }, [])
 
   React.useEffect(() => {
@@ -127,8 +79,8 @@ export default function LogsPage() {
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch = log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.entity.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.user.toLowerCase().includes(searchTerm.toLowerCase())
+                         (log.entity || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (log.user || '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = typeFilter === "all" || log.type === typeFilter
     const matchesStatus = statusFilter === "all" || log.status === statusFilter
     return matchesSearch && matchesType && matchesStatus

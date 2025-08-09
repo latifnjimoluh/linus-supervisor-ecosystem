@@ -34,6 +34,8 @@ interface TerminalLine {
 export default function TerminalPage() {
   const [selectedVM, setSelectedVM] = React.useState<string>("")
   const [vms, setVms] = React.useState<TerminalVM[]>([])
+  const [search, setSearch] = React.useState("")
+  const [debounced, setDebounced] = React.useState("")
   const [sshUser, setSshUser] = React.useState("")
   const [session, setSession] = React.useState<TerminalSession | null>(null)
   const [terminalLines, setTerminalLines] = React.useState<TerminalLine[]>([])
@@ -57,6 +59,20 @@ export default function TerminalPage() {
         })
       )
   }, [toast])
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebounced(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  const filteredVms = React.useMemo(() => {
+    const term = debounced.toLowerCase().trim()
+    if (!term) return vms
+    return vms.filter(vm => {
+      const haystack = `${vm.name} ${vm.ip ?? ""} ${(vm.tags ?? []).join(" ")}`.toLowerCase()
+      return haystack.includes(term)
+    })
+  }, [vms, debounced])
 
   // Auto-scroll to bottom
   React.useEffect(() => {
@@ -256,17 +272,18 @@ export default function TerminalPage() {
         timestamp: new Date()
       }
       setTerminalLines(prev => [...prev, promptLine])
-    } catch (e: any) {
-      const errorLine: TerminalLine = {
-        id: `err-${Date.now()}`,
-        type: "error",
-        content: e?.response?.data?.message || e?.message || "Échec exécution commande",
-        timestamp: new Date()
+      } catch (e: any) {
+        const errorLine: TerminalLine = {
+          id: `err-${Date.now()}`,
+          type: "error",
+          content: e?.response?.data?.message || e?.message || "Échec exécution commande",
+          timestamp: new Date()
+        }
+        setTerminalLines(prev => [...prev, errorLine])
+      } finally {
+        setIsExecuting(false)
+        inputRef.current?.focus()
       }
-      setTerminalLines(prev => [...prev, errorLine])
-    } finally {
-      setIsExecuting(false)
-    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -354,12 +371,19 @@ export default function TerminalPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <Input
+              placeholder="Rechercher..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="rounded-xl"
+            />
+
             <Select value={selectedVM} onValueChange={setSelectedVM}>
               <SelectTrigger className="rounded-xl">
                 <SelectValue placeholder="Sélectionnez une VM..." />
               </SelectTrigger>
               <SelectContent>
-                {vms.map((vm) => (
+                {filteredVms.map((vm) => (
                   <SelectItem key={vm.id} value={vm.id} disabled={vm.status !== "running" || !vm.ip}>
                     <div className="flex items-center gap-2">
                       <div className={cn(
