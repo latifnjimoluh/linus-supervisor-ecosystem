@@ -491,8 +491,8 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
                         <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                           <span>
                             Créé le{' '}
-                            {permission.created_at
-                              ? new Date(permission.created_at).toLocaleDateString("fr-FR")
+                            {permission.createdAt
+                              ? new Date(permission.createdAt).toLocaleDateString("fr-FR")
                               : '—'}
                           </span>
                           {isUsedByRoles.length > 0 && (

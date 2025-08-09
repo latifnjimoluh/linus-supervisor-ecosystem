@@ -28,14 +28,32 @@ export default function UsersPage() {
   const [detailUser, setDetailUser] = React.useState<UserAccount | null>(null)
   const { toast } = useToast()
 
+  // juste sous les imports
+  type ApiUser = UserAccount & {
+    createdAt?: string | null
+    updatedAt?: string | null
+    created_at?: string | null
+    updated_at?: string | null
+    last_login?: string | null
+  }
+
+  const normalizeUser = (u: ApiUser): UserAccount & {
+    created_at?: string | null
+    updated_at?: string | null
+  } => ({
+    ...u,
+    // uniformiser le statut
+    status: u.status === 'actif' ? 'active' : u.status === 'inactif' ? 'inactive' : u.status,
+    // uniformiser les dates en snake_case (utilisées par ton JSX)
+    created_at: u.created_at ?? u.createdAt ?? null,
+    updated_at: u.updated_at ?? u.updatedAt ?? null,
+  })
+
   const fetchUsers = React.useCallback(async () => {
     setLoading(true)
     try {
       const [usersData, rolesData] = await Promise.all([listUsers(), listRoles()])
-      const mappedUsers = usersData.map(u => ({
-        ...u,
-        status: u.status === 'actif' ? 'active' : u.status === 'inactif' ? 'inactive' : u.status,
-      }))
+      const mappedUsers = usersData.map((u: ApiUser) => normalizeUser(u))
       setUsers(mappedUsers)
       setRoles(rolesData)
     } catch (err) {
@@ -44,6 +62,7 @@ export default function UsersPage() {
       setLoading(false)
     }
   }, [])
+
 
   React.useEffect(() => {
     fetchUsers()
@@ -106,17 +125,15 @@ export default function UsersPage() {
 
   const handleViewUser = async (userId: number) => {
     try {
-      const data = await getUser(userId)
-      const mapped = {
-        ...data,
-        status: data.status === 'actif' ? 'active' : data.status === 'inactif' ? 'inactive' : data.status,
-      }
+      const data: ApiUser = await getUser(userId)
+      const mapped = normalizeUser(data)
       setDetailUser(mapped)
       setDetailOpen(true)
     } catch (err) {
       console.error('handleViewUser error', err)
     }
   }
+
 
   const getRoleBadgeVariant = (roleId: number) => {
     return "default"
@@ -265,7 +282,7 @@ export default function UsersPage() {
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                       <span className="text-sm font-medium">
-                        {user.first_name[0]}{user.last_name[0]}
+                        {(user.first_name?.[0] ?? '').toUpperCase()}{(user.last_name?.[0] ?? '').toUpperCase()}
                       </span>
                     </div>
                     <div>

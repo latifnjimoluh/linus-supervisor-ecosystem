@@ -293,8 +293,8 @@ export default function RolesPage() {
                 <CardContent className="space-y-4">
                   <div className="text-xs text-muted-foreground">
                     Créé le{' '}
-                    {role.created_at
-                      ? new Date(role.created_at).toLocaleDateString("fr-FR")
+                    {role.createdAt
+                      ? new Date(role.createdAt).toLocaleDateString("fr-FR")
                       : '—'}
                   </div>
 

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Terminal, Server, Power, Wifi, Download, Settings } from 'lucide-react'
+import { Terminal as TerminalIcon, Server, Power, Wifi, Download, Settings } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { fetchTerminalVMs, TerminalVM } from "@/services/vms"
+import { fetchTerminalVMs, TerminalVM, testSshConnection, execSshCommand } from "@/services/vms"
 
 interface TerminalSession {
   id: string
@@ -31,133 +31,6 @@ interface TerminalLine {
   timestamp: Date
 }
 
-
-// Simulate terminal command execution
-const simulateCommand = async (command: string): Promise<{ output: string; isError: boolean }> => {
-  await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500))
-  
-  const cmd = command.trim().toLowerCase()
-  
-  if (cmd === "ls" || cmd === "ls -la") {
-    return {
-      output: `total 48
-drwxr-xr-x 5 root root 4096 Jan  7 14:30 .
-drwxr-xr-x 3 root root 4096 Jan  5 10:15 ..
--rw-r--r-- 1 root root  220 Jan  5 10:15 .bash_logout
--rw-r--r-- 1 root root 3526 Jan  5 10:15 .bashrc
-drwxr-xr-x 2 root root 4096 Jan  7 14:25 scripts
-drwxr-xr-x 3 root root 4096 Jan  6 09:30 logs
--rw-r--r-- 1 root root  807 Jan  5 10:15 .profile`,
-      isError: false
-    }
-  }
-  
-  if (cmd === "pwd") {
-    return { output: "/root", isError: false }
-  }
-  
-  if (cmd === "whoami") {
-    return { output: "root", isError: false }
-  }
-  
-  if (cmd === "date") {
-    return { output: new Date().toString(), isError: false }
-  }
-  
-  if (cmd === "uptime") {
-    return { output: " 14:30:15 up 2 days,  4:25,  1 user,  load average: 0.15, 0.25, 0.18", isError: false }
-  }
-  
-  if (cmd === "free -h") {
-    return {
-      output: `              total        used        free      shared  buff/cache   available
-Mem:           7.8G        2.1G        3.2G        156M        2.5G        5.4G
-Swap:          2.0G          0B        2.0G`,
-      isError: false
-    }
-  }
-  
-  if (cmd === "df -h") {
-    return {
-      output: `Filesystem      Size  Used Avail Use% Mounted on
-/dev/sda1        20G  8.5G   11G  45% /
-/dev/sda2       100G   45G   50G  48% /var
-tmpfs           3.9G     0  3.9G   0% /dev/shm`,
-      isError: false
-    }
-  }
-  
-  if (cmd.startsWith("ps") || cmd === "top") {
-    return {
-      output: `  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
- 1234 root      20   0  123456   7890   1234 S   2.3  0.1   0:12.34 systemd
- 5678 www-data  20   0  456789  12345   5678 S   1.5  0.2   0:05.67 apache2
- 9012 mysql     20   0  789012  23456   9012 S   0.8  0.3   0:08.90 mysqld`,
-      isError: false
-    }
-  }
-  
-  if (cmd.includes("systemctl status")) {
-    const service = cmd.split(" ").pop() || "unknown"
-    return {
-      output: `● ${service}.service - ${service} service
-   Loaded: loaded (/lib/systemd/system/${service}.service; enabled; vendor preset: enabled)
-   Active: active (running) since Mon 2025-01-07 10:15:30 UTC; 4h 15min ago
-     Docs: man:${service}(8)
- Main PID: 1234 (${service})
-    Tasks: 3 (limit: 4915)
-   Memory: 45.2M
-   CGroup: /system.slice/${service}.service
-           └─1234 /usr/sbin/${service}`,
-      isError: false
-    }
-  }
-  
-  if (cmd.includes("rm -rf") || cmd.includes("rm -r /")) {
-    return {
-      output: "rm: operation not permitted - dangerous command blocked by security policy",
-      isError: true
-    }
-  }
-  
-  if (cmd === "help" || cmd === "--help") {
-    return {
-      output: `Available commands:
-- ls, pwd, whoami, date, uptime
-- free -h, df -h, ps, top
-- systemctl status <service>
-- cat <file>, tail <file>
-- cd <directory>
-- history, clear, exit
-
-Security: Dangerous commands are blocked for safety.`,
-      isError: false
-    }
-  }
-  
-  if (cmd === "history") {
-    return {
-      output: `  1  ls -la
-  2  pwd
-  3  free -h
-  4  df -h
-  5  systemctl status apache2
-  6  ${command}`,
-      isError: false
-    }
-  }
-  
-  if (cmd === "clear") {
-    return { output: "", isError: false }
-  }
-  
-  // Default response for unknown commands
-  return {
-    output: `bash: ${command}: command not found`,
-    isError: true
-  }
-}
-
 export default function TerminalPage() {
   const [selectedVM, setSelectedVM] = React.useState<string>("")
   const [vms, setVms] = React.useState<TerminalVM[]>([])
@@ -168,6 +41,7 @@ export default function TerminalPage() {
   const [commandHistory, setCommandHistory] = React.useState<string[]>([])
   const [historyIndex, setHistoryIndex] = React.useState(-1)
   const [isExecuting, setIsExecuting] = React.useState(false)
+  const [isConnecting, setIsConnecting] = React.useState(false)
   const { toast } = useToast()
   const terminalRef = React.useRef<HTMLDivElement>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -175,7 +49,7 @@ export default function TerminalPage() {
   React.useEffect(() => {
     fetchTerminalVMs()
       .then(setVms)
-      .catch(() =>
+      .catch((e) =>
         toast({
           title: "Erreur",
           description: "Impossible de récupérer les VMs",
@@ -211,46 +85,81 @@ export default function TerminalPage() {
       return
     }
 
-    // Simulate connection
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
-    const newSession: TerminalSession = {
-      id: `session-${Date.now()}`,
-      vmId: vm.id,
-      vmName: vm.name,
-      vmIp: vm.ip,
-      sshUser,
-      connected: true,
-      lastActivity: new Date()
+    if (!sshUser.trim()) {
+      toast({
+        title: "Utilisateur SSH requis",
+        description: "Veuillez saisir l'utilisateur SSH.",
+        variant: "destructive",
+      })
+      return
     }
 
-    setSession(newSession)
-    setTerminalLines([
-      {
-        id: "welcome",
-        type: "system",
-        content: `🔒 Session sécurisée établie avec ${vm.name} (${vm.ip})`,
-        timestamp: new Date()
-      },
-      {
-        id: "security-notice",
-        type: "system",
-        content: "⚠️  Toutes vos actions sont enregistrées pour audit de sécurité",
-        timestamp: new Date()
-      },
-      {
-        id: "prompt-1",
-        type: "system",
-        content: `root@${vm.name}:~#`,
-        timestamp: new Date()
-      }
-    ])
+    try {
+      setIsConnecting(true)
 
-    toast({
-      title: "Connexion établie",
-      description: `Terminal connecté à ${vm.name}`,
-      variant: "success",
-    })
+      // 🔐 Test de connexion réel via le backend
+      const test = await testSshConnection({
+        vm_id: vm.id,
+        ip: vm.ip,
+        ssh_user: sshUser.trim(),
+      })
+
+      if (!test.ok) {
+        toast({
+          title: "Connexion refusée",
+          description: test.message || "Impossible d'établir la connexion SSH.",
+          variant: "destructive",
+        })
+        setIsConnecting(false)
+        return
+      }
+
+      const newSession: TerminalSession = {
+        id: `session-${Date.now()}`,
+        vmId: vm.id,
+        vmName: vm.name,
+        vmIp: vm.ip,
+        sshUser: sshUser.trim(),
+        connected: true,
+        lastActivity: new Date()
+      }
+
+      setSession(newSession)
+      setTerminalLines([
+        {
+          id: "welcome",
+          type: "system",
+          content: `🔒 Session SSH établie avec ${vm.name} (${vm.ip})`,
+          timestamp: new Date()
+        },
+        {
+          id: "security-notice",
+          type: "system",
+          content: "⚠️  Toutes vos actions sont enregistrées pour audit de sécurité",
+          timestamp: new Date()
+        },
+        {
+          id: "prompt-1",
+          type: "system",
+          content: `${sshUser.trim()}@${vm.name}:~$`,
+          timestamp: new Date()
+        }
+      ])
+
+      toast({
+        title: "Connexion établie",
+        description: `Terminal connecté à ${vm.name}`,
+        variant: "success",
+      })
+    } catch (e: any) {
+      toast({
+        title: "Erreur de connexion",
+        description: e?.response?.data?.message || e?.message || "Echec du test SSH.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsConnecting(false)
+    }
   }
 
   const disconnectSession = () => {
@@ -270,73 +179,88 @@ export default function TerminalPage() {
   const executeCommand = async () => {
     if (!currentCommand.trim() || isExecuting || !session) return
 
+    const cmd = currentCommand
     setIsExecuting(true)
 
-    // Add command to history
-    const newHistory = [...commandHistory, currentCommand]
+    // Historique
+    const newHistory = [...commandHistory, cmd]
     setCommandHistory(newHistory)
     setHistoryIndex(-1)
 
-    // Add command line
+    // Ligne de commande
+    const promptUser = `${session.sshUser}@${session.vmName}:~$`
     const commandLine: TerminalLine = {
       id: `cmd-${Date.now()}`,
       type: "command",
-      content: `root@${session.vmName}:~# ${currentCommand}`,
+      content: `${promptUser} ${cmd}`,
       timestamp: new Date()
     }
-
     setTerminalLines(prev => [...prev, commandLine])
     setCurrentCommand("")
 
     try {
-      // Handle special commands
-      if (currentCommand.trim() === "clear") {
+      // commandes locales
+      if (cmd === "clear") {
         setTerminalLines([
           {
             id: "prompt-clear",
             type: "system",
-            content: `root@${session.vmName}:~#`,
+            content: `${promptUser}`,
             timestamp: new Date()
           }
         ])
         setIsExecuting(false)
         return
       }
-
-      if (currentCommand.trim() === "exit") {
+      if (cmd === "exit") {
         disconnectSession()
         setIsExecuting(false)
         return
       }
 
-      // Execute command
-      const result = await simulateCommand(currentCommand)
+      // 🧠 Exécution réelle via backend
+      const { stdout, stderr, code } = await execSshCommand({
+        vm_id: session.vmId,
+        ip: session.vmIp,
+        ssh_user: session.sshUser,
+        command: cmd,
+      })
 
-      // Add output
-      if (result.output) {
+      // Sortie stdout
+      if (stdout && stdout.trim().length > 0) {
         const outputLine: TerminalLine = {
           id: `out-${Date.now()}`,
-          type: result.isError ? "error" : "output",
-          content: result.output,
+          type: "output",
+          content: stdout,
           timestamp: new Date()
         }
         setTerminalLines(prev => [...prev, outputLine])
       }
 
-      // Add new prompt
+      // Sortie stderr
+      if (stderr && stderr.trim().length > 0) {
+        const errorLine: TerminalLine = {
+          id: `err-${Date.now()}`,
+          type: "error",
+          content: stderr,
+          timestamp: new Date()
+        }
+        setTerminalLines(prev => [...prev, errorLine])
+      }
+
+      // Nouveau prompt
       const promptLine: TerminalLine = {
         id: `prompt-${Date.now()}`,
         type: "system",
-        content: `root@${session.vmName}:~#`,
+        content: `${promptUser}`,
         timestamp: new Date()
       }
       setTerminalLines(prev => [...prev, promptLine])
-
-    } catch (error) {
+    } catch (e: any) {
       const errorLine: TerminalLine = {
         id: `err-${Date.now()}`,
         type: "error",
-        content: "Terminal error: Command execution failed",
+        content: e?.response?.data?.message || e?.message || "Échec exécution commande",
         timestamp: new Date()
       }
       setTerminalLines(prev => [...prev, errorLine])
@@ -462,11 +386,11 @@ export default function TerminalPage() {
 
             <Button
               onClick={() => connectToVM(selectedVM)}
-              disabled={!selectedVM || !sshUser}
+              disabled={!selectedVM || !sshUser || isConnecting}
               className="w-full rounded-xl"
             >
-              <Terminal className="mr-2 h-4 w-4" />
-              Se connecter en SSH
+              <TerminalIcon className="mr-2 h-4 w-4" />
+              {isConnecting ? "Connexion..." : "Se connecter en SSH"}
             </Button>
 
             <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-xl">
@@ -477,7 +401,7 @@ export default function TerminalPage() {
               <ul className="space-y-1 text-xs">
                 <li>• Connexion SSH sécurisée avec authentification par clé</li>
                 <li>• Toutes les commandes sont enregistrées pour audit</li>
-                <li>• Les commandes dangereuses sont automatiquement bloquées</li>
+                <li>• Les commandes sont exécutées côté serveur via un proxy sécurisé</li>
                 <li>• Session automatiquement fermée après 30 minutes d'inactivité</li>
               </ul>
             </div>
@@ -489,7 +413,7 @@ export default function TerminalPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
-                <Terminal className="h-5 w-5" />
+                <TerminalIcon className="h-5 w-5" />
                 {session.vmName}
                 <Badge variant="success" className="text-xs">
                   <Wifi className="h-3 w-3 mr-1" />
@@ -537,7 +461,7 @@ export default function TerminalPage() {
               {/* Command Input */}
               <div className="border-t border-gray-700 p-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-yellow-400">root@{session.vmName}:~#</span>
+                  <span className="text-yellow-400">{session.sshUser}@{session.vmName}:~$</span>
                   <input
                     ref={inputRef}
                     type="text"
@@ -552,7 +476,7 @@ export default function TerminalPage() {
                   <div className="w-2 h-4 bg-green-400 animate-pulse" />
                 </div>
                 <div className="text-xs text-gray-500 mt-2">
-                  Utilisez ↑/↓ pour l'historique • 'help' pour les commandes • 'exit' pour quitter
+                  Utilisez ↑/↓ pour l'historique • 'clear' pour nettoyer • 'exit' pour quitter
                 </div>
               </div>
             </div>
