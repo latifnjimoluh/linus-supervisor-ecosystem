@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Terminal, Server, Power, Wifi, WifiOff, Copy, Download, Trash2, Settings } from 'lucide-react'
+import { Terminal, Server, Power, Wifi, Download, Settings } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -9,14 +9,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { fetchTerminalVMs, TerminalVM } from "@/services/vms"
 
 interface TerminalSession {
   id: string
   vmId: string
   vmName: string
   vmIp: string
+  sshUser: string
   connected: boolean
   lastActivity: Date
 }
@@ -28,12 +31,6 @@ interface TerminalLine {
   timestamp: Date
 }
 
-const mockVMs = [
-  { id: "vm-001", name: "web-server-01", ip: "192.168.1.10", status: "running" },
-  { id: "vm-002", name: "db-server-02", ip: "192.168.1.11", status: "running" },
-  { id: "vm-003", name: "api-gateway-04", ip: "192.168.1.12", status: "running" },
-  { id: "vm-004", name: "cache-redis-03", ip: "192.168.1.13", status: "stopped" },
-]
 
 // Simulate terminal command execution
 const simulateCommand = async (command: string): Promise<{ output: string; isError: boolean }> => {
@@ -163,6 +160,8 @@ Security: Dangerous commands are blocked for safety.`,
 
 export default function TerminalPage() {
   const [selectedVM, setSelectedVM] = React.useState<string>("")
+  const [vms, setVms] = React.useState<TerminalVM[]>([])
+  const [sshUser, setSshUser] = React.useState("")
   const [session, setSession] = React.useState<TerminalSession | null>(null)
   const [terminalLines, setTerminalLines] = React.useState<TerminalLine[]>([])
   const [currentCommand, setCurrentCommand] = React.useState("")
@@ -172,6 +171,18 @@ export default function TerminalPage() {
   const { toast } = useToast()
   const terminalRef = React.useRef<HTMLDivElement>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
+
+  React.useEffect(() => {
+    fetchTerminalVMs()
+      .then(setVms)
+      .catch(() =>
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les VMs",
+          variant: "destructive",
+        })
+      )
+  }, [toast])
 
   // Auto-scroll to bottom
   React.useEffect(() => {
@@ -188,13 +199,13 @@ export default function TerminalPage() {
   }, [session?.connected])
 
   const connectToVM = async (vmId: string) => {
-    const vm = mockVMs.find(v => v.id === vmId)
+    const vm = vms.find(v => v.id === vmId)
     if (!vm) return
 
-    if (vm.status !== "running") {
+    if (vm.status !== "running" || !vm.ip) {
       toast({
         title: "VM non disponible",
-        description: `La VM ${vm.name} n'est pas en cours d'exécution`,
+        description: `La VM ${vm.name} n'est pas disponible`,
         variant: "destructive",
       })
       return
@@ -208,6 +219,7 @@ export default function TerminalPage() {
       vmId: vm.id,
       vmName: vm.name,
       vmIp: vm.ip,
+      sshUser,
       connected: true,
       lastActivity: new Date()
     }
@@ -423,15 +435,15 @@ export default function TerminalPage() {
                 <SelectValue placeholder="Sélectionnez une VM..." />
               </SelectTrigger>
               <SelectContent>
-                {mockVMs.map((vm) => (
-                  <SelectItem key={vm.id} value={vm.id} disabled={vm.status !== "running"}>
+                {vms.map((vm) => (
+                  <SelectItem key={vm.id} value={vm.id} disabled={vm.status !== "running" || !vm.ip}>
                     <div className="flex items-center gap-2">
                       <div className={cn(
                         "w-2 h-2 rounded-full",
                         vm.status === "running" ? "bg-green-500" : "bg-red-500"
                       )} />
                       <span>{vm.name}</span>
-                      <span className="text-muted-foreground">({vm.ip})</span>
+                      {vm.ip && <span className="text-muted-foreground">({vm.ip})</span>}
                       <Badge variant={vm.status === "running" ? "success" : "destructive"} className="text-xs">
                         {vm.status}
                       </Badge>
@@ -441,13 +453,20 @@ export default function TerminalPage() {
               </SelectContent>
             </Select>
 
-            <Button 
-              onClick={() => connectToVM(selectedVM)} 
-              disabled={!selectedVM}
+            <Input
+              value={sshUser}
+              onChange={(e) => setSshUser(e.target.value)}
+              placeholder="Utilisateur SSH"
+              className="rounded-xl"
+            />
+
+            <Button
+              onClick={() => connectToVM(selectedVM)}
+              disabled={!selectedVM || !sshUser}
               className="w-full rounded-xl"
             >
               <Terminal className="mr-2 h-4 w-4" />
-              Se connecter au terminal
+              Se connecter en SSH
             </Button>
 
             <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-xl">

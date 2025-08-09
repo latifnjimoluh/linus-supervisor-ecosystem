@@ -18,5 +18,6 @@ router.use('/ai-cache', require('./ai/aiCacheRoutes'));
 router.use('/servers', require('./servers/serverRoutes'));
 router.use('/scripts', require('./scripts/scriptRoutes'));
 router.use('/assistant', require('./assistant/assistantRoutes'));
+router.use('/terminal', require('./terminal/terminalRoutes'));
 
 module.exports = router;
