@@ -4,6 +4,7 @@ module.exports = (sequelize, DataTypes) => {
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+      unique: true,
     },
     service_type: {
       type: DataTypes.STRING,
@@ -39,6 +40,11 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     tableName: 'service_templates',
     underscored: true,
+    paranoid: true,
+    indexes: [
+      { fields: ['service_type'] },
+      { fields: ['category'] },
+    ],
   });
 
   return ServiceTemplate;

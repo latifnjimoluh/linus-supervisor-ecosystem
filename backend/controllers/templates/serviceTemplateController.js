@@ -121,7 +121,7 @@ exports.generateScript = async (req, res) => {
     });
 
     await logAction(req, `generate_template_file:${tpl.id}:${filename}`);
-    res.json({ message: 'Script généré et sauvegardé', script, path: script_path });
+    res.json({ script, fileName: filename, contentType: 'text/x-shellscript' });
   } catch (err) {
     console.error('Erreur generateScript:', err);
     res.status(500).json({ message: 'Erreur serveur.' });

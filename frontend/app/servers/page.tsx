@@ -16,6 +16,8 @@ export default function ServersPage() {
   const [loading, setLoading] = React.useState(true)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [formData, setFormData] = React.useState({ name: "", ip: "", zone: "LAN" })
+  const [search, setSearch] = React.useState("")
+  const [debounced, setDebounced] = React.useState("")
   const { toast } = useToast()
 
   const fetchServers = React.useCallback(() => {
@@ -31,6 +33,21 @@ export default function ServersPage() {
   React.useEffect(() => {
     fetchServers()
   }, [fetchServers])
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebounced(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  const filteredServers = React.useMemo(() => {
+    const term = debounced.toLowerCase().trim()
+    if (!term) return servers
+    return servers.filter(s => {
+      const tags = (s as any).tags ? (s as any).tags.join(' ') : ''
+      const hay = `${s.name} ${s.ip} ${tags}`.toLowerCase()
+      return hay.includes(term)
+    })
+  }, [servers, debounced])
 
   const handleCreate = async () => {
     if (!formData.name || !formData.ip) {
@@ -108,11 +125,17 @@ export default function ServersPage() {
           </Dialog>
         </CardHeader>
         <CardContent>
-          {servers.length === 0 ? (
+          <Input
+            placeholder="Rechercher..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="mb-4 rounded-xl"
+          />
+          {filteredServers.length === 0 ? (
             <p className="text-sm text-muted-foreground">Aucun serveur.</p>
           ) : (
             <ul className="space-y-2">
-              {servers.map(server => (
+              {filteredServers.map(server => (
                 <li key={server.id} className="flex items-center justify-between border rounded-xl p-3">
                   <div>
                     <p className="font-medium">{server.name} <span className="text-sm text-muted-foreground">({server.ip})</span></p>

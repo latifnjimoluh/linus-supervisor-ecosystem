@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { User, Role } = require('../../models');
+const { User, Role, Permission } = require('../../models');
 const userService = require('../../services/userService');
 const { validateCreate, validateUpdate } = require('../../validators/userValidator');
 const logger = require('../../utils/logger');
@@ -59,6 +59,46 @@ exports.searchUsers = async (req, res, next) => {
     res.json(users);
   } catch (error) {
     logger.error('Erreur recherche utilisateurs:', error);
+    next(error);
+  }
+};
+
+exports.getUsersPermissions = async (req, res, next) => {
+  const { q, page = 1, pageSize = 10 } = req.query;
+  try {
+    const include = [{
+      model: Role,
+      as: 'role',
+      include: [{ model: Permission, as: 'permissions', through: { attributes: [] } }],
+    }];
+
+    const where = q ? {
+      [Op.or]: [
+        { first_name: { [Op.iLike]: `%${q}%` } },
+        { last_name: { [Op.iLike]: `%${q}%` } },
+        { email: { [Op.iLike]: `%${q}%` } },
+        { '$role.name$': { [Op.iLike]: `%${q}%` } },
+        { '$role.permissions.name$': { [Op.iLike]: `%${q}%` } },
+      ],
+    } : {};
+
+    const options = { include, where, distinct: true };
+
+    if (!q) {
+      const limit = parseInt(pageSize, 10);
+      const offset = (parseInt(page, 10) - 1) * limit;
+      options.limit = limit;
+      options.offset = offset;
+    }
+
+    const { rows, count } = await User.findAndCountAll(options);
+
+    if (q) {
+      return res.json({ results: rows, total: count, paginationDisabled: true });
+    }
+
+    return res.json({ results: rows, total: count, page: parseInt(page, 10), pageSize: parseInt(pageSize, 10) });
+  } catch (error) {
     next(error);
   }
 };

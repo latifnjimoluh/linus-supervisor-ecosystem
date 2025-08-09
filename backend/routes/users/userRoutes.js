@@ -16,6 +16,7 @@ router.use(verifyToken, logRequest);
 
 router.get('/', checkPermission('user.list'), userController.getAllUsers);
 router.get('/search', checkPermission('user.search'), userController.searchUsers);
+router.get('/permissions', checkPermission('user.list'), userController.getUsersPermissions);
 router.get('/:id', checkPermission('user.read'), userController.getUserById);
 router.post('/', checkPermission('user.create'), userController.createUser);
 router.put('/:id', checkPermission('user.update'), userController.updateUser);
