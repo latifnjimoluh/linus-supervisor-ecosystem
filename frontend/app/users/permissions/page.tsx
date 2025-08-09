@@ -534,23 +534,28 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
                 )
               })}
             </div>
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pagination.page <= 1}
-                onClick={() => fetchData(pagination.page - 1)}
-              >
-                Précédent
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pagination.page >= pagination.pages}
-                onClick={() => fetchData(pagination.page + 1)}
-              >
-                Suivant
-              </Button>
+            <div className="flex items-center justify-between pt-4">
+              <span className="text-sm text-muted-foreground">
+                Page {pagination.page} sur {pagination.pages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page <= 1}
+                  onClick={() => fetchData(pagination.page - 1)}
+                >
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page >= pagination.pages}
+                  onClick={() => fetchData(pagination.page + 1)}
+                >
+                  Suivant
+                </Button>
+              </div>
             </div>
             </>
           )}

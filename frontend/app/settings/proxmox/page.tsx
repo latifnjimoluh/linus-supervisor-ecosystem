@@ -27,6 +27,8 @@ export default function ProxmoxSettingsPage() {
   const [apiTokenSecret, setApiTokenSecret] = useState("")
   const [showSecret, setShowSecret] = useState(false)
   const [proxmoxNode, setProxmoxNode] = useState("")
+  const [proxmoxHost, setProxmoxHost] = useState("")
+  const [proxmoxSshUser, setProxmoxSshUser] = useState("")
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -41,6 +43,8 @@ export default function ProxmoxSettingsPage() {
         setApiTokenId(tokenCombined)
         setApiTokenSecret(data.proxmox_api_token_secret || "")
         setProxmoxNode(data.proxmox_node || "")
+        setProxmoxHost(data.proxmox_host || "")
+        setProxmoxSshUser(data.proxmox_ssh_user || "")
       } else {
         setHasSettings(false)
       }
@@ -58,6 +62,8 @@ export default function ProxmoxSettingsPage() {
       proxmox_api_token_name: tokenName,
       proxmox_api_token_secret: apiTokenSecret,
       proxmox_node: proxmoxNode,
+      proxmox_host: proxmoxHost,
+      proxmox_ssh_user: proxmoxSshUser,
     }
     try {
       if (hasSettings) {
@@ -144,6 +150,26 @@ export default function ProxmoxSettingsPage() {
                 disabled={loading}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="proxmox-host">Hôte Proxmox</Label>
+              <Input
+                id="proxmox-host"
+                placeholder="192.168.24.134"
+                value={proxmoxHost}
+                onChange={(e) => setProxmoxHost(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="proxmox-ssh-user">Utilisateur SSH Proxmox</Label>
+              <Input
+                id="proxmox-ssh-user"
+                placeholder="root"
+                value={proxmoxSshUser}
+                onChange={(e) => setProxmoxSshUser(e.target.value)}
+                disabled={loading}
+              />
+            </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4 justify-end gap-2">
             <Button
@@ -157,6 +183,8 @@ export default function ProxmoxSettingsPage() {
                 setApiTokenId("")
                 setApiTokenSecret("")
                 setProxmoxNode("")
+                setProxmoxHost("")
+                setProxmoxSshUser("")
               }}
             >
               Annuler

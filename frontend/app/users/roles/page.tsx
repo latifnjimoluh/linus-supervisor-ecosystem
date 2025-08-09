@@ -288,10 +288,9 @@ export default function RolesPage() {
                       </Badge>
                     </div>
                   </div>
+                  <CardDescription>{role.description ?? ""}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">{role.description ?? ""}</p>
-
                   <div className="text-xs text-muted-foreground">
                     Créé le {new Date(role.created_at).toLocaleDateString("fr-FR")}
                   </div>
