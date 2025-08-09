@@ -12,53 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-
-interface Role {
-  id: number
-  name: string
-  description: string
-  user_count: number
-  is_system: boolean
-  created_at: string
-}
-
-// Mock data for roles
-const generateMockRoles = (): Role[] => {
-  return [
-    {
-      id: 1,
-      name: "admin",
-      description: "Accès complet à toutes les fonctionnalités de la plateforme",
-      user_count: 2,
-      is_system: true,
-      created_at: "2024-01-01T00:00:00Z",
-    },
-    {
-      id: 2,
-      name: "technicien",
-      description: "Gestion des VMs, déploiements et supervision technique",
-      user_count: 4,
-      is_system: true,
-      created_at: "2024-01-01T00:00:00Z",
-    },
-    {
-      id: 3,
-      name: "auditeur",
-      description: "Consultation des logs, rapports et données de supervision",
-      user_count: 3,
-      is_system: true,
-      created_at: "2024-01-01T00:00:00Z",
-    },
-    {
-      id: 4,
-      name: "visiteur",
-      description: "Accès en lecture seule aux tableaux de bord",
-      user_count: 0,
-      is_system: false,
-      created_at: "2024-06-15T10:30:00Z",
-    },
-  ]
-}
+import { listRoles, createRole, updateRole, deleteRole, Role } from "@/services/roles"
 
 export default function RolesPage() {
   const [roles, setRoles] = React.useState<Role[]>([])
@@ -70,12 +24,17 @@ export default function RolesPage() {
   const [formLoading, setFormLoading] = React.useState(false)
   const { toast } = useToast()
 
-  const fetchRoles = React.useCallback(() => {
+  const fetchRoles = React.useCallback(async () => {
     setLoading(true)
-    setTimeout(() => {
-      setRoles(generateMockRoles())
+    try {
+      const data = await listRoles()
+      const mapped = data.map(r => ({ user_count: 0, is_system: false, ...r }))
+      setRoles(mapped)
+    } catch (err) {
+      console.error('fetchRoles error', err)
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }, [])
 
   React.useEffect(() => {
@@ -110,17 +69,8 @@ export default function RolesPage() {
     setFormLoading(true)
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      const newRole: Role = {
-        id: roles.length > 0 ? Math.max(...roles.map(r => r.id)) + 1 : 1,
-        name: formData.name,
-        description: formData.description,
-        user_count: 0,
-        is_system: false,
-        created_at: new Date().toISOString(),
-      }
-
+      const created = await createRole(formData)
+      const newRole: Role = { user_count: 0, is_system: false, ...created }
       setRoles(prev => [...prev, newRole])
       setFormData({ name: "", description: "" })
       setIsCreateDialogOpen(false)
@@ -149,11 +99,10 @@ export default function RolesPage() {
     setFormLoading(true)
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      setRoles(prev => prev.map(role => 
-        role.id === editingRole.id 
-          ? { ...role, name: formData.name, description: formData.description }
+      const updated = await updateRole(editingRole.id, formData)
+      setRoles(prev => prev.map(role =>
+        role.id === editingRole.id
+          ? { ...role, ...updated }
           : role
       ))
 
@@ -176,10 +125,9 @@ export default function RolesPage() {
     }
   }
 
-  const handleDeleteRole = async (roleId: number, roleName: string) => { // Changed roleId to number
+  const handleDeleteRole = async (roleId: number, roleName: string) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
+      await deleteRole(roleId)
       setRoles(prev => prev.filter(role => role.id !== roleId))
 
       toast({
