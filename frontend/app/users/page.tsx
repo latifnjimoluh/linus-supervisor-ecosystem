@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Plus, Search, Filter, RefreshCw, User, Edit, Trash2, Lock, CheckCircle, XCircle, Mail, Shield, Loader2 } from 'lucide-react'
+import { Plus, Search, Filter, RefreshCw, User, Edit, Trash2, Lock, CheckCircle, XCircle, Mail, Shield, Loader2, Eye } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -11,8 +11,9 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { useToast } from "@/hooks/use-toast"
-import { listUsers, patchUser, deleteUser, User as UserAccount } from "@/services/users"
+import { listUsers, patchUser, deleteUser, getUser, User as UserAccount } from "@/services/users"
 import { listRoles, Role } from "@/services/roles"
 
 export default function UsersPage() {
@@ -23,6 +24,8 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = React.useState<string>("all")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [actionLoading, setActionLoading] = React.useState<string | null>(null)
+  const [detailOpen, setDetailOpen] = React.useState(false)
+  const [detailUser, setDetailUser] = React.useState<UserAccount | null>(null)
   const { toast } = useToast()
 
   const fetchUsers = React.useCallback(async () => {
@@ -98,6 +101,20 @@ export default function UsersPage() {
       })
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  const handleViewUser = async (userId: number) => {
+    try {
+      const data = await getUser(userId)
+      const mapped = {
+        ...data,
+        status: data.status === 'actif' ? 'active' : data.status === 'inactif' ? 'inactive' : data.status,
+      }
+      setDetailUser(mapped)
+      setDetailOpen(true)
+    } catch (err) {
+      console.error('handleViewUser error', err)
     }
   }
 
@@ -278,6 +295,14 @@ export default function UsersPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl"
+                      onClick={() => handleViewUser(user.id)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                     <Button asChild variant="outline" size="sm" className="rounded-xl">
                       <Link href={`/users/${user.id}/edit`}>
                         <Edit className="h-4 w-4" />
@@ -360,6 +385,30 @@ export default function UsersPage() {
           </Button>
         </div>
       )}
+
+      <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>
+              {detailUser ? `${detailUser.first_name} ${detailUser.last_name}` : "Utilisateur"}
+            </SheetTitle>
+            {detailUser && (
+              <SheetDescription>{detailUser.email}</SheetDescription>
+            )}
+          </SheetHeader>
+          {detailUser && (
+            <div className="space-y-2 mt-4 text-sm">
+              <p><strong>Rôle :</strong> {getRoleLabel(detailUser.role_id)}</p>
+              <p><strong>Statut :</strong> {detailUser.status === "active" ? "Actif" : "Inactif"}</p>
+              <p><strong>Téléphone :</strong> {detailUser.phone || "—"}</p>
+              <p><strong>Créé le :</strong> {new Date(detailUser.created_at).toLocaleDateString("fr-FR")}</p>
+              {detailUser.last_login && (
+                <p><strong>Dernière connexion :</strong> {new Date(detailUser.last_login).toLocaleDateString("fr-FR")}</p>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

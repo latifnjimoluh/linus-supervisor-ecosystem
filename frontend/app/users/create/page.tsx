@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { createUser } from "@/services/users"
+import { listRoles, Role } from "@/services/roles"
 
 interface CreateUserForm {
   first_name: string
@@ -19,17 +21,11 @@ interface CreateUserForm {
   role_id: number
 }
 
-// Mock roles for the select dropdown
-const mockRoles = [
-  { id: 1, name: "Administrateur" },
-  { id: 2, name: "Technicien" },
-  { id: 3, name: "Auditeur" },
-];
-
 export default function CreateUserPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = React.useState(false)
+  const [roles, setRoles] = React.useState<Role[]>([])
   const [formData, setFormData] = React.useState<CreateUserForm>({
     first_name: "",
     last_name: "",
@@ -38,6 +34,18 @@ export default function CreateUserPage() {
     role_id: 0,
   })
   const [errors, setErrors] = React.useState<Partial<CreateUserForm>>({})
+
+  React.useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const data = await listRoles()
+        setRoles(data)
+      } catch (err) {
+        console.error('fetchRoles error', err)
+      }
+    }
+    fetchRoles()
+  }, [])
 
   const validateForm = (): boolean => {
     const newErrors: Partial<CreateUserForm> = {}
@@ -76,38 +84,21 @@ export default function CreateUserPage() {
     setLoading(true)
 
     try {
-      // Simulate API call with the new payload structure
-      // Example payload: { first_name: "Jane", last_name: "Doe", email: "jane@example.com", password: "secret", role_id: 2 }
-      console.log("Sending payload:", formData);
-
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Simulate email already exists error (10% chance)
-      if (Math.random() < 0.1) {
-        setErrors({ email: "Ce compte existe déjà" })
-        toast({
-          title: "Erreur",
-          description: "Un compte avec cet email existe déjà",
-          variant: "destructive",
-        })
-        return
-      }
-
+      await createUser(formData)
       toast({
         title: "Utilisateur créé",
         description: `Le compte de ${formData.first_name} ${formData.last_name} a été créé avec succès`,
         variant: "success",
       })
-
-      // Redirect to users list
-      setTimeout(() => {
-        router.push("/users")
-      }, 1000)
-
-    } catch (error) {
+      router.push("/users")
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "Erreur lors de la création du compte"
+      if (message.includes('Email')) {
+        setErrors({ email: message })
+      }
       toast({
         title: "Erreur",
-        description: "Erreur lors de la création du compte",
+        description: message,
         variant: "destructive",
       })
     } finally {
@@ -224,7 +215,7 @@ export default function CreateUserPage() {
                     </div>
                   </SelectTrigger>
                   <SelectContent>
-                    {mockRoles.map(role => (
+                    {roles.map(role => (
                       <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
                     ))}
                   </SelectContent>

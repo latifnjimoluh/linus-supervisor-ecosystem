@@ -9,6 +9,7 @@ export interface User {
   status: string;
   created_at: string;
   last_login?: string;
+  phone?: string;
   avatar?: string;
 }
 

@@ -45,8 +45,6 @@ const deploymentSchema = z.object({
 
 type DeploymentFormData = z.infer<typeof deploymentSchema>;
 
-const mockTemplates = ["ubuntu-22.04-template", "debian-12-template", "rocky-9-template"];
-
 export default function DeployPage() {
   const { toast } = useToast();
   const router = useRouter();
@@ -175,19 +173,14 @@ export default function DeployPage() {
               </div>
               <div className="space-y-2">
                 <Label>Template de base</Label>
-                <Controller
-                  name="template_name"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <SelectTrigger><SelectValue placeholder="Sélectionner un template..." /></SelectTrigger>
-                      <SelectContent>
-                        {mockTemplates.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
+                <Input
+                  id="template_name"
+                  placeholder="ubuntu-template"
+                  {...register("template_name")}
                 />
-                {errors.template_name && <p className="text-sm text-destructive">{errors.template_name.message}</p>}
+                {errors.template_name && (
+                  <p className="text-sm text-destructive">{errors.template_name.message}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Type de Service</Label>
