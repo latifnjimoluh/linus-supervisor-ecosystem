@@ -18,8 +18,8 @@ exports.deploy = async (req, res) => {
   if (!service_type) {
     return res.status(400).json({ message: "❌ Champ 'service_type' requis pour charger la configuration" });
   }
-  if (!['LAN', 'DMZ', 'WAN'].includes(zone)) {
-    return res.status(400).json({ message: "❌ Champ 'zone' invalide (LAN, DMZ ou WAN)" });
+  if (!['LAN', 'DMZ', 'WAN', 'MGMT'].includes(zone)) {
+    return res.status(400).json({ message: "❌ Champ 'zone' invalide (LAN, DMZ, WAN ou MGMT)" });
   }
 
   try {

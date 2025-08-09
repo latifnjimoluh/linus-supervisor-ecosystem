@@ -23,9 +23,14 @@ exports.getAllPermissions = async (req, res) => {
       limit,
       offset,
     });
-    console.log(`📤 ${rows.length} permissions found`);
+    const formatted = rows.map(p => ({
+      ...p.toJSON(),
+      created_at: p.created_at ? p.created_at.toISOString() : null,
+      updated_at: p.updated_at ? p.updated_at.toISOString() : null,
+    }));
+    console.log(`📤 ${formatted.length} permissions found`);
     res.json({
-      data: rows,
+      data: formatted,
       pagination: {
         total: count,
         page,
@@ -48,8 +53,11 @@ exports.getPermissionById = async (req, res) => {
       console.log('⚠️ Permission non trouvée');
       return res.status(404).json({ message: 'Permission non trouvée' });
     }
+    const json = permission.toJSON();
+    json.created_at = permission.created_at ? permission.created_at.toISOString() : null;
+    json.updated_at = permission.updated_at ? permission.updated_at.toISOString() : null;
     console.log('📤 Permission retrieved', permission.name);
-    res.json(permission);
+    res.json(json);
   } catch (error) {
     console.error('Erreur getPermissionById:', error);
     res.status(500).json({ message: 'Erreur serveur.' });

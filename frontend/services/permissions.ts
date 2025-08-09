@@ -6,11 +6,22 @@ export interface Permission {
   description: string;
   status?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
-export const listPermissions = async (): Promise<Permission[]> => {
-  const res = await api.get("/permissions");
-  return res.data.data ?? res.data;
+export interface PermissionList {
+  data: Permission[];
+  pagination: {
+    total: number;
+    page: number;
+    pages: number;
+    limit: number;
+  };
+}
+
+export const listPermissions = async (page = 1, limit = 10): Promise<PermissionList> => {
+  const res = await api.get("/permissions", { params: { page, limit } });
+  return res.data;
 };
 
 export const getPermission = async (id: number): Promise<Permission> => {

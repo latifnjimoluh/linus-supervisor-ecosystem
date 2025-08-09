@@ -1,4 +1,4 @@
-const { UserSetting, User } = require('../../models');
+const { UserSetting, User, Role } = require('../../models');
 const { Op } = require('sequelize');
 
 exports.getUserSettings = async (req, res) => {
@@ -17,6 +17,33 @@ exports.getUserSettings = async (req, res) => {
     return res.status(200).json(settings);
   } catch (err) {
     console.error('❌ Erreur lors de la récupération des paramètres :', err);
+    return res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+exports.getAccountInfo = async (req, res) => {
+  console.log('📥 getAccountInfo called for user', req.user?.id);
+  const userId = req.user?.id;
+  try {
+    const user = await User.findByPk(userId, {
+      include: [{ model: Role, as: 'role', attributes: ['id', 'name'] }],
+    });
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur introuvable.' });
+    }
+    const settings = await UserSetting.findOne({ where: { user_id: userId } });
+    return res.status(200).json({
+      id: user.id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      language: null,
+      settings,
+    });
+  } catch (err) {
+    console.error('❌ Erreur getAccountInfo:', err);
     return res.status(500).json({ message: 'Erreur serveur.' });
   }
 };

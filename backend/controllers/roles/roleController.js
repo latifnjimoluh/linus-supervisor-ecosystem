@@ -1,4 +1,4 @@
-const { Role } = require('../../models');
+const { Role, User } = require('../../models');
 const { Op } = require('sequelize');
 
 exports.getAllRoles = async (req, res) => {
@@ -24,9 +24,20 @@ exports.getAllRoles = async (req, res) => {
       limit,
       offset,
     });
-    console.log(`📤 ${rows.length} roles found`);
+
+    const rolesWithCounts = await Promise.all(rows.map(async (role) => {
+      const userCount = await role.countUsers();
+      const json = role.toJSON();
+      return {
+        ...json,
+        user_count: userCount,
+        created_at: role.created_at ? role.created_at.toISOString() : null,
+        updated_at: role.updated_at ? role.updated_at.toISOString() : null,
+      };
+    }));
+    console.log(`📤 ${rolesWithCounts.length} roles found`);
     res.status(200).json({
-      data: rows,
+      data: rolesWithCounts,
       pagination: {
         total: count,
         page,
@@ -44,13 +55,17 @@ exports.getRoleById = async (req, res) => {
   console.log('📥 getRoleById called', req.params.id);
   try {
     const { id } = req.params;
-    const role = await Role.findByPk(id);
+    const role = await Role.findByPk(id, { include: [{ model: User, as: 'users' }] });
     if (!role) {
       console.log('⚠️ Rôle non trouvé');
       return res.status(404).json({ message: 'Rôle non trouvé' });
     }
+    const json = role.toJSON();
+    json.user_count = role.users ? role.users.length : 0;
+    json.created_at = role.created_at ? role.created_at.toISOString() : null;
+    json.updated_at = role.updated_at ? role.updated_at.toISOString() : null;
     console.log('📤 Role retrieved', role.name);
-    res.status(200).json(role);
+    res.status(200).json(json);
   } catch (err) {
     console.error('Erreur getRoleById:', err);
     res.status(500).json({ message: 'Erreur lors de la récupération du rôle', error: err.message });

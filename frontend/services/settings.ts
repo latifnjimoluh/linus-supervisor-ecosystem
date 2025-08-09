@@ -21,6 +21,17 @@ export interface UserSettings {
   proxmox_ssh_user?: string;
 }
 
+export interface AccountInfo {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  role?: { id: number; name: string };
+  language?: string | null;
+  settings?: UserSettings | null;
+}
+
 export const getMySettings = async (): Promise<UserSettings | null> => {
   try {
     const res = await api.get("/settings/me");
@@ -44,5 +55,15 @@ export const updateMySettings = async (data: Partial<UserSettings>): Promise<Use
 export const listAllSettings = async (): Promise<UserSettings[]> => {
   const res = await api.get("/settings");
   return res.data;
+};
+
+export const getAccountInfo = async (): Promise<AccountInfo | null> => {
+  try {
+    const res = await api.get("/settings/account");
+    return res.data;
+  } catch (err) {
+    console.error("getAccountInfo error", err);
+    return null;
+  }
 };
 

@@ -13,11 +13,21 @@ async function getAllUsers(query) {
     limit,
     offset,
   });
-  return { count, rows, page, limit };
+  const formatted = rows.map(u => ({
+    ...u.toJSON(),
+    created_at: u.created_at ? u.created_at.toISOString() : null,
+    updated_at: u.updated_at ? u.updated_at.toISOString() : null,
+  }));
+  return { count, rows: formatted, page, limit };
 }
 
 async function getUserById(id) {
-  return User.findByPk(id, { include: [{ model: Role, as: 'role' }] });
+  const user = await User.findByPk(id, { include: [{ model: Role, as: 'role' }] });
+  if (!user) return null;
+  const json = user.toJSON();
+  json.created_at = user.created_at ? user.created_at.toISOString() : null;
+  json.updated_at = user.updated_at ? user.updated_at.toISOString() : null;
+  return json;
 }
 
 async function findByEmail(email) {

@@ -28,8 +28,7 @@ export default function RolesPage() {
     setLoading(true)
     try {
       const data = await listRoles()
-      const mapped = data.map(r => ({ user_count: 0, is_system: false, ...r }))
-      setRoles(mapped)
+      setRoles(data)
     } catch (err) {
       console.error('fetchRoles error', err)
     } finally {
