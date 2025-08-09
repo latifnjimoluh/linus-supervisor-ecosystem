@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { useToast } from "@/hooks/use-toast"
-import { listLogs, LogEntry } from "@/services/logs"
+import { listLogs, exportLogs as fetchLogsExport, LogEntry } from "@/services/logs"
 
 // Simulate AI analysis for logs
 const simulateLogsAIAnalysis = async (context: string): Promise<string> => {
@@ -57,33 +57,40 @@ export default function LogsPage() {
   const [typeFilter, setTypeFilter] = React.useState<string>("all")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [selectedLog, setSelectedLog] = React.useState<LogEntry | null>(null)
+  const [page, setPage] = React.useState(1)
+  const [pageSize, setPageSize] = React.useState(10)
+  const [total, setTotal] = React.useState(0)
+  const [exportFormat, setExportFormat] = React.useState<"csv" | "json" | "">("")
   const { toast } = useToast()
 
   const fetchLogs = React.useCallback(async () => {
     try {
       setLoading(true)
-      const res = await listLogs()
+      const res = await listLogs({ q: searchTerm || undefined, page, pageSize })
       setLogs(res.results)
+      setTotal(res.total)
     } catch (err) {
       console.error('Erreur chargement logs', err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [searchTerm, page, pageSize])
 
   React.useEffect(() => {
-    fetchLogs()
-    const interval = setInterval(fetchLogs, 60000) // Refresh every minute
-    return () => clearInterval(interval)
+    const timeout = setTimeout(() => {
+      fetchLogs()
+    }, 300)
+    const interval = setInterval(fetchLogs, 60000)
+    return () => {
+      clearTimeout(timeout)
+      clearInterval(interval)
+    }
   }, [fetchLogs])
 
   const filteredLogs = logs.filter(log => {
-    const matchesSearch = log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (log.entity || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (log.user || '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = typeFilter === "all" || log.type === typeFilter
     const matchesStatus = statusFilter === "all" || log.status === statusFilter
-    return matchesSearch && matchesType && matchesStatus
+    return matchesType && matchesStatus
   })
 
   const getActionIcon = (type: string) => {
@@ -118,35 +125,34 @@ export default function LogsPage() {
     }
   }
 
-  const exportLogs = (format: "csv" | "json") => {
-    const dataStr = format === "json" 
-      ? JSON.stringify(filteredLogs, null, 2)
-      : [
-          "ID,Action,Type,Timestamp,User,Entity,Status,Description",
-          ...filteredLogs.map(log => 
-            `${log.id},${log.action},${log.type},${log.timestamp},${log.user},${log.entity},${log.status},"${log.description}"`
-          )
-        ].join("\n")
-    
-    const blob = new Blob([dataStr], { type: format === "json" ? "application/json" : "text/csv" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `logs_export_${new Date().toISOString().split('T')[0]}.${format}`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-
-    toast({
-      title: "Export réussi",
-      description: `Les logs ont été exportés en ${format.toUpperCase()}`,
-      variant: "success",
-    })
+  const handleExport = async () => {
+    if (!exportFormat) return
+    try {
+      const blob = await fetchLogsExport(exportFormat)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `logs_export_${new Date().toISOString().split('T')[0]}.${exportFormat}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast({
+        title: "Export réussi",
+        description: `Les logs ont été exportés en ${exportFormat.toUpperCase()}`,
+        variant: "success",
+      })
+    } catch (err) {
+      toast({
+        title: "Erreur export",
+        description: "Impossible d'exporter les logs",
+        variant: "destructive",
+      })
+    }
   }
 
   const stats = {
-    total: logs.length,
+    total,
     success: logs.filter(log => log.status === "success").length,
     error: logs.filter(log => log.status === "error").length,
     warning: logs.filter(log => log.status === "warning").length,
@@ -159,21 +165,28 @@ export default function LogsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-4xl font-semibold">Historique global des actions</h1>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
           <Button onClick={fetchLogs} variant="outline" size="sm" className="rounded-xl">
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Actualiser
           </Button>
-          <Select onValueChange={(value) => exportLogs(value as "csv" | "json")}>
-            <SelectTrigger className="w-32 rounded-xl">
-              <Download className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Export" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="csv">CSV</SelectItem>
-              <SelectItem value="json">JSON</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "csv" | "json")}>
+              <SelectTrigger className="w-32 rounded-xl">
+                <Download className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Format" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="json">JSON</SelectItem>
+              </SelectContent>
+            </Select>
+            {exportFormat && (
+              <Button onClick={handleExport} variant="outline" size="sm" className="rounded-xl">
+                Télécharger
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -232,7 +245,7 @@ export default function LogsPage() {
           <Input
             placeholder="Rechercher dans les logs..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
             className="pl-10 rounded-xl"
           />
         </div>
@@ -273,7 +286,7 @@ export default function LogsPage() {
             Timeline des événements
           </CardTitle>
           <CardDescription>
-            {filteredLogs.length} entrée(s) trouvée(s) sur {logs.length} au total
+            {filteredLogs.length} entrée(s) trouvée(s) sur {total} au total
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -325,6 +338,44 @@ export default function LogsPage() {
           )}
         </CardContent>
       </Card>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="rounded-xl"
+          >
+            Précédent
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => p + 1)}
+            disabled={page >= Math.ceil(total / pageSize)}
+            className="rounded-xl"
+          >
+            Suivant
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <span>
+            Page {page} / {Math.max(1, Math.ceil(total / pageSize))}
+          </span>
+          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+            <SelectTrigger className="w-20 rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Log Detail Dialog */}
       <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>

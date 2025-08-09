@@ -23,13 +23,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
-import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { cn } from "@/lib/utils"
 import {
   listTemplates,
   updateTemplate,
   createTemplate,
+  simulateScript,
   type Template,
 } from "@/lib/templates"
 
@@ -37,15 +38,6 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false 
 
 const defaultBashScript = `#!/bin/bash\n\n# Nouveau script`
 
-// Simulate AI analysis for scripts
-const simulateScriptAIAnalysis = async (context: string): Promise<string> => {
-  await new Promise((resolve) => setTimeout(resolve, 2000))
-  const hasErrorHandling = context.includes("if [") && context.includes("exit")
-  const hasLogging = context.includes("log") || context.includes("echo")
-  const hasVariables = context.includes("$")
-  const lineCount = context.split("\n").length
-  return `🤖 **Analyse IA du script**\n\n**📊 Analyse structurelle :**\n• **Lignes de code :** ${lineCount}\n• **Gestion d'erreurs :** ${hasErrorHandling ? "✅ Présente" : "❌ Manquante"}\n• **Logging :** ${hasLogging ? "✅ Implémenté" : "❌ Absent"}\n• **Variables :** ${hasVariables ? "✅ Utilisées" : "❌ Aucune"}`
-}
 
 export default function CodeEditorPage() {
   const { theme } = useTheme()
@@ -59,6 +51,15 @@ export default function CodeEditorPage() {
   const [isModified, setIsModified] = React.useState(false)
   const [isSaving, setIsSaving] = React.useState(false)
   const [syntaxErrors, setSyntaxErrors] = React.useState<string[]>([])
+  const [scriptStatus, setScriptStatus] = React.useState<"idle" | "ok" | "error">("idle")
+  const tabParam = searchParams.get("tab") || "scripts"
+  const [activeTab, setActiveTab] = React.useState(tabParam)
+
+  const [templateName, setTemplateName] = React.useState("")
+  const [templateCategory, setTemplateCategory] = React.useState("")
+  const [templateService, setTemplateService] = React.useState("")
+  const [templateContent, setTemplateContent] = React.useState("")
+  const [templateStatus, setTemplateStatus] = React.useState<"idle" | "ok" | "error">("idle")
 
   const templateId = searchParams.get("id")
 
@@ -81,12 +82,14 @@ export default function CodeEditorPage() {
       setScriptContent(selectedTemplate.template_content)
       setScriptName(selectedTemplate.name)
       setIsModified(false)
+      setScriptStatus("idle")
     }
   }, [selectedTemplate])
 
   const handleContentChange = (value: string) => {
     setScriptContent(value)
     setIsModified(true)
+    setScriptStatus("idle")
 
     const errors: string[] = []
     const lines = value.split("\n")
@@ -154,28 +157,22 @@ export default function CodeEditorPage() {
   }
 
   const testScript = async () => {
-    if (syntaxErrors.length > 0) {
+    try {
+      await simulateScript(scriptContent)
+      setScriptStatus("ok")
       toast({
-        title: "Erreurs de syntaxe",
-        description: "Corrigez les erreurs avant de tester",
+        title: "Test réussi",
+        description: "Le script est valide",
+        variant: "success",
+      })
+    } catch (error) {
+      setScriptStatus("error")
+      toast({
+        title: "Erreur de test",
+        description: "Le script contient des erreurs",
         variant: "destructive",
       })
-      return
     }
-
-    toast({
-      title: "Test en cours",
-      description: "Validation de la syntaxe du script...",
-      variant: "info",
-    })
-
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    toast({
-      title: "Test réussi",
-      description: "Le script est syntaxiquement correct",
-      variant: "success",
-    })
   }
 
   const exportScript = () => {
@@ -219,11 +216,64 @@ export default function CodeEditorPage() {
     })
   }
 
-  const aiContext = `Script: ${scriptName}, Lignes: ${scriptContent.split("\n").length}, Langage: bash, Erreurs: ${syntaxErrors.length}`
+  const simulateTemplate = async () => {
+    try {
+      await simulateScript(templateContent)
+      setTemplateStatus("ok")
+      toast({
+        title: "Simulation réussie",
+        description: "Le template semble valide",
+        variant: "success",
+      })
+    } catch (error) {
+      setTemplateStatus("error")
+      toast({
+        title: "Erreur",
+        description: "Le template est invalide",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const saveTemplate = async () => {
+    try {
+      await createTemplate({
+        name: templateName,
+        category: templateCategory || "general",
+        service_type: templateService || "custom",
+        description: "",
+        template_content: templateContent,
+        fields_schema: { fields: [] },
+      })
+      toast({
+        title: "Template sauvegardé",
+        description: `${templateName} a été enregistré",
+        variant: "success",
+      })
+      setTemplateName("")
+      setTemplateCategory("")
+      setTemplateService("")
+      setTemplateContent("")
+      setTemplateStatus("idle")
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder le template",
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="w-full md:w-auto">
+          <TabsTrigger value="scripts">Scripts</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+        </TabsList>
+        <TabsContent value="scripts">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-semibold">Éditeur de code interactif</h1>
           <p className="text-muted-foreground mt-1">
@@ -328,15 +378,16 @@ export default function CodeEditorPage() {
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
-                  {syntaxErrors.length === 0 ? (
+                  {scriptStatus === "ok" && (
                     <Badge variant="success" className="text-xs">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Syntaxe OK
                     </Badge>
-                  ) : (
+                  )}
+                  {scriptStatus === "error" && (
                     <Badge variant="destructive" className="text-xs">
                       <AlertTriangle className="h-3 w-3 mr-1" />
-                      {syntaxErrors.length} erreur(s)
+                      Erreur
                     </Badge>
                   )}
                 </div>
@@ -411,15 +462,69 @@ export default function CodeEditorPage() {
               </div>
             </CardContent>
           </Card>
-
-          <AssistantAIBlock
-            title="Assistant IA pour l'édition de code"
-            context={aiContext}
-            onAnalyze={simulateScriptAIAnalysis}
-            className="w-full"
-          />
         </div>
       </div>
+      </div>
+        </TabsContent>
+        <TabsContent value="templates">
+          <div className="space-y-6">
+            <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+              <CardHeader>
+                <CardTitle className="text-lg">Informations</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="template-name">Nom du template</Label>
+                  <Input id="template-name" value={templateName} onChange={(e) => setTemplateName(e.target.value)} className="rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="template-category">Catégorie</Label>
+                  <Input id="template-category" value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)} className="rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="template-service">Service</Label>
+                  <Input id="template-service" value={templateService} onChange={(e) => setTemplateService(e.target.value)} className="rounded-xl" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+              <CardHeader className="flex items-center justify-between">
+                <CardTitle className="text-lg">Éditeur</CardTitle>
+                {templateStatus === "ok" && (
+                  <Badge variant="success" className="text-xs">
+                    <CheckCircle className="h-3 w-3 mr-1" /> Syntaxe OK
+                  </Badge>
+                )}
+                {templateStatus === "error" && (
+                  <Badge variant="destructive" className="text-xs">
+                    <AlertTriangle className="h-3 w-3 mr-1" /> Erreur
+                  </Badge>
+                )}
+              </CardHeader>
+              <CardContent>
+                <MonacoEditor
+                  value={templateContent}
+                  language="yaml"
+                  onChange={(value) => setTemplateContent(value || "")}
+                  height="400px"
+                  theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                  options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true }}
+                />
+              </CardContent>
+            </Card>
+
+            <div className="flex gap-3">
+              <Button onClick={simulateTemplate} variant="outline" className="rounded-xl">
+                Simuler
+              </Button>
+              <Button onClick={saveTemplate} className="rounded-xl">
+                Sauvegarder
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

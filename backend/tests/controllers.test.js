@@ -7,6 +7,7 @@ const cases = [
   { method: 'get', path: '/roles', status: 401 },
   { method: 'get', path: '/users', status: 401 },
   { method: 'get', path: '/logs', status: 401 },
+  { method: 'get', path: '/logs/export', status: 401 },
   { method: 'get', path: '/settings', status: 401 },
   { method: 'get', path: '/settings/notifications', status: 401 },
   { method: 'get', path: '/vms', status: 401 },

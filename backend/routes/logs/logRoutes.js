@@ -14,5 +14,6 @@ router.use((req, res, next) => {
 router.use(verifyToken, logRequest);
 
 router.get('/', checkPermission('log.list'), logController.getAllLogs);
+router.get('/export', checkPermission('log.list'), logController.exportLogs);
 
 module.exports = router;

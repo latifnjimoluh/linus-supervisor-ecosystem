@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Plus, Code, Sparkles, Filter, Copy, Check, Edit } from 'lucide-react'
+import { Search, Plus, Code, Sparkles, Copy, Check, Edit } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { listTemplates, type Template } from "@/lib/templates"
 
@@ -20,6 +21,7 @@ export default function TemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] = React.useState<Template | null>(null)
   const [copied, setCopied] = React.useState(false)
   const [templates, setTemplates] = React.useState<Template[]>([])
+  const [selectedCategory, setSelectedCategory] = React.useState("all")
   const { toast } = useToast()
 
   React.useEffect(() => {
@@ -28,10 +30,16 @@ export default function TemplatesPage() {
       .catch(() => setTemplates([]))
   }, [])
 
+  const categories = React.useMemo(
+    () => Array.from(new Set(templates.map((t) => t.category))),
+    [templates]
+  )
+
   const filtered = templates.filter(
     (t) =>
-      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.description.toLowerCase().includes(searchTerm.toLowerCase())
+      (selectedCategory === "all" || t.category === selectedCategory) &&
+      (t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.description.toLowerCase().includes(searchTerm.toLowerCase()))
   )
   const filteredScripts = filtered.filter((t) => t.type === "script")
   const filteredTemplateList = filtered.filter((t) => t.type === "template")
@@ -140,9 +148,19 @@ export default function TemplatesPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline">
-            <Filter className="mr-2 h-4 w-4" /> Filtrer par catégorie
-          </Button>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Catégorie" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les catégories</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent>
@@ -168,8 +186,10 @@ export default function TemplatesPage() {
             </p>
           </div>
         </div>
-        <Button className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white">
-          <Plus className="mr-2 h-4 w-4" /> Créer un nouveau template
+        <Button asChild className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white">
+          <Link href="/editor?tab=templates">
+            <Plus className="mr-2 h-4 w-4" /> Créer un nouveau template
+          </Link>
         </Button>
       </header>
 
