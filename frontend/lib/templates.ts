@@ -11,6 +11,7 @@ export type FieldSchema = {
 }
 
 import { api } from "@/services/api"
+import type { Script } from "./scripts"
 
 export type Template = {
   id: number
@@ -24,9 +25,32 @@ export type Template = {
   type?: "template" | "script"
 }
 
-export async function listTemplates(): Promise<Template[]> {
+export async function fetchTemplatesAndScripts(): Promise<{
+  templates: Template[]
+  scripts: Script[]
+}> {
   const res = await api.get("/templates")
-  return (res.data.data || []).map((t: any) => ({ ...t, type: "template" }))
+  const data = res.data.data || {}
+  const templates = Array.isArray(data.templates)
+    ? data.templates.map((t: any) => ({ ...t, type: "template" }))
+    : []
+  const scripts = Array.isArray(data.scripts)
+    ? data.scripts.map((s: any) => ({
+        id: s.id,
+        name: s.service_type || s.script_path,
+        category: s.category || "",
+        description: s.description,
+        script_path: s.script_path,
+        template_content: s.template_content || "",
+        type: "script",
+      }))
+    : []
+  return { templates, scripts }
+}
+
+export async function listTemplates(): Promise<Template[]> {
+  const { templates } = await fetchTemplatesAndScripts()
+  return templates
 }
 
 export async function createTemplate(

@@ -44,6 +44,11 @@ export default function GenerateScriptPage({ searchParams }: { searchParams: { t
     setResult(res.script)
   }
 
+  const jsonPreview = JSON.stringify(
+    { template_id: templateId, config_data: formData },
+    null,
+    2
+  )
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Générer un script</h1>
@@ -82,6 +87,9 @@ export default function GenerateScriptPage({ searchParams }: { searchParams: { t
               <Button type="button" onClick={handleGenerate}>
                 Générer
               </Button>
+              <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto">
+                {jsonPreview}
+              </pre>
             </div>
           )}
 

@@ -2,8 +2,11 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { listTemplates, type Template } from "@/lib/templates"
-import { listScripts, type Script } from "@/lib/scripts"
+import {
+  fetchTemplatesAndScripts,
+  type Template,
+} from "@/lib/templates"
+import type { Script } from "@/lib/scripts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -12,8 +15,8 @@ export default function ScriptsTemplatesPage() {
   const [items, setItems] = React.useState<(Template | Script)[]>([])
 
   React.useEffect(() => {
-    Promise.all([listScripts(), listTemplates()])
-      .then(([scripts, templates]) => setItems([...scripts, ...templates]))
+    fetchTemplatesAndScripts()
+      .then(({ scripts, templates }) => setItems([...scripts, ...templates]))
       .catch(() => setItems([]))
   }, [])
 

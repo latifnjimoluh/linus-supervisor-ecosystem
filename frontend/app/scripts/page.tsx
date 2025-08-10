@@ -16,7 +16,12 @@ export default function ScriptsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Scripts</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Scripts</h1>
+        <Button asChild>
+          <Link href="/scripts/generate">Créer un script</Link>
+        </Button>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Liste des scripts</CardTitle>
