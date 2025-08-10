@@ -146,6 +146,10 @@ Décris ce qui se passera lors de son exécution :
   );
 }
 
+async function generateScript(name, variables) {
+  return { script: `# Script ${name}`, variables };
+}
+
 module.exports = {
   explainScript,
   analyzeAndImproveScript,
@@ -153,4 +157,5 @@ module.exports = {
   summarizeDeploymentLogs,
   suggestSmartBundle,
   simulateScriptExecution,
+  generateScript,
 };

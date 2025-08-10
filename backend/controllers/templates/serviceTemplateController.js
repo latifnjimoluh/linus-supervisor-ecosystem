@@ -273,9 +273,13 @@ exports.getAllTemplates = async (req, res) => {
       limit,
       offset,
     });
-    console.log('📤 Templates retrieved:', rows.length);
+    const scripts = await GeneratedScript.findAll();
+    console.log('📤 Templates retrieved:', rows.length, 'Scripts:', scripts.length);
     res.json({
-      data: rows,
+      data: {
+        templates: rows,
+        scripts,
+      },
       pagination: {
         total: count,
         page,
