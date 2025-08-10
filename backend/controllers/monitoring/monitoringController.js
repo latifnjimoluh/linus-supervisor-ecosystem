@@ -44,7 +44,6 @@ exports.collectMonitoringData = async (req, res) => {
   const user = req.user;
   const {
     vm_ip,
-    host: bodyHost,
     username,
     privateKeyPath: bodyKeyPath,
     statusPath: bodyStatusPath,
@@ -52,10 +51,10 @@ exports.collectMonitoringData = async (req, res) => {
     instanceInfoPath: bodyInstanceInfoPath,
   } = req.body;
 
-  const host = vm_ip || bodyHost;
+  const host = vm_ip;
 
   if (!host || !username) {
-    return res.status(400).json({ message: '❌ Champs requis : vm_ip/host et username' });
+    return res.status(400).json({ message: '❌ Champs requis : vm_ip et username' });
   }
 
   const settings = await UserSetting.findOne({ where: { user_id: user.id } });
@@ -280,8 +279,6 @@ exports.getOverview = async (req, res) => {
           const disk = system.disk || {};
           if (disk.total_bytes && disk.used_bytes) {
             disk_usage = Math.round((disk.used_bytes / disk.total_bytes) * 100);
-          } else {
-            disk_usage = system.disk_usage || 0;
           }
           uptime = system.uptime || system.uptime_sec || system.uptime_seconds || uptime;
         }
@@ -301,6 +298,8 @@ exports.getOverview = async (req, res) => {
           active_services,
           last_monitoring: last_monitoring ? last_monitoring.toISOString() : null,
           ping_ok,
+          template: dep?.vm_specs?.template_name || '',
+          created_at: dep?.created_at ? dep.created_at.toISOString() : null,
         };
       })
     );
@@ -382,11 +381,10 @@ exports.getVmDetails = async (req, res) => {
     let memory_usage = 0;
     let memory_total = 0;
     let disk_usage = 0;
+    let disk_total = 0;
     let network_in = 0;
     let network_out = 0;
     let load_average = 0;
-
-
     if (ip) ping_ok = await isPingable(ip);
 
     if (monitor) {
@@ -397,9 +395,11 @@ exports.getVmDetails = async (req, res) => {
       memory_usage = memory_total - (mem.available_kb || mem.free_kb || 0);
       const disk = system.disk || {};
       if (disk.total_bytes && disk.used_bytes) {
-        disk_usage = Math.round((disk.used_bytes / disk.total_bytes) * 100);
-      } else {
-        disk_usage = system.disk_usage || 0;
+        disk_total = disk.total_bytes / 1024; // KB
+        disk_usage = disk.used_bytes / 1024; // KB
+      } else if (disk.total_kb && disk.used_kb) {
+        disk_total = disk.total_kb;
+        disk_usage = disk.used_kb;
       }
       const net = system.network || {};
       if (net.rx_bytes != null) network_in = net.rx_bytes / 1024; // KB
@@ -413,9 +413,8 @@ exports.getVmDetails = async (req, res) => {
       cpu_usage = (rrdInfo.cpu / rrdInfo.maxcpu) * 100;
     if (!memory_total && statusInfo.maxmem != null) memory_total = statusInfo.maxmem / 1024; // bytes -> KB
     if (!memory_usage && statusInfo.mem != null) memory_usage = statusInfo.mem / 1024; // bytes -> KB
-    if (!disk_usage && statusInfo.disk != null && statusInfo.maxdisk) {
-      disk_usage = Math.round((statusInfo.disk / statusInfo.maxdisk) * 100);
-    }
+    if (!disk_total && statusInfo.maxdisk != null) disk_total = statusInfo.maxdisk / 1024; // bytes -> KB
+    if (!disk_usage && statusInfo.disk != null) disk_usage = statusInfo.disk / 1024; // bytes -> KB
     if (!network_in && rrdInfo.netin != null) network_in = rrdInfo.netin / 1024; // B/s -> KB/s
     if (!network_out && rrdInfo.netout != null) network_out = rrdInfo.netout / 1024; // B/s -> KB/s
     if (!load_average) load_average = rrdInfo.loadavg || 0;
@@ -428,9 +427,12 @@ exports.getVmDetails = async (req, res) => {
       memory_usage,
       memory_total,
       disk_usage,
+      disk_total,
       network_in,
       network_out,
       load_average,
+      template: deployment?.vm_specs?.template_name || '',
+      created_at: deployment?.created_at ? deployment.created_at.toISOString() : null,
       proxmox: vmInfo,
       status: statusInfo,
       monitoring: monitor,
