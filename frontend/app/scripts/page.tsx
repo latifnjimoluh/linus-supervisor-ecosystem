@@ -1,30 +1,30 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import { listTemplates, type Template } from "@/lib/templates"
+import { listScripts, type Script } from "@/lib/scripts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
-export default function TemplatesPage() {
-  const [templates, setTemplates] = React.useState<Template[]>([])
+export default function ScriptsPage() {
+  const [scripts, setScripts] = React.useState<Script[]>([])
 
   React.useEffect(() => {
-    listTemplates().then(setTemplates).catch(() => setTemplates([]))
+    listScripts().then(setScripts).catch(() => setScripts([]))
   }, [])
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Templates</h1>
+        <h1 className="text-3xl font-bold">Scripts</h1>
         <Button asChild>
-          <Link href="/templates/new">Créer</Link>
+          <Link href="/scripts/generate">Créer un script</Link>
         </Button>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Liste des templates</CardTitle>
+          <CardTitle>Liste des scripts</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -36,16 +36,13 @@ export default function TemplatesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {templates.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell>{t.name}</TableCell>
-                  <TableCell>{t.category}</TableCell>
-                  <TableCell className="flex gap-2">
+              {scripts.map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell>{s.name}</TableCell>
+                  <TableCell>{s.category}</TableCell>
+                  <TableCell>
                     <Button asChild size="sm" variant="outline">
-                      <Link href={`/editor?id=${t.id}`}>Éditer</Link>
-                    </Button>
-                    <Button asChild size="sm">
-                      <Link href={`/scripts/generate?template=${t.id}`}>Générer</Link>
+                      <Link href={`/editor?id=${s.id}`}>Éditer</Link>
                     </Button>
                   </TableCell>
                 </TableRow>
