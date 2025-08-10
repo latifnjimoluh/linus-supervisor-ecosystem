@@ -31,8 +31,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
-import { fetchVmDetails } from "@/services/monitoring"
+import { cn, formatKB } from "@/lib/utils"
+import { fetchVmDetails, collectMonitoringData } from "@/services/monitoring"
 import { startProxmoxVM, stopProxmoxVM } from "@/services/vms"
 
 interface VMDetails {
@@ -45,16 +45,16 @@ interface VMDetails {
   os: string
   template: string
   vcpu: number
-  memory_mb: number
-  disk_gb: number
+  memory: string
+  disk: string
   metrics: {
     cpu_usage: number
-    memory_usage: number
-    memory_total: number
-    disk_usage: number
-    disk_total: number
-    network_in: number
-    network_out: number
+    memory_usage: number // KB
+    memory_total: number // KB
+    disk_usage: number // used KB
+    disk_total: number // total KB
+    network_in: number // KB/s
+    network_out: number // KB/s
     load_average: number
   }
   services: Array<{
@@ -140,30 +140,30 @@ export default function VMDetailsPage() {
       const monitor = data.monitoring || {}
       const system = monitor.system_status || {}
       const services = monitor.services_status?.services || []
-      const memTotal = system.memory?.total_kb || 0
-      const memAvail = system.memory?.available_kb || system.memory?.free_kb || 0
-      const disk = system.disk || {}
+      const memoryTotalKb = data.memory_total || data.status?.maxmem / 1024 || 0
+      const diskTotalKb = data.disk_total || data.status?.maxdisk / 1024 || 0
+
       const mapped: VMDetails = {
         id: data.id,
         name: data.name,
         ip: data.ip || '',
         status: data.proxmox?.status === 'running' ? 'running' : data.proxmox?.status === 'stopped' ? 'stopped' : 'error',
-        created_at: data.proxmox?.creation || '',
-        uptime: system.uptime || '',
+        created_at: data.created_at ? new Date(data.created_at).toLocaleString('fr-FR') : '',
+        uptime: system.uptime || data.status?.uptime || '',
         os: system.os || system.hostname || '',
-        template: '',
+        template: data.template || '',
         vcpu: data.status?.cpus || 0,
-        memory_mb: (data.status?.maxmem || 0) / (1024 * 1024),
-        disk_gb: (data.status?.maxdisk || 0) / (1024 * 1024 * 1024),
+        memory: formatKB(memoryTotalKb),
+        disk: formatKB(diskTotalKb),
         metrics: {
-          cpu_usage: system.cpu_usage || system.cpu?.percent || 0,
-          memory_usage: (memTotal - memAvail) / 1024,
-          memory_total: memTotal / 1024,
-          disk_usage: disk.total_bytes ? Math.round((disk.used_bytes / disk.total_bytes) * 100) : 0,
-          disk_total: disk.total_bytes ? disk.total_bytes / (1024 * 1024 * 1024) : 0,
-          network_in: (system.network?.rx_bytes || 0) / 1024,
-          network_out: (system.network?.tx_bytes || 0) / 1024,
-          load_average: parseFloat((system.load_average || '0').split(/[ ,]/)[0]) || 0,
+          cpu_usage: data.cpu_usage || 0,
+          memory_usage: data.memory_usage || 0,
+          memory_total: memoryTotalKb,
+          disk_usage: data.disk_usage || 0,
+          disk_total: diskTotalKb,
+          network_in: data.network_in || 0,
+          network_out: data.network_out || 0,
+          load_average: data.load_average || 0,
         },
         services: services.map((s: any) => ({
           name: s.name,
@@ -204,6 +204,8 @@ export default function VMDetailsPage() {
           message = `VM ${vmData?.name} arrêtée avec succès`
           break
         case 'collect':
+          if (!vmData?.ip) throw new Error('VM IP inconnue')
+          await collectMonitoringData(vmData.ip, 'nexus')
           await fetchVMData()
           message = 'Collecte des métriques effectuée avec succès'
           break
@@ -282,7 +284,7 @@ export default function VMDetailsPage() {
     )
   }
 
-  const aiContext = `VM: ${vmData.name}, IP: ${vmData.ip}, Statut: ${vmData.status}, CPU: ${vmData.metrics.cpu_usage}%, Mémoire: ${vmData.metrics.memory_usage}/${vmData.metrics.memory_total} MB, Disque: ${vmData.metrics.disk_usage}/${vmData.metrics.disk_total} GB, Services actifs: ${vmData.services.filter(s => s.status === 'active').length}/${vmData.services.length}`
+  const aiContext = `VM: ${vmData.name}, IP: ${vmData.ip}, Statut: ${vmData.status}, CPU: ${vmData.metrics.cpu_usage}%, Mémoire: ${Math.round(vmData.metrics.memory_usage / 1024)}/${Math.round(vmData.metrics.memory_total / 1024)} MB, Disque: ${Math.round(vmData.metrics.disk_usage / (1024 * 1024))}/${Math.round(vmData.metrics.disk_total / (1024 * 1024))} GB, Services actifs: ${vmData.services.filter(s => s.status === 'active').length}/${vmData.services.length}`
 
   return (
     <div className="space-y-6">
@@ -398,11 +400,11 @@ export default function VMDetailsPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">RAM:</span>
-              <span className="font-medium">{vmData.memory_mb} MB</span>
+              <span className="font-medium">{vmData.memory}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Disque:</span>
-              <span className="font-medium">{vmData.disk_gb} GB</span>
+              <span className="font-medium">{vmData.disk}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Créée le:</span>
@@ -440,11 +442,11 @@ export default function VMDetailsPage() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Network In</span>
-                <p className="font-medium">{vmData.metrics.network_in} KB/s</p>
+                <p className="font-medium">{formatKB(vmData.metrics.network_in)}/s</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Network Out</span>
-                <p className="font-medium">{vmData.metrics.network_out} KB/s</p>
+                <p className="font-medium">{formatKB(vmData.metrics.network_out)}/s</p>
               </div>
             </div>
           </CardContent>
@@ -463,11 +465,11 @@ export default function VMDetailsPage() {
               <div className="flex justify-between mb-2">
                 <span>RAM</span>
                 <span className="font-medium">
-                  {vmData.metrics.memory_usage} / {vmData.metrics.memory_total} MB
+                  {formatKB(vmData.metrics.memory_usage)} / {formatKB(vmData.metrics.memory_total)}
                 </span>
               </div>
               <Progress 
-                value={(vmData.metrics.memory_usage / vmData.metrics.memory_total) * 100} 
+                value={vmData.metrics.memory_total ? (vmData.metrics.memory_usage / vmData.metrics.memory_total) * 100 : 0}
                 className="h-2" 
               />
             </div>
@@ -475,11 +477,11 @@ export default function VMDetailsPage() {
               <div className="flex justify-between mb-2">
                 <span>Disque</span>
                 <span className="font-medium">
-                  {vmData.metrics.disk_usage} / {vmData.metrics.disk_total} GB
+                  {formatKB(vmData.metrics.disk_usage)} / {formatKB(vmData.metrics.disk_total)}
                 </span>
               </div>
               <Progress 
-                value={(vmData.metrics.disk_usage / vmData.metrics.disk_total) * 100} 
+                value={vmData.metrics.disk_total ? (vmData.metrics.disk_usage / vmData.metrics.disk_total) * 100 : 0}
                 className="h-2" 
               />
             </div>
