@@ -192,36 +192,60 @@ exports.getOverview = async (req, res) => {
 
     const servers = Object.values(serversMap).map((s) => {
       const monitor = latest[s.ip];
-      let status = 'unknown';
-      let system = {};
-      let supervised = false;
+      let status = 'stopped';
+      let os = 'unknown';
+      let cpu_usage = 0;
+      let memory_usage = 0;
+      let memory_total = 0;
+      let disk_usage = 0;
+      let uptime = 'N/A';
+      let last_monitoring = null;
+      let active_services = 0;
       if (monitor) {
-        supervised = true;
-        system = monitor.system_status || {};
+        last_monitoring = monitor.retrieved_at;
         const services = monitor.services_status?.services || [];
+        active_services = services.filter((sv) => sv.active === 'active').length;
         const hasAlert = services.some((sv) => sv.active !== 'active');
-        status = hasAlert ? 'alert' : 'active';
+        status = hasAlert ? 'error' : 'running';
+        const system = monitor.system_status || {};
+        os = system.os || system.hostname || 'unknown';
+        cpu_usage = system.cpu_usage || system.cpu?.percent || 0;
+        const mem = system.memory || {};
+        memory_total = mem.total_kb || mem.total || 0;
+        memory_usage = memory_total - (mem.available_kb || mem.free_kb || 0);
+        const disk = system.disk || {};
+        if (disk.total_bytes && disk.used_bytes) {
+          disk_usage = Math.round((disk.used_bytes / disk.total_bytes) * 100);
+        } else {
+          disk_usage = system.disk_usage || 0;
+        }
+        uptime = system.uptime || system.uptime_sec || system.uptime_seconds || 'N/A';
       }
       return {
         id: s.id,
         name: s.name,
         ip: s.ip,
-        zone: s.zone,
-        services: Array.from(s.services),
         status,
-        supervised,
-        system,
+        os,
+        cpu_usage,
+        memory_usage,
+        memory_total,
+        disk_usage,
+        uptime,
+        services_count: s.services.size,
+        active_services,
+        last_monitoring: last_monitoring ? last_monitoring.toISOString() : null,
       };
     });
 
     const summary = {
       total: servers.length,
-      active: servers.filter((s) => s.status === 'active').length,
-      alert: servers.filter((s) => s.status === 'alert').length,
-      unsupervised: servers.filter((s) => !s.supervised).length,
+      running: servers.filter((s) => s.status === 'running').length,
+      stopped: servers.filter((s) => s.status === 'stopped').length,
+      error: servers.filter((s) => s.status === 'error').length,
     };
 
-    res.json({ summary, servers });
+    res.json({ summary, vms: servers });
   } catch (err) {
     res
       .status(500)
