@@ -49,7 +49,6 @@ export default function GenerateScriptPage({ searchParams }: { searchParams: { t
     null,
     2
   )
-
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Générer un script</h1>

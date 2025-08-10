@@ -1,5 +1,4 @@
 import { fetchTemplatesAndScripts } from "./templates"
-
 export type Script = {
   id: number
   name: string
