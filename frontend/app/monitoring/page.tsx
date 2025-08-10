@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { fetchMonitoringOverview } from "@/services/monitoring"
 
 interface VM {
   id: string
@@ -32,46 +33,27 @@ interface VM {
   uptime: string
   services_count: number
   active_services: number
-  last_monitoring: string
-}
-
-// Mock data generator
-const generateMockVMs = (): VM[] => {
-  const vmNames = [
-    "web-server-01", "db-server-02", "cache-redis-03", "api-gateway-04", 
-    "monitoring-05", "backup-server-06", "mail-server-07", "dns-server-08",
-    "proxy-server-09", "file-server-10"
-  ]
-  
-  return vmNames.map((name, index) => ({
-    id: `vm-${String(index + 1).padStart(3, '0')}`,
-    name,
-    ip: `192.168.1.${10 + index}`,
-    status: Math.random() > 0.8 ? (Math.random() > 0.5 ? "stopped" : "error") : "running",
-    os: Math.random() > 0.5 ? "Ubuntu 22.04 LTS" : "CentOS 8",
-    cpu_usage: Math.floor(Math.random() * 90) + 5,
-    memory_usage: Math.floor(Math.random() * 6000) + 1000,
-    memory_total: 8192,
-    disk_usage: Math.floor(Math.random() * 80) + 10,
-    uptime: Math.random() > 0.2 ? `${Math.floor(Math.random() * 30) + 1} jours` : "0 minutes",
-    services_count: Math.floor(Math.random() * 8) + 3,
-    active_services: Math.floor(Math.random() * 6) + 2,
-    last_monitoring: new Date(Date.now() - Math.random() * 3600000).toLocaleString("fr-FR"),
-  }))
+  last_monitoring: string | null
 }
 
 export default function MonitoringPage() {
   const [vms, setVms] = React.useState<VM[]>([])
+  const [stats, setStats] = React.useState({ total: 0, running: 0, stopped: 0, error: 0 })
   const [loading, setLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
 
-  const fetchVMs = React.useCallback(() => {
+  const fetchVMs = React.useCallback(async () => {
     setLoading(true)
-    setTimeout(() => {
-      setVms(generateMockVMs())
+    try {
+      const data = await fetchMonitoringOverview()
+      setVms(data.vms)
+      setStats(data.summary)
+    } catch (e) {
+      console.error("Erreur de récupération du monitoring", e)
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }, [])
 
   React.useEffect(() => {
@@ -105,12 +87,7 @@ export default function MonitoringPage() {
     }
   }
 
-  const stats = {
-    total: vms.length,
-    running: vms.filter(vm => vm.status === "running").length,
-    stopped: vms.filter(vm => vm.status === "stopped").length,
-    error: vms.filter(vm => vm.status === "error").length,
-  }
+  // stats are provided by the backend in the summary response
 
   return (
     <div className="space-y-6">

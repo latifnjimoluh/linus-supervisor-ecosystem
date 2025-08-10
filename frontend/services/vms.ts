@@ -49,3 +49,66 @@ export async function execSshCommand(params: {
     throw new Error(`[POST /terminal/ssh/exec] ${msg}`);
   }
 }
+
+// --- Proxmox VM management ---
+
+export interface ProxmoxVM {
+  vmid: number;
+  name: string;
+  status: string;
+  node: string;
+  uptime?: number;
+  [key: string]: any;
+}
+
+export interface VmDeletionPayload {
+  vm_id: number;
+  instance_id: string;
+}
+
+export async function listProxmoxVMs(): Promise<ProxmoxVM[]> {
+  const res = await api.get('/vms');
+  return res.data;
+}
+
+export async function startProxmoxVM(vmId: number) {
+  const res = await api.post(`/vms/${vmId}/start`);
+  return res.data;
+}
+
+export async function stopProxmoxVM(vmId: number) {
+  const res = await api.post(`/vms/${vmId}/stop`);
+  return res.data;
+}
+
+export async function deleteProxmoxVM(payload: VmDeletionPayload) {
+  const res = await api.post('/vms/delete', payload);
+  return res.data;
+}
+
+export async function checkProxmoxVMStatus(params: {
+  vm_id: number;
+  ip_address: string;
+}) {
+  const res = await api.post('/vms/check-status', params);
+  return res.data as { vm_status: string; ping_ok: boolean; status_summary: string };
+}
+
+export async function convertProxmoxVM(params: { vm_id: number }) {
+  const res = await api.post('/vms/convert', params);
+  return res.data;
+}
+
+export interface VmConversionRecord {
+  id: number;
+  vm_name: string;
+  vm_id: number;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function listVmConversions(): Promise<VmConversionRecord[]> {
+  const res = await api.get('/vms/conversions');
+  return res.data;
+}
