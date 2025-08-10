@@ -349,6 +349,16 @@ exports.getVmDetails = async (req, res) => {
       // Ignorer les erreurs de statut pour ne pas bloquer la réponse
     }
 
+    // Dernier point RRD pour obtenir les métriques (CPU, réseau, load...)
+    let rrdInfo = {};
+    try {
+      const rrdUrl = `${settings.proxmox_api_url}/nodes/${vmInfo.node}/${vmInfo.type}/${vmid}/rrddata?timeframe=hour`;
+      const rrdResp = await axios.get(rrdUrl, { httpsAgent, headers });
+      const points = rrdResp.data?.data || [];
+      if (points.length) rrdInfo = points[points.length - 1] || {};
+    } catch (_) {
+      // Ignorer les erreurs RRD
+    }
     // Récupération des infos locales et IP depuis Proxmox
     const deployment = await Deployment.findOne({ where: { vm_id: vmid } });
     let ip = await getVMIPFromProxmox({
@@ -372,6 +382,10 @@ exports.getVmDetails = async (req, res) => {
     let memory_usage = 0;
     let memory_total = 0;
     let disk_usage = 0;
+    let network_in = 0;
+    let network_out = 0;
+    let load_average = 0;
+
 
     if (ip) ping_ok = await isPingable(ip);
 
@@ -387,8 +401,24 @@ exports.getVmDetails = async (req, res) => {
       } else {
         disk_usage = system.disk_usage || 0;
       }
+      const net = system.network || {};
+      if (net.rx_bytes != null) network_in = net.rx_bytes / 1024; // KB
+      if (net.tx_bytes != null) network_out = net.tx_bytes / 1024; // KB
+      if (system.load_average) load_average = parseFloat(String(system.load_average).split(/[ ,]/)[0]) || 0;
     }
 
+    // ⚙️ Fallback sur les métriques Proxmox si pas de monitoring local
+    if (!cpu_usage && statusInfo.cpu != null) cpu_usage = statusInfo.cpu * 100;
+    if (!cpu_usage && rrdInfo.cpu != null && rrdInfo.maxcpu)
+      cpu_usage = (rrdInfo.cpu / rrdInfo.maxcpu) * 100;
+    if (!memory_total && statusInfo.maxmem != null) memory_total = statusInfo.maxmem / 1024; // bytes -> KB
+    if (!memory_usage && statusInfo.mem != null) memory_usage = statusInfo.mem / 1024; // bytes -> KB
+    if (!disk_usage && statusInfo.disk != null && statusInfo.maxdisk) {
+      disk_usage = Math.round((statusInfo.disk / statusInfo.maxdisk) * 100);
+    }
+    if (!network_in && rrdInfo.netin != null) network_in = rrdInfo.netin / 1024; // B/s -> KB/s
+    if (!network_out && rrdInfo.netout != null) network_out = rrdInfo.netout / 1024; // B/s -> KB/s
+    if (!load_average) load_average = rrdInfo.loadavg || 0;
     res.json({
       id: String(vmid),
       name: vmInfo.name || deployment?.vm_name || `VM ${vmid}`,
@@ -398,6 +428,9 @@ exports.getVmDetails = async (req, res) => {
       memory_usage,
       memory_total,
       disk_usage,
+      network_in,
+      network_out,
+      load_average,
       proxmox: vmInfo,
       status: statusInfo,
       monitoring: monitor,
