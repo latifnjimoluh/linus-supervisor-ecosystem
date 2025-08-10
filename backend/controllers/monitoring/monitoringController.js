@@ -1,8 +1,12 @@
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
+const https = require('https');
 const { getRemoteFileContent, getRemoteJSON } = require('../../utils/sshClient');
 const { Monitoring, UserSetting, Deployment } = require('../../models');
 const { Op } = require('sequelize');
+
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 exports.collectMonitoringData = async (req, res) => {
   const user = req.user;
@@ -269,5 +273,33 @@ exports.syncDeploymentIP = async (req, res) => {
     res.json({ message: 'Synchronisation effectuée', updated });
   } catch (err) {
     res.status(500).json({ message: 'Erreur lors de la synchronisation', error: err.message });
+  }
+};
+
+// 📊 Récupérer le résumé des VM depuis Proxmox
+exports.getVmSummary = async (req, res) => {
+  try {
+    const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
+    if (!settings) {
+      return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
+    }
+
+    const headers = {
+      Authorization: `PVEAPIToken=${settings.proxmox_api_token_id}!${settings.proxmox_api_token_name}=${settings.proxmox_api_token_secret}`,
+    };
+    const url = `${settings.proxmox_api_url}/cluster/resources?type=vm`;
+    const response = await axios.get(url, { httpsAgent, headers });
+    const vms = response.data?.data || [];
+
+    const summary = { total: vms.length, running: 0, stopped: 0, error: 0 };
+    vms.forEach((vm) => {
+      if (vm.status === 'running') summary.running += 1;
+      else if (vm.status === 'stopped') summary.stopped += 1;
+      else summary.error += 1;
+    });
+
+    res.json(summary);
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur lors de la récupération des VM Proxmox', error: err.message });
   }
 };
