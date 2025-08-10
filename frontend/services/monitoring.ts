@@ -35,6 +35,14 @@ export interface VmDetailResponse {
   id: string;
   name: string;
   ip: string | null;
+  ping_ok: boolean | null;
+  cpu_usage: number;
+  memory_usage: number; // in KB
+  memory_total: number; // in KB
+  disk_usage: number; // percent
+  network_in: number; // KB/s
+  network_out: number; // KB/s
+  load_average: number;
   proxmox: any;
   status: any;
   monitoring: any;

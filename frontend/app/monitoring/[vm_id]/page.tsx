@@ -140,30 +140,28 @@ export default function VMDetailsPage() {
       const monitor = data.monitoring || {}
       const system = monitor.system_status || {}
       const services = monitor.services_status?.services || []
-      const memTotal = system.memory?.total_kb || 0
-      const memAvail = system.memory?.available_kb || system.memory?.free_kb || 0
-      const disk = system.disk || {}
+
       const mapped: VMDetails = {
         id: data.id,
         name: data.name,
         ip: data.ip || '',
         status: data.proxmox?.status === 'running' ? 'running' : data.proxmox?.status === 'stopped' ? 'stopped' : 'error',
         created_at: data.proxmox?.creation || '',
-        uptime: system.uptime || '',
+        uptime: system.uptime || data.status?.uptime || '',
         os: system.os || system.hostname || '',
         template: '',
         vcpu: data.status?.cpus || 0,
-        memory_mb: (data.status?.maxmem || 0) / (1024 * 1024),
+        memory_mb: (data.memory_total || data.status?.maxmem / 1024 || 0) / 1024,
         disk_gb: (data.status?.maxdisk || 0) / (1024 * 1024 * 1024),
         metrics: {
-          cpu_usage: system.cpu_usage || system.cpu?.percent || 0,
-          memory_usage: (memTotal - memAvail) / 1024,
-          memory_total: memTotal / 1024,
-          disk_usage: disk.total_bytes ? Math.round((disk.used_bytes / disk.total_bytes) * 100) : 0,
-          disk_total: disk.total_bytes ? disk.total_bytes / (1024 * 1024 * 1024) : 0,
-          network_in: (system.network?.rx_bytes || 0) / 1024,
-          network_out: (system.network?.tx_bytes || 0) / 1024,
-          load_average: parseFloat((system.load_average || '0').split(/[ ,]/)[0]) || 0,
+          cpu_usage: data.cpu_usage || 0,
+          memory_usage: (data.memory_usage || 0) / 1024,
+          memory_total: (data.memory_total || 0) / 1024,
+          disk_usage: data.disk_usage || 0,
+          disk_total: (data.status?.maxdisk || 0) / (1024 * 1024 * 1024),
+          network_in: data.network_in || 0,
+          network_out: data.network_out || 0,
+          load_average: data.load_average || 0,
         },
         services: services.map((s: any) => ({
           name: s.name,
