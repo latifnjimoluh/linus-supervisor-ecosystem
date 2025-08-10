@@ -17,3 +17,4 @@ export async function listScripts(): Promise<Script[]> {
 export async function deleteScript(id: number): Promise<{ message: string }> {
   const res = await api.delete(`/scripts/${id}`)
   return res.data
+}

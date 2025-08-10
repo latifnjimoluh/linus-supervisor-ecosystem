@@ -312,7 +312,7 @@ export default function CodeEditorPage() {
           </Button>
         </div>
       </div>
-
+      
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
           <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
@@ -322,7 +322,7 @@ export default function CodeEditorPage() {
                 Scripts
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 max-h-64 overflow-y-auto">
+            <CardContent className="space-y-3 max-h-96 overflow-y-auto">
               {templates.map((tpl) => (
                 <div
                   key={tpl.id}
@@ -465,64 +465,6 @@ export default function CodeEditorPage() {
         </div>
       </div>
       </div>
-        </TabsContent>
-        <TabsContent value="templates">
-          <div className="space-y-6">
-            <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
-              <CardHeader>
-                <CardTitle className="text-lg">Informations</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="template-name">Nom du template</Label>
-                  <Input id="template-name" value={templateName} onChange={(e) => setTemplateName(e.target.value)} className="rounded-xl" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="template-category">Catégorie</Label>
-                  <Input id="template-category" value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)} className="rounded-xl" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="template-service">Service</Label>
-                  <Input id="template-service" value={templateService} onChange={(e) => setTemplateService(e.target.value)} className="rounded-xl" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
-              <CardHeader className="flex items-center justify-between">
-                <CardTitle className="text-lg">Éditeur</CardTitle>
-                {templateStatus === "ok" && (
-                  <Badge variant="success" className="text-xs">
-                    <CheckCircle className="h-3 w-3 mr-1" /> Syntaxe OK
-                  </Badge>
-                )}
-                {templateStatus === "error" && (
-                  <Badge variant="destructive" className="text-xs">
-                    <AlertTriangle className="h-3 w-3 mr-1" /> Erreur
-                  </Badge>
-                )}
-              </CardHeader>
-              <CardContent>
-                <MonacoEditor
-                  value={templateContent}
-                  language="yaml"
-                  onChange={(value) => setTemplateContent(value || "")}
-                  height="400px"
-                  theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                  options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true }}
-                />
-              </CardContent>
-            </Card>
-
-            <div className="flex gap-3">
-              <Button onClick={simulateTemplate} variant="outline" className="rounded-xl">
-                Simuler
-              </Button>
-              <Button onClick={saveTemplate} className="rounded-xl">
-                Sauvegarder
-              </Button>
-            </div>
-          </div>
         </TabsContent>
       </Tabs>
     </div>
