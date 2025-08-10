@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import { listTemplates, deleteTemplate, type Template } from "@/lib/templates"
+import { listScripts, deleteScript, type Script } from "@/lib/scripts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -12,31 +11,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import Link from "next/link"
 
-export default function TemplatesPage() {
-  const [templates, setTemplates] = React.useState<Template[]>([])
-  const [selected, setSelected] = React.useState<Template | null>(null)
+export default function ScriptsPage() {
+  const [scripts, setScripts] = React.useState<Script[]>([])
+  const [selected, setSelected] = React.useState<Script | null>(null)
   const [page, setPage] = React.useState(1)
 
   const PAGE_SIZE = 5
-  const totalPages = Math.ceil(templates.length / PAGE_SIZE)
-  const paginated = templates.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.ceil(scripts.length / PAGE_SIZE)
+  const paginated = scripts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   React.useEffect(() => {
-    listTemplates().then(setTemplates).catch(() => setTemplates([]))
+    listScripts().then(setScripts).catch(() => setScripts([]))
   }, [])
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Templates</h1>
+        <h1 className="text-3xl font-bold">Scripts</h1>
         <Button asChild>
-          <Link href="/templates/new">Créer</Link>
+          <Link href="/scripts/generate">Créer un script</Link>
         </Button>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Liste des templates</CardTitle>
+          <CardTitle>Liste des scripts</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Table>
@@ -48,30 +48,27 @@ export default function TemplatesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginated.map((t) => (
-                <TableRow key={`template-${t.id}`}>
-                  <TableCell>{t.name}</TableCell>
-                  <TableCell>{t.category}</TableCell>
+              {paginated.map((s) => (
+                <TableRow key={`script-${s.id}`}>
+                  <TableCell>{s.name}</TableCell>
+                  <TableCell>{s.category}</TableCell>
                   <TableCell className="flex gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setSelected(t)}
+                      onClick={() => setSelected(s)}
                     >
                       Voir
                     </Button>
                     <Button asChild size="sm" variant="outline">
-                      <Link href={`/editor?id=${t.id}`}>Éditer</Link>
-                    </Button>
-                    <Button asChild size="sm">
-                      <Link href={`/scripts/generate?template=${t.id}`}>Générer</Link>
+                      <Link href={`/editor?id=${s.id}`}>Éditer</Link>
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
                       onClick={async () => {
-                        await deleteTemplate(t.id)
-                        setTemplates((prev) => prev.filter((x) => x.id !== t.id))
+                        await deleteScript(s.id)
+                        setScripts((prev) => prev.filter((x) => x.id !== s.id))
                       }}
                     >
                       Supprimer
