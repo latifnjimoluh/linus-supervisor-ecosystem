@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { listServers, createServer, deleteServer, InfrastructureServer } from "@/services/api"
+import { listServers, createServer, deleteServer, InfrastructureServer } from "@/services/servers"
 import { cn } from "@/lib/utils"
 
 export default function ServersPage() {
@@ -43,8 +43,7 @@ export default function ServersPage() {
     const term = debounced.toLowerCase().trim()
     if (!term) return servers
     return servers.filter(s => {
-      const tags = (s as any).tags ? (s as any).tags.join(' ') : ''
-      const hay = `${s.name} ${s.ip} ${tags}`.toLowerCase()
+      const hay = `${s.name} ${s.ip} ${(s.tags || []).join(' ')}`.toLowerCase()
       return hay.includes(term)
     })
   }, [servers, debounced])
@@ -65,7 +64,7 @@ export default function ServersPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     try {
       await deleteServer(id)
       setServers(prev => prev.filter(s => s.id !== id))

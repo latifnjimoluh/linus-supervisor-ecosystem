@@ -1,3 +1,9 @@
+const fs = require('fs');
+jest.mock('../models', () => {
+  const actual = jest.requireActual('../models');
+  return { ...actual, GeneratedScript: { findByPk: jest.fn() } };
+});
+const { GeneratedScript } = require('../models');
 const request = require('supertest');
 const app = require('../app');
 
@@ -14,11 +20,18 @@ const cases = [
   { method: 'get', path: '/templates', status: 401 },
   { method: 'post', path: '/terraform/deploy', status: 401 },
   { method: 'get', path: '/monitoring', status: 401 },
+  { method: 'get', path: '/dashboard', status: 401 },
   { method: 'get', path: '/dashboard/summary', status: 401 },
+  { method: 'get', path: '/dashboard/servers', status: 401 },
+  { method: 'post', path: '/dashboard/servers', status: 401 },
+  { method: 'delete', path: '/dashboard/servers/1', status: 401 },
   { method: 'get', path: '/alerts', status: 401 },
   { method: 'get', path: '/ai-cache', status: 401 },
-  { method: 'get', path: '/servers', status: 401 }
 ];
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
 
 describe('protected routes', () => {
   cases.forEach((c) => {
@@ -43,5 +56,20 @@ describe('open routes', () => {
       .set('Content-Type', 'application/json')
       .send({});
     expect(res.status).toBe(400);
+  });
+});
+
+describe('script retrieval', () => {
+  it('GET /scripts/generated/:id returns script with content', async () => {
+    const mock = {
+      id: 1,
+      script_path: '/scripts/test.sh',
+      toJSON() { return { id: this.id, script_path: this.script_path }; }
+    };
+    GeneratedScript.findByPk.mockResolvedValue(mock);
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+    const res = await request(app).get('/scripts/generated/1');
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ id: 1, script_path: '/scripts/test.sh', content: null });
   });
 });

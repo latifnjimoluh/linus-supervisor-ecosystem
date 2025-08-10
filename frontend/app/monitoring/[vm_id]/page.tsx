@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Play, Square, Trash2, Copy, RefreshCw, Download, Activity, HardDrive, Cpu, MemoryStick, Network, Clock, AlertTriangle, CheckCircle, XCircle, Settings, FileText, Loader2, Eye, BarChart3 } from 'lucide-react'
+import { ArrowLeft, Play, Square, Copy, RefreshCw, Activity, HardDrive, Cpu, MemoryStick, Clock, AlertTriangle, CheckCircle, XCircle, Settings, FileText, Loader2, Eye, BarChart3 } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { fetchVmDetails } from "@/services/monitoring"
+import { startProxmoxVM, stopProxmoxVM } from "@/services/vms"
 
 interface VMDetails {
   id: string
@@ -67,59 +69,6 @@ interface VMDetails {
     message: string
   }>
   last_monitoring: string
-}
-
-// Mock data generator for VM details
-const generateVMDetails = (vmId: string): VMDetails => {
-  const vmNames = ["web-server-01", "db-server-02", "cache-redis-03", "api-gateway-04", "monitoring-05"]
-  const randomName = vmNames[Math.floor(Math.random() * vmNames.length)]
-  
-  const statuses: Array<"running" | "stopped" | "error"> = ["running", "running", "running", "stopped", "error"]
-  const randomStatus = statuses[Math.floor(Math.random() * statuses.length)]
-  
-  const services = [
-    { name: "SSH", status: "active" as const, port: 22, description: "Secure Shell" },
-    { name: "HTTP", status: "active" as const, port: 80, description: "Web Server" },
-    { name: "HTTPS", status: "active" as const, port: 443, description: "Secure Web Server" },
-    { name: "MySQL", status: Math.random() > 0.3 ? "active" as const : "inactive" as const, port: 3306, description: "Database Server" },
-    { name: "Redis", status: Math.random() > 0.2 ? "active" as const : "failed" as const, port: 6379, description: "Cache Server" },
-    { name: "Docker", status: "active" as const, description: "Container Runtime" },
-  ]
-
-  const logs = [
-    { timestamp: "2025-01-07 14:30:15", level: "info" as const, message: "Service HTTP started successfully" },
-    { timestamp: "2025-01-07 14:25:42", level: "warning" as const, message: "High CPU usage detected (85%)" },
-    { timestamp: "2025-01-07 14:20:18", level: "error" as const, message: "Failed to connect to database" },
-    { timestamp: "2025-01-07 14:15:33", level: "info" as const, message: "System backup completed" },
-    { timestamp: "2025-01-07 14:10:07", level: "info" as const, message: "Monitoring agent updated" },
-  ]
-
-  return {
-    id: vmId,
-    name: randomName,
-    ip: `192.168.1.${Math.floor(Math.random() * 200) + 10}`,
-    status: randomStatus,
-    created_at: "2025-01-05 10:30:00",
-    uptime: randomStatus === "running" ? "2 jours, 4 heures" : "0 minutes",
-    os: "Ubuntu 22.04 LTS",
-    template: "ubuntu-template",
-    vcpu: Math.floor(Math.random() * 4) + 2,
-    memory_mb: (Math.floor(Math.random() * 6) + 2) * 1024,
-    disk_gb: (Math.floor(Math.random() * 8) + 2) * 10,
-    metrics: {
-      cpu_usage: Math.floor(Math.random() * 80) + 10,
-      memory_usage: Math.floor(Math.random() * 6000) + 1000,
-      memory_total: 8192,
-      disk_usage: Math.floor(Math.random() * 60) + 20,
-      disk_total: 100,
-      network_in: Math.floor(Math.random() * 1000) + 100,
-      network_out: Math.floor(Math.random() * 800) + 50,
-      load_average: Math.random() * 3 + 0.5,
-    },
-    services: services.slice(0, Math.floor(Math.random() * 3) + 3),
-    recent_logs: logs.slice(0, Math.floor(Math.random() * 3) + 2),
-    last_monitoring: new Date().toLocaleString("fr-FR"),
-  }
 }
 
 // Simulate AI analysis for VM performance
@@ -184,14 +133,53 @@ export default function VMDetailsPage() {
   const [loading, setLoading] = React.useState(true)
   const [actionLoading, setActionLoading] = React.useState<string | null>(null)
 
-  const fetchVMData = React.useCallback(() => {
+  const fetchVMData = React.useCallback(async () => {
     setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      const data = generateVMDetails(vmId)
-      setVmData(data)
+    try {
+      const data = await fetchVmDetails(vmId)
+      const monitor = data.monitoring || {}
+      const system = monitor.system_status || {}
+      const services = monitor.services_status?.services || []
+      const memTotal = system.memory?.total_kb || 0
+      const memAvail = system.memory?.available_kb || system.memory?.free_kb || 0
+      const disk = system.disk || {}
+      const mapped: VMDetails = {
+        id: data.id,
+        name: data.name,
+        ip: data.ip || '',
+        status: data.proxmox?.status === 'running' ? 'running' : data.proxmox?.status === 'stopped' ? 'stopped' : 'error',
+        created_at: data.proxmox?.creation || '',
+        uptime: system.uptime || '',
+        os: system.os || system.hostname || '',
+        template: '',
+        vcpu: data.status?.cpus || 0,
+        memory_mb: (data.status?.maxmem || 0) / (1024 * 1024),
+        disk_gb: (data.status?.maxdisk || 0) / (1024 * 1024 * 1024),
+        metrics: {
+          cpu_usage: system.cpu_usage || system.cpu?.percent || 0,
+          memory_usage: (memTotal - memAvail) / 1024,
+          memory_total: memTotal / 1024,
+          disk_usage: disk.total_bytes ? Math.round((disk.used_bytes / disk.total_bytes) * 100) : 0,
+          disk_total: disk.total_bytes ? disk.total_bytes / (1024 * 1024 * 1024) : 0,
+          network_in: (system.network?.rx_bytes || 0) / 1024,
+          network_out: (system.network?.tx_bytes || 0) / 1024,
+          load_average: parseFloat((system.load_average || '0').split(/[ ,]/)[0]) || 0,
+        },
+        services: services.map((s: any) => ({
+          name: s.name,
+          status: s.active === 'active' ? 'active' : s.active === 'inactive' ? 'inactive' : 'failed',
+          description: s.enabled,
+        })),
+        recent_logs: [],
+        last_monitoring: monitor.retrieved_at || '',
+      }
+      setVmData(mapped)
+    } catch (e) {
+      console.error('Erreur de récupération du monitoring', e)
+      setVmData(null)
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }, [vmId])
 
   React.useEffect(() => {
@@ -204,51 +192,30 @@ export default function VMDetailsPage() {
 
   const handleVMAction = async (action: string) => {
     setActionLoading(action)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    let message = ""
-    let variant: "success" | "destructive" = "success"
-    
-    switch (action) {
-      case "start":
-        message = `VM ${vmData?.name} démarrée avec succès`
-        if (vmData) {
-          setVmData({ ...vmData, status: "running" })
-        }
-        break
-      case "stop":
-        message = `VM ${vmData?.name} arrêtée avec succès`
-        if (vmData) {
-          setVmData({ ...vmData, status: "stopped", uptime: "0 minutes" })
-        }
-        break
-      case "delete":
-        message = `VM ${vmData?.name} supprimée avec succès`
-        setTimeout(() => router.push("/monitoring"), 2000)
-        break
-      case "convert":
-        message = `VM ${vmData?.name} convertie en template avec succès`
-        break
-      case "collect":
-        message = "Collecte des métriques effectuée avec succès"
-        fetchVMData() // Refresh data
-        break
-      case "sync-ip":
-        message = "Synchronisation IP effectuée avec succès"
-        break
-      default:
-        message = "Action effectuée avec succès"
+    try {
+      let message = ''
+      switch (action) {
+        case 'start':
+          await startProxmoxVM(Number(vmId))
+          message = `VM ${vmData?.name} démarrée avec succès`
+          break
+        case 'stop':
+          await stopProxmoxVM(Number(vmId))
+          message = `VM ${vmData?.name} arrêtée avec succès`
+          break
+        case 'collect':
+          await fetchVMData()
+          message = 'Collecte des métriques effectuée avec succès'
+          break
+        default:
+          message = 'Action non supportée'
+      }
+      toast({ title: 'Action', description: message, variant: 'success' })
+    } catch (e) {
+      toast({ title: 'Erreur', description: 'Action échouée', variant: 'destructive' })
+    } finally {
+      setActionLoading(null)
     }
-    
-    toast({
-      title: "Action réussie",
-      description: message,
-      variant,
-    })
-    
-    setActionLoading(null)
   }
 
   const copyToClipboard = (text: string) => {
@@ -403,77 +370,7 @@ export default function VMDetailsPage() {
           Forcer collecte
         </Button>
 
-        <Button 
-          onClick={() => handleVMAction("sync-ip")} 
-          variant="outline" 
-          disabled={actionLoading !== null}
-          className="rounded-xl"
-        >
-          {actionLoading === "sync-ip" ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Network className="mr-2 h-4 w-4" />
-          )}
-          Sync IP
-        </Button>
-
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button 
-              variant="outline" 
-              disabled={actionLoading !== null || vmData.status === "running"}
-              className="rounded-xl"
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Convertir en Template
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Convertir en Template</AlertDialogTitle>
-              <AlertDialogDescription>
-                Cette action convertira la VM "{vmData.name}" en template Proxmox. 
-                La VM ne sera plus modifiable ni supervisée après conversion.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Annuler</AlertDialogCancel>
-              <AlertDialogAction onClick={() => handleVMAction("convert")}>
-                Convertir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button 
-              variant="destructive" 
-              disabled={actionLoading !== null}
-              className="rounded-xl"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Supprimer
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Supprimer la VM</AlertDialogTitle>
-              <AlertDialogDescription>
-                ⚠️ Cette action est irréversible ! La VM "{vmData.name}" et toutes ses données seront définitivement supprimées.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Annuler</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={() => handleVMAction("delete")}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Supprimer définitivement
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        
       </div>
 
       {/* VM Info and Metrics */}

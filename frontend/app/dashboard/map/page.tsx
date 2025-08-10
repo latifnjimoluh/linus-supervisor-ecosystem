@@ -9,11 +9,13 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils" // Ensure cn is imported
 import { getInfrastructureMap, type InfrastructureServer } from "@/services/dashboard"
+import { useRouter } from "next/navigation"
 
 export default function InfrastructureMapPage() {
   const [servers, setServers] = React.useState<InfrastructureServer[]>([])
   const [loading, setLoading] = React.useState(true)
   const [filterZone, setFilterZone] = React.useState<"all" | "LAN" | "WAN" | "DMZ">("all")
+  const router = useRouter()
 
   const fetchServers = React.useCallback(() => {
     setLoading(true)
@@ -175,7 +177,7 @@ export default function InfrastructureMapPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3 }}
                     whileHover={{ scale: 1.05, zIndex: 11 }}
-                    onClick={() => alert(`Détails de ${server.name}`)} // Replace with actual navigation
+                    onClick={() => router.push(`/monitoring/${server.id}`)}
                   >
                     <div className="flex items-center gap-1 mb-1">
                       {getRoleIcon(server.role)}

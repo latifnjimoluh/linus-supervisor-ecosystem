@@ -28,15 +28,11 @@ export function AppNavbar({ user }: AppNavbarProps) {
     await logout()
   }
 
-  // Use user data if provided, otherwise fallback to mock
-  const currentUser = user || {
-    first_name: "Jean",
-    last_name: "Dupont",
-    email: "admin@example.com",
-    role_id: 1,
-    avatar: "/placeholder-user.jpg",
-    id: 1,
+  if (!user) {
+    return null
   }
+
+  const currentUser = user
 
   const getRoleBadgeVariant = (roleId: number) => {
     switch (roleId) {
