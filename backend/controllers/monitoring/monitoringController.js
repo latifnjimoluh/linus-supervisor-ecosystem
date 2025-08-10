@@ -349,9 +349,17 @@ exports.getVmDetails = async (req, res) => {
       // Ignorer les erreurs de statut pour ne pas bloquer la réponse
     }
 
-    // Récupération des infos locales
+    // Récupération des infos locales et IP depuis Proxmox
     const deployment = await Deployment.findOne({ where: { vm_id: vmid } });
-    const ip = deployment?.vm_ip || null;
+    let ip = await getVMIPFromProxmox({
+      apiUrl: settings.proxmox_api_url,
+      headers,
+      node: vmInfo.node,
+      vmid,
+      type: vmInfo.type,
+    });
+    if (!ip) ip = deployment?.vm_ip || null;
+
     const monitor = ip
       ? await Monitoring.findOne({
           where: { vm_ip: ip },
@@ -359,10 +367,37 @@ exports.getVmDetails = async (req, res) => {
         })
       : null;
 
+    let ping_ok = null;
+    let cpu_usage = 0;
+    let memory_usage = 0;
+    let memory_total = 0;
+    let disk_usage = 0;
+
+    if (ip) ping_ok = await isPingable(ip);
+
+    if (monitor) {
+      const system = monitor.system_status || {};
+      cpu_usage = system.cpu_usage || system.cpu?.percent || cpu_usage;
+      const mem = system.memory || {};
+      memory_total = mem.total_kb || mem.total || 0;
+      memory_usage = memory_total - (mem.available_kb || mem.free_kb || 0);
+      const disk = system.disk || {};
+      if (disk.total_bytes && disk.used_bytes) {
+        disk_usage = Math.round((disk.used_bytes / disk.total_bytes) * 100);
+      } else {
+        disk_usage = system.disk_usage || 0;
+      }
+    }
+
     res.json({
       id: String(vmid),
       name: vmInfo.name || deployment?.vm_name || `VM ${vmid}`,
       ip,
+      ping_ok,
+      cpu_usage,
+      memory_usage,
+      memory_total,
+      disk_usage,
       proxmox: vmInfo,
       status: statusInfo,
       monitoring: monitor,
