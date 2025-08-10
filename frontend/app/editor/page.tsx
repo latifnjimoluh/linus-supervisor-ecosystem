@@ -247,7 +247,7 @@ export default function CodeEditorPage() {
       })
       toast({
         title: "Template sauvegardé",
-        description: `${templateName} a été enregistré",
+        description: `${templateName} a été enregistré"`,
         variant: "success",
       })
       setTemplateName("")
