@@ -8,50 +8,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils" // Ensure cn is imported
-
-interface ServerNode {
-  id: string
-  name: string
-  ip: string
-  zone: "LAN" | "WAN" | "DMZ"
-  role: string
-  status: "ok" | "alert" | "unsupervised"
-  uptime: string
-  position: { x: number; y: number } // Relative position for layout
-}
-
-const generateMockServers = (): ServerNode[] => {
-  const servers: ServerNode[] = [
-    { id: "srv-001", name: "Web-Prod-01", ip: "192.168.1.10", zone: "DMZ", role: "Web Server", status: "ok", uptime: "99 days", position: { x: 0.2, y: 0.3 } },
-    { id: "srv-002", name: "DB-Main-01", ip: "10.0.0.5", zone: "LAN", role: "Database", status: "ok", uptime: "120 days", position: { x: 0.7, y: 0.2 } },
-    { id: "srv-003", name: "API-Gateway", ip: "192.168.1.11", zone: "DMZ", role: "API Gateway", status: "alert", uptime: "2 days", position: { x: 0.3, y: 0.6 } },
-    { id: "srv-004", name: "Monitoring-Srv", ip: "10.0.0.6", zone: "LAN", role: "Monitoring", status: "ok", uptime: "50 days", position: { x: 0.8, y: 0.7 } },
-    { id: "srv-005", name: "VPN-Access", ip: "172.16.0.1", zone: "WAN", role: "VPN Server", status: "unsupervised", uptime: "N/A", position: { x: 0.1, y: 0.8 } },
-    { id: "srv-006", name: "Proxy-Cache", ip: "192.168.1.12", zone: "WAN", role: "Proxy Server", status: "ok", uptime: "30 days", position: { x: 0.5, y: 0.9 } },
-    { id: "srv-007", name: "DNS-Primary", ip: "10.0.0.7", zone: "LAN", role: "DNS Server", status: "ok", uptime: "80 days", position: { x: 0.6, y: 0.4 } },
-  ]
-
-  // Simulate some alerts
-  if (Math.random() > 0.5) {
-    const alertIndex = Math.floor(Math.random() * servers.length);
-    servers[alertIndex].status = "alert";
-    servers[alertIndex].uptime = "1 hour (issue)";
-  }
-
-  return servers
-}
+import { getInfrastructureMap, type InfrastructureServer } from "@/services/dashboard"
 
 export default function InfrastructureMapPage() {
-  const [servers, setServers] = React.useState<ServerNode[]>([])
+  const [servers, setServers] = React.useState<InfrastructureServer[]>([])
   const [loading, setLoading] = React.useState(true)
   const [filterZone, setFilterZone] = React.useState<"all" | "LAN" | "WAN" | "DMZ">("all")
 
   const fetchServers = React.useCallback(() => {
     setLoading(true)
-    setTimeout(() => {
-      setServers(generateMockServers())
-      setLoading(false)
-    }, 1500)
+    getInfrastructureMap()
+      .then(setServers)
+      .catch(() => setServers([]))
+      .finally(() => setLoading(false))
   }, [])
 
   React.useEffect(() => {
@@ -62,7 +31,7 @@ export default function InfrastructureMapPage() {
     filterZone === "all" || server.zone === filterZone
   )
 
-  const getStatusIcon = (status: ServerNode['status']) => {
+  const getStatusIcon = (status: InfrastructureServer['status']) => {
     switch (status) {
       case "ok": return <CheckCircle className="h-4 w-4 text-green-500" />
       case "alert": return <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse" />
@@ -71,7 +40,7 @@ export default function InfrastructureMapPage() {
     }
   }
 
-  const getZoneColor = (zone: ServerNode['zone']) => {
+  const getZoneColor = (zone: InfrastructureServer['zone']) => {
     switch (zone) {
       case "LAN": return "border-blue-500/50 bg-blue-500/10"
       case "WAN": return "border-purple-500/50 bg-purple-500/10"
