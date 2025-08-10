@@ -81,7 +81,6 @@ export default function TemplatesPage() {
               ))}
             </TableBody>
           </Table>
-
           {totalPages > 1 && (
             <div className="flex justify-end gap-2">
               <Button
