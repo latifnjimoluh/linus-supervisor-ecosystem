@@ -283,6 +283,10 @@ exports.getOverview = async (req, res) => {
           uptime = system.uptime || system.uptime_sec || system.uptime_seconds || uptime;
         }
 
+        // Fallback CPU usage from Proxmox data if monitoring is unavailable
+        if (!cpu_usage && vm.cpu != null) {
+          cpu_usage = vm.cpu * 100;
+        }
         return {
           id: String(vm.vmid),
           name: vm.name || dep.vm_name || `VM ${vm.vmid}`,
@@ -439,6 +443,55 @@ exports.getVmDetails = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: 'Erreur lors de la récupération du détail', error: err.message });
+  }
+};
+
+// 📈 Historique des enregistrements pour une VM
+exports.getVmHistory = async (req, res) => {
+  try {
+    const vmid = req.params.vmid;
+    const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
+
+    let ip = null;
+    if (settings) {
+      const headers = {
+        Authorization: `PVEAPIToken=${settings.proxmox_api_token_id}!${settings.proxmox_api_token_name}=${settings.proxmox_api_token_secret}`,
+      };
+      try {
+        const listUrl = `${settings.proxmox_api_url}/cluster/resources?type=vm`;
+        const listResp = await axios.get(listUrl, { httpsAgent, headers });
+        const vmInfo = (listResp.data?.data || []).find((v) => String(v.vmid) === String(vmid));
+        if (vmInfo) {
+          ip = await getVMIPFromProxmox({
+            apiUrl: settings.proxmox_api_url,
+            headers,
+            node: vmInfo.node,
+            vmid,
+            type: vmInfo.type,
+          });
+        }
+      } catch (_) {}
+    }
+
+    if (!ip) {
+      const deployment = await Deployment.findOne({ where: { vm_id: vmid } });
+      ip = deployment?.vm_ip || null;
+    }
+
+    if (!ip) {
+      return res.status(404).json({ message: 'IP introuvable pour cette VM' });
+    }
+
+    const limit = parseInt(req.query.limit) || 50;
+    const records = await Monitoring.findAll({
+      where: { vm_ip: ip },
+      order: [['retrieved_at', 'DESC']],
+      limit,
+    });
+
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ message: "Erreur lors de la récupération de l'historique", error: err.message });
   }
 };
 

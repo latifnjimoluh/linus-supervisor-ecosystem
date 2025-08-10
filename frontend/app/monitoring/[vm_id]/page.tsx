@@ -32,7 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { cn, formatKB, formatPercent } from "@/lib/utils"
+import { cn, formatKB, formatPercent, formatDate } from "@/lib/utils"
 import { fetchVmDetails, collectMonitoringData } from "@/services/monitoring"
 import { startProxmoxVM, stopProxmoxVM } from "@/services/vms"
 
@@ -173,7 +173,7 @@ export default function VMDetailsPage() {
           description: s.enabled,
         })),
         recent_logs: [],
-        last_monitoring: monitor.retrieved_at || '',
+        last_monitoring: monitor.retrieved_at ? formatDate(monitor.retrieved_at) : '',
       }
       setVmData(mapped)
     } catch (e) {

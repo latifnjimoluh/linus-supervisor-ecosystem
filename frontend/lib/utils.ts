@@ -24,3 +24,9 @@ export function formatPercent(value: number, decimals = 2) {
   const num = Number(value)
   return `${num.toFixed(decimals)}%`
 }
+
+export function formatDate(value: string | null) {
+  if (!value) return ''
+  const date = new Date(value)
+  return date.toLocaleString('fr-FR')
+}

@@ -29,7 +29,7 @@ export interface MonitoringOverview {
 }
 
 export async function fetchMonitoringOverview(): Promise<MonitoringOverview> {
-  const res = await api.get('/monitoring/overview');
+  const res = await api.get('/monitoring');
   return res.data;
 }
 
@@ -54,7 +54,27 @@ export interface VmDetailResponse {
 }
 
 export async function fetchVmDetails(id: string): Promise<VmDetailResponse> {
-  const res = await api.get(`/monitoring/vm/${id}`);
+  const res = await api.get(`/monitoring/${id}`);
+  return res.data;
+}
+
+export async function collectMonitoringData(vm_ip: string, username: string) {
+  const res = await api.post('/monitoring/collect', { vm_ip, username });
+  return res.data;
+}
+
+export interface MonitoringRecord {
+  id: number;
+  vm_ip: string;
+  ip_address: string;
+  instance_id: string;
+  services_status: any;
+  system_status: any;
+  retrieved_at: string;
+}
+
+export async function fetchVmHistory(id: string): Promise<MonitoringRecord[]> {
+  const res = await api.get(`/monitoring/${id}/history`);
   return res.data;
 }
 
