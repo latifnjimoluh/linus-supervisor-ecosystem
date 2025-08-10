@@ -359,7 +359,6 @@ exports.getVmDetails = async (req, res) => {
     } catch (_) {
       // Ignorer les erreurs RRD
     }
-
     // Récupération des infos locales et IP depuis Proxmox
     const deployment = await Deployment.findOne({ where: { vm_id: vmid } });
     let ip = await getVMIPFromProxmox({
@@ -386,6 +385,7 @@ exports.getVmDetails = async (req, res) => {
     let network_in = 0;
     let network_out = 0;
     let load_average = 0;
+
 
     if (ip) ping_ok = await isPingable(ip);
 
@@ -419,7 +419,6 @@ exports.getVmDetails = async (req, res) => {
     if (!network_in && rrdInfo.netin != null) network_in = rrdInfo.netin / 1024; // B/s -> KB/s
     if (!network_out && rrdInfo.netout != null) network_out = rrdInfo.netout / 1024; // B/s -> KB/s
     if (!load_average) load_average = rrdInfo.loadavg || 0;
-
     res.json({
       id: String(vmid),
       name: vmInfo.name || deployment?.vm_name || `VM ${vmid}`,
