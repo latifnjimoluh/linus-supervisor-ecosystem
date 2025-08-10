@@ -1,4 +1,5 @@
 import { fetchTemplatesAndScripts } from "./templates"
+import { api } from "@/services/api"
 export type Script = {
   id: number
   name: string
@@ -13,3 +14,6 @@ export async function listScripts(): Promise<Script[]> {
   const { scripts } = await fetchTemplatesAndScripts()
   return scripts
 }
+export async function deleteScript(id: number): Promise<{ message: string }> {
+  const res = await api.delete(`/scripts/${id}`)
+  return res.data

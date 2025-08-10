@@ -322,7 +322,7 @@ export default function CodeEditorPage() {
                 Scripts
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 max-h-64 overflow-y-auto">
               {templates.map((tpl) => (
                 <div
                   key={tpl.id}

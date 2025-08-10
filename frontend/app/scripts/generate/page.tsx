@@ -7,8 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
 
-export default function GenerateScriptPage({ searchParams }: { searchParams: { template?: string } }) {
+export default function GenerateScriptPage({
+  searchParams,
+}: {
+  searchParams: { template?: string }
+}) {
+  const params = React.use(searchParams)
   const [templates, setTemplates] = React.useState<Template[]>([])
   const [templateId, setTemplateId] = React.useState<number | null>(null)
   const [formData, setFormData] = React.useState<Record<string, string>>({})
@@ -17,10 +23,10 @@ export default function GenerateScriptPage({ searchParams }: { searchParams: { t
   React.useEffect(() => {
     listTemplates().then((t) => {
       setTemplates(t)
-      const initial = searchParams.template
+      const initial = params?.template
       if (initial) setTemplateId(Number(initial))
     })
-  }, [searchParams.template])
+  }, [params])
 
   const selected = templates.find((t) => t.id === templateId)
 
@@ -49,9 +55,15 @@ export default function GenerateScriptPage({ searchParams }: { searchParams: { t
     null,
     2
   )
+
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Générer un script</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Générer un script</h1>
+        <Button asChild variant="outline">
+          <Link href="/scripts">Retour</Link>
+        </Button>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Template</CardTitle>

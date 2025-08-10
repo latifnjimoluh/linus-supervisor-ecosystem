@@ -2,13 +2,25 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { listTemplates, type Template } from "@/lib/templates"
+import { listTemplates, deleteTemplate, type Template } from "@/lib/templates"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = React.useState<Template[]>([])
+  const [selected, setSelected] = React.useState<Template | null>(null)
+  const [page, setPage] = React.useState(1)
+
+  const PAGE_SIZE = 5
+  const totalPages = Math.ceil(templates.length / PAGE_SIZE)
+  const paginated = templates.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   React.useEffect(() => {
     listTemplates().then(setTemplates).catch(() => setTemplates([]))
@@ -26,7 +38,7 @@ export default function TemplatesPage() {
         <CardHeader>
           <CardTitle>Liste des templates</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Table>
             <TableHeader>
               <TableRow>
@@ -36,24 +48,70 @@ export default function TemplatesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {templates.map((t) => (
-                <TableRow key={t.id}>
+              {paginated.map((t) => (
+                <TableRow key={`template-${t.id}`}>
                   <TableCell>{t.name}</TableCell>
                   <TableCell>{t.category}</TableCell>
                   <TableCell className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setSelected(t)}
+                    >
+                      Voir
+                    </Button>
                     <Button asChild size="sm" variant="outline">
                       <Link href={`/editor?id=${t.id}`}>Éditer</Link>
                     </Button>
                     <Button asChild size="sm">
                       <Link href={`/scripts/generate?template=${t.id}`}>Générer</Link>
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={async () => {
+                        await deleteTemplate(t.id)
+                        setTemplates((prev) => prev.filter((x) => x.id !== t.id))
+                      }}
+                    >
+                      Supprimer
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Précédent
+              </Button>
+              <Button
+                size="sm"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Suivant
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{selected?.name}</DialogTitle>
+          </DialogHeader>
+          <pre className="bg-muted p-4 rounded-md text-sm overflow-auto whitespace-pre-wrap">
+            {selected?.template_content}
+          </pre>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

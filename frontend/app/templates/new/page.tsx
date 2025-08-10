@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FieldSchemaField, createTemplate } from "@/lib/templates"
+import Link from "next/link"
 
 export default function NewTemplatePage() {
   const router = useRouter()
@@ -17,11 +18,25 @@ export default function NewTemplatePage() {
   const [category, setCategory] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [templateContent, setTemplateContent] = React.useState("")
-  const [scriptPath, setScriptPath] = React.useState("")
   const [fields, setFields] = React.useState<FieldSchemaField[]>([])
 
-  const addField = () => setFields([...fields, { name: "", label: "", type: "text", required: false }])
-  const updateField = (index: number, key: keyof FieldSchemaField, value: any) => {
+  const slugify = (str: string) =>
+    str
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+  const scriptPath = React.useMemo(
+    () => (name ? `/scripts/${slugify(name)}.sh` : ""),
+    [name]
+  )
+
+  const addField = () =>
+    setFields([...fields, { name: "", label: "", type: "text", required: false }])
+  const updateField = (
+    index: number,
+    key: keyof FieldSchemaField,
+    value: any,
+  ) => {
     setFields((prev) => prev.map((f, i) => (i === index ? { ...f, [key]: value } : f)))
   }
   const removeField = (index: number) => setFields((prev) => prev.filter((_, i) => i !== index))
@@ -57,7 +72,12 @@ export default function NewTemplatePage() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <h1 className="text-3xl font-bold">Nouveau template</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Nouveau template</h1>
+        <Button asChild variant="outline">
+          <Link href="/templates">Retour</Link>
+        </Button>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Informations</CardTitle>
@@ -76,10 +96,6 @@ export default function NewTemplatePage() {
               <Label htmlFor="category">Catégorie</Label>
               <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="script_path">Chemin du script</Label>
-              <Input id="script_path" value={scriptPath} onChange={(e) => setScriptPath(e.target.value)} />
-            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
@@ -87,7 +103,12 @@ export default function NewTemplatePage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="content">Contenu du template</Label>
-            <Textarea id="content" value={templateContent} onChange={(e) => setTemplateContent(e.target.value)} className="h-40" />
+            <Textarea
+              id="content"
+              value={templateContent}
+              onChange={(e) => setTemplateContent(e.target.value)}
+              className="h-60 font-mono"
+            />
           </div>
         </CardContent>
       </Card>

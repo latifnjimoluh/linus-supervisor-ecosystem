@@ -39,7 +39,7 @@ export default function ScriptsTemplatesPage() {
             </TableHeader>
             <TableBody>
               {items.map((item) => (
-                <TableRow key={item.id}>
+                <TableRow key={`${item.type}-${item.id}`}>
                   <TableCell className="capitalize">{item.type}</TableCell>
                   <TableCell>{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>
