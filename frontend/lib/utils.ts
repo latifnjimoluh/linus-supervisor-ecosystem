@@ -18,3 +18,9 @@ export function formatBytes(bytes: number, decimals = 2) {
 export function formatKB(kb: number, decimals = 2) {
   return formatBytes(kb * 1024, decimals)
 }
+
+export function formatPercent(value: number, decimals = 2) {
+  if (value == null) return '0%'
+  const num = Number(value)
+  return `${num.toFixed(decimals)}%`
+}

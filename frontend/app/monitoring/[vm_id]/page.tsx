@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { useToast } from "@/hooks/use-toast"
@@ -31,7 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { cn, formatKB } from "@/lib/utils"
+import { cn, formatKB, formatPercent } from "@/lib/utils"
 import { fetchVmDetails, collectMonitoringData } from "@/services/monitoring"
 import { startProxmoxVM, stopProxmoxVM } from "@/services/vms"
 
@@ -132,6 +133,7 @@ export default function VMDetailsPage() {
   const [vmData, setVmData] = React.useState<VMDetails | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [actionLoading, setActionLoading] = React.useState<string | null>(null)
+  const [collectUsername, setCollectUsername] = React.useState("")
 
   const fetchVMData = React.useCallback(async () => {
     setLoading(true)
@@ -205,7 +207,8 @@ export default function VMDetailsPage() {
           break
         case 'collect':
           if (!vmData?.ip) throw new Error('VM IP inconnue')
-          await collectMonitoringData(vmData.ip, 'nexus')
+          if (!collectUsername) throw new Error('Username requis')
+          await collectMonitoringData(vmData.ip, collectUsername)
           await fetchVMData()
           message = 'Collecte des métriques effectuée avec succès'
           break
@@ -284,7 +287,7 @@ export default function VMDetailsPage() {
     )
   }
 
-  const aiContext = `VM: ${vmData.name}, IP: ${vmData.ip}, Statut: ${vmData.status}, CPU: ${vmData.metrics.cpu_usage}%, Mémoire: ${Math.round(vmData.metrics.memory_usage / 1024)}/${Math.round(vmData.metrics.memory_total / 1024)} MB, Disque: ${Math.round(vmData.metrics.disk_usage / (1024 * 1024))}/${Math.round(vmData.metrics.disk_total / (1024 * 1024))} GB, Services actifs: ${vmData.services.filter(s => s.status === 'active').length}/${vmData.services.length}`
+  const aiContext = `VM: ${vmData.name}, IP: ${vmData.ip}, Statut: ${vmData.status}, CPU: ${Math.round(vmData.metrics.cpu_usage)}%, Mémoire: ${Math.round(vmData.metrics.memory_usage / 1024)}/${Math.round(vmData.metrics.memory_total / 1024)} MB, Disque: ${Math.round(vmData.metrics.disk_usage / (1024 * 1024))}/${Math.round(vmData.metrics.disk_total / (1024 * 1024))} GB, Services actifs: ${vmData.services.filter(s => s.status === 'active').length}/${vmData.services.length}`
 
   return (
     <div className="space-y-6">
@@ -358,10 +361,16 @@ export default function VMDetailsPage() {
           </AlertDialog>
         )}
 
-        <Button 
-          onClick={() => handleVMAction("collect")} 
-          variant="outline" 
-          disabled={actionLoading !== null}
+        <Input
+          placeholder="username"
+          value={collectUsername}
+          onChange={(e) => setCollectUsername(e.target.value)}
+          className="w-40"
+        />
+        <Button
+          onClick={() => handleVMAction("collect")}
+          variant="outline"
+          disabled={actionLoading !== null || !collectUsername}
           className="rounded-xl"
         >
           {actionLoading === "collect" ? (
@@ -429,10 +438,10 @@ export default function VMDetailsPage() {
             <div>
               <div className="flex justify-between mb-2">
                 <span>Utilisation CPU</span>
-                <span className="font-medium">{vmData.metrics.cpu_usage}%</span>
+                <span className="font-medium">{formatPercent(vmData.metrics.cpu_usage)}</span>
               </div>
               <Progress value={vmData.metrics.cpu_usage} className="h-2" />
-            </div>
+              </div>
             <div>
               <div className="flex justify-between mb-2">
                 <span>Load Average</span>

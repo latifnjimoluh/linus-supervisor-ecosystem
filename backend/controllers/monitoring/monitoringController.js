@@ -299,7 +299,7 @@ exports.getOverview = async (req, res) => {
           last_monitoring: last_monitoring ? last_monitoring.toISOString() : null,
           ping_ok,
           template: dep?.vm_specs?.template_name || '',
-          created_at: dep?.created_at ? dep.created_at.toISOString() : null,
+          created_at: dep?.createdAt ? dep.createdAt.toISOString() : null,
         };
       })
     );
@@ -432,7 +432,7 @@ exports.getVmDetails = async (req, res) => {
       network_out,
       load_average,
       template: deployment?.vm_specs?.template_name || '',
-      created_at: deployment?.created_at ? deployment.created_at.toISOString() : null,
+      created_at: deployment?.createdAt ? deployment.createdAt.toISOString() : null,
       proxmox: vmInfo,
       status: statusInfo,
       monitoring: monitor,
