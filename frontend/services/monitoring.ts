@@ -23,6 +23,8 @@ export interface MonitoringOverview {
     services_count: number;
     active_services: number;
     last_monitoring: string | null;
+    template?: string;
+    created_at?: string | null;
   }>;
 }
 
@@ -35,6 +37,17 @@ export interface VmDetailResponse {
   id: string;
   name: string;
   ip: string | null;
+  ping_ok: boolean | null;
+  cpu_usage: number;
+  memory_usage: number; // in KB
+  memory_total: number; // in KB
+  disk_usage: number; // used KB
+  disk_total: number; // total KB
+  network_in: number; // KB/s
+  network_out: number; // KB/s
+  load_average: number;
+  template: string;
+  created_at: string | null;
   proxmox: any;
   status: any;
   monitoring: any;
@@ -42,5 +55,10 @@ export interface VmDetailResponse {
 
 export async function fetchVmDetails(id: string): Promise<VmDetailResponse> {
   const res = await api.get(`/monitoring/vm/${id}`);
+  return res.data;
+}
+
+export async function collectMonitoringData(vm_ip: string, username: string) {
+  const res = await api.post('/monitoring/collect', { vm_ip, username });
   return res.data;
 }
