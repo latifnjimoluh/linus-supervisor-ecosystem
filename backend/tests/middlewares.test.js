@@ -1,12 +1,14 @@
 const errorHandler = require('../middlewares/errorHandler');
-const log = require('../middlewares/log');
+const { logRequest } = require('../middlewares/log');
+
+jest.mock('../models', () => ({ Log: { create: jest.fn().mockResolvedValue({}) } }));
 
 describe('log middleware', () => {
-  it('calls next', () => {
+  it('calls next', async () => {
     const req = { method: 'GET', originalUrl: '/test' };
     const res = {};
     const next = jest.fn();
-    log(req, res, next);
+    await logRequest(req, res, next);
     expect(next).toHaveBeenCalled();
   });
 });

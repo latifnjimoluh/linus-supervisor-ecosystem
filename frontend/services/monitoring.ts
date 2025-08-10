@@ -30,3 +30,17 @@ export async function fetchMonitoringOverview(): Promise<MonitoringOverview> {
   const res = await api.get('/monitoring/overview');
   return res.data;
 }
+
+export interface VmDetailResponse {
+  id: string;
+  name: string;
+  ip: string | null;
+  proxmox: any;
+  status: any;
+  monitoring: any;
+}
+
+export async function fetchVmDetails(id: string): Promise<VmDetailResponse> {
+  const res = await api.get(`/monitoring/vm/${id}`);
+  return res.data;
+}

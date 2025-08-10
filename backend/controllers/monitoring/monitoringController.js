@@ -166,26 +166,31 @@ exports.getMonitoringRecordById = async (req, res) => {
 };
 
 // 🌐 Vue d'ensemble du monitoring pour chaque serveur
+// Récupère d'abord la liste des VMs depuis Proxmox puis
+// y associe les dernières données de monitoring disponibles.
 exports.getOverview = async (req, res) => {
   try {
-    const deployments = await Deployment.findAll();
+    const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
+    if (!settings) {
+      return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
+    }
 
-    // Regrouper les services par serveur
-    const serversMap = {};
+    // 🔹 Récupération des VMs depuis Proxmox
+    const headers = {
+      Authorization: `PVEAPIToken=${settings.proxmox_api_token_id}!${settings.proxmox_api_token_name}=${settings.proxmox_api_token_secret}`,
+    };
+    const proxmoxUrl = `${settings.proxmox_api_url}/cluster/resources?type=vm`;
+    const proxmoxResp = await axios.get(proxmoxUrl, { httpsAgent, headers });
+    const proxmoxVms = proxmoxResp.data?.data || [];
+
+    // 🔹 Map des déploiements pour récupérer les IPs
+    const deployments = await Deployment.findAll();
+    const deploymentMap = {};
     deployments.forEach((d) => {
-      if (!serversMap[d.vm_id]) {
-        serversMap[d.vm_id] = {
-          id: d.vm_id,
-          name: d.vm_name,
-          ip: d.vm_ip,
-          zone: d.zone,
-          services: new Set(),
-        };
-      }
-      if (d.service_name) serversMap[d.vm_id].services.add(d.service_name);
+      deploymentMap[d.vm_id] = d;
     });
 
-    // Dernier enregistrement de monitoring par IP
+    // 🔹 Dernières données de monitoring par IP
     const records = await Monitoring.findAll({
       order: [['vm_ip', 'ASC'], ['retrieved_at', 'DESC']],
     });
@@ -194,26 +199,34 @@ exports.getOverview = async (req, res) => {
       if (!latest[rec.vm_ip]) latest[rec.vm_ip] = rec;
     });
 
-    const servers = Object.values(serversMap).map((s) => {
-      const monitor = latest[s.ip];
-      let status = 'stopped';
+    // 🔹 Construction de la réponse à partir des VMs Proxmox
+    const servers = proxmoxVms.map((vm) => {
+      const dep = deploymentMap[vm.vmid] || {};
+      const ip = dep.vm_ip || null;
+      const monitor = ip ? latest[ip] : null;
+
+      let status = vm.status === 'running' ? 'running' : vm.status === 'stopped' ? 'stopped' : 'error';
       let os = 'unknown';
       let cpu_usage = 0;
       let memory_usage = 0;
       let memory_total = 0;
       let disk_usage = 0;
-      let uptime = 'N/A';
+      let uptime = vm.uptime || 'N/A';
       let last_monitoring = null;
       let active_services = 0;
+      let services_count = 0;
+
       if (monitor) {
         last_monitoring = monitor.retrieved_at;
         const services = monitor.services_status?.services || [];
+        services_count = services.length;
         active_services = services.filter((sv) => sv.active === 'active').length;
         const hasAlert = services.some((sv) => sv.active !== 'active');
-        status = hasAlert ? 'error' : 'running';
+        status = hasAlert ? 'error' : status;
+
         const system = monitor.system_status || {};
-        os = system.os || system.hostname || 'unknown';
-        cpu_usage = system.cpu_usage || system.cpu?.percent || 0;
+        os = system.os || system.hostname || os;
+        cpu_usage = system.cpu_usage || system.cpu?.percent || cpu_usage;
         const mem = system.memory || {};
         memory_total = mem.total_kb || mem.total || 0;
         memory_usage = memory_total - (mem.available_kb || mem.free_kb || 0);
@@ -223,12 +236,13 @@ exports.getOverview = async (req, res) => {
         } else {
           disk_usage = system.disk_usage || 0;
         }
-        uptime = system.uptime || system.uptime_sec || system.uptime_seconds || 'N/A';
+        uptime = system.uptime || system.uptime_sec || system.uptime_seconds || uptime;
       }
+
       return {
-        id: s.id,
-        name: s.name,
-        ip: s.ip,
+        id: String(vm.vmid),
+        name: vm.name || dep.vm_name || `VM ${vm.vmid}`,
+        ip: ip || 'N/A',
         status,
         os,
         cpu_usage,
@@ -236,7 +250,7 @@ exports.getOverview = async (req, res) => {
         memory_total,
         disk_usage,
         uptime,
-        services_count: s.services.size,
+        services_count,
         active_services,
         last_monitoring: last_monitoring ? last_monitoring.toISOString() : null,
       };
@@ -251,9 +265,61 @@ exports.getOverview = async (req, res) => {
 
     res.json({ summary, vms: servers });
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Erreur lors de l'obtention de l'aperçu", error: err.message });
+    res.status(500).json({ message: "Erreur lors de l'obtention de l'aperçu", error: err.message });
+  }
+};
+
+// 📋 Détails d'une VM spécifique (Proxmox + Monitoring)
+exports.getVmDetails = async (req, res) => {
+  try {
+    const vmid = req.params.vmid;
+    const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
+    if (!settings) {
+      return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
+    }
+
+    const headers = {
+      Authorization: `PVEAPIToken=${settings.proxmox_api_token_id}!${settings.proxmox_api_token_name}=${settings.proxmox_api_token_secret}`,
+    };
+
+    // Infos générales depuis Proxmox
+    const listUrl = `${settings.proxmox_api_url}/cluster/resources?type=vm`;
+    const listResp = await axios.get(listUrl, { httpsAgent, headers });
+    const vmInfo = (listResp.data?.data || []).find((v) => String(v.vmid) === String(vmid));
+    if (!vmInfo) {
+      return res.status(404).json({ message: 'VM non trouvée dans Proxmox' });
+    }
+
+    // Détails de statut depuis Proxmox
+    let statusInfo = {};
+    try {
+      const statusUrl = `${settings.proxmox_api_url}/nodes/${vmInfo.node}/${vmInfo.type}/${vmid}/status/current`;
+      const statusResp = await axios.get(statusUrl, { httpsAgent, headers });
+      statusInfo = statusResp.data?.data || {};
+    } catch (_) {
+      // Ignorer les erreurs de statut pour ne pas bloquer la réponse
+    }
+
+    // Récupération des infos locales
+    const deployment = await Deployment.findOne({ where: { vm_id: vmid } });
+    const ip = deployment?.vm_ip || null;
+    const monitor = ip
+      ? await Monitoring.findOne({
+          where: { vm_ip: ip },
+          order: [['retrieved_at', 'DESC']],
+        })
+      : null;
+
+    res.json({
+      id: String(vmid),
+      name: vmInfo.name || deployment?.vm_name || `VM ${vmid}`,
+      ip,
+      proxmox: vmInfo,
+      status: statusInfo,
+      monitoring: monitor,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur lors de la récupération du détail', error: err.message });
   }
 };
 

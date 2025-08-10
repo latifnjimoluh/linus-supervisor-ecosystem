@@ -2,131 +2,65 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { CheckCircle, XCircle, Loader2, Clock, Server, FileText, ChevronLeft, Copy, Check } from 'lucide-react'
-import { motion, AnimatePresence } from "framer-motion"
-
+import { XCircle, Loader2, Clock, Server, FileText, ChevronLeft, Copy } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-
-interface DeploymentLog {
-  timestamp: string
-  level: "INFO" | "WARN" | "ERROR" | "SUCCESS"
-  message: string
-}
-
-interface DeploymentStatus {
-  id: string
-  vmName: string
-  template: string
-  status: "pending" | "in_progress" | "completed" | "failed"
-  startTime: Date
-  endTime?: Date
-  logs: DeploymentLog[]
-}
-
-const mockDeploymentData = (id: string): DeploymentStatus => {
-  const startTime = new Date(Date.now() - Math.random() * 3600 * 1000) // Up to 1 hour ago
-  const statusOptions = ["pending", "in_progress", "completed", "failed"]
-  const randomStatus = statusOptions[Math.floor(Math.random() * statusOptions.length)]
-
-  const logs: DeploymentLog[] = [
-    { timestamp: new Date(startTime.getTime() + 1000).toISOString(), level: "INFO", message: `[${id}] Démarrage du déploiement pour Web-Prod-01...` },
-    { timestamp: new Date(startTime.getTime() + 5000).toISOString(), level: "INFO", message: `[${id}] Initialisation du template ubuntu-22.04-template.` },
-    { timestamp: new Date(startTime.getTime() + 10000).toISOString(), level: "INFO", message: `[${id}] Allocation des ressources (RAM: 2048MB, CPU: 2 coeurs, Disque: 20GB).` },
-    { timestamp: new Date(startTime.getTime() + 15000).toISOString(), level: "INFO", message: `[${id}] Configuration réseau: IP dynamique attribuée.` },
-  ]
-
-  if (randomStatus === "in_progress") {
-    logs.push(
-      { timestamp: new Date(startTime.getTime() + 20000).toISOString(), level: "INFO", message: `[${id}] Exécution du script 'Initialisation SSH'.` },
-      { timestamp: new Date(startTime.getTime() + 25000).toISOString(), level: "INFO", message: `[${id}] Exécution du script 'Mise à jour système'.` },
-      { timestamp: new Date(startTime.getTime() + 30000).toISOString(), level: "WARN", message: `[${id}] Avertissement: Paquet 'unzip' non trouvé, installation ignorée.` },
-    )
-  } else if (randomStatus === "completed") {
-    logs.push(
-      { timestamp: new Date(startTime.getTime() + 20000).toISOString(), level: "INFO", message: `[${id}] Exécution du script 'Initialisation SSH'.` },
-      { timestamp: new Date(startTime.getTime() + 25000).toISOString(), level: "INFO", message: `[${id}] Exécution du script 'Mise à jour système'.` },
-      { timestamp: new Date(startTime.getTime() + 30000).toISOString(), level: "INFO", message: `[${id}] Exécution du script 'Configuration Nginx'.` },
-      { timestamp: new Date(startTime.getTime() + 35000).toISOString(), level: "SUCCESS", message: `[${id}] Déploiement de Web-Prod-01 terminé avec succès.` },
-    )
-  } else if (randomStatus === "failed") {
-    logs.push(
-      { timestamp: new Date(startTime.getTime() + 20000).toISOString(), level: "INFO", message: `[${id}] Exécution du script 'Initialisation SSH'.` },
-      { timestamp: new Date(startTime.getTime() + 25000).toISOString(), level: "ERROR", message: `[${id}] Erreur critique: Échec de l'installation de Nginx. Code de sortie 1.` },
-      { timestamp: new Date(startTime.getTime() + 26000).toISOString(), level: "ERROR", message: `[${id}] Déploiement de Web-Prod-01 a échoué.` },
-    )
-  }
-
-  return {
-    id: id,
-    vmName: "Web-Prod-01",
-    template: "ubuntu-22.04-template",
-    status: randomStatus as DeploymentStatus['status'],
-    startTime: startTime,
-    endTime: randomStatus !== "in_progress" ? new Date(startTime.getTime() + logs.length * 5000) : undefined,
-    logs: logs,
-  }
-}
+import { fetchDeployment, DeploymentDetail } from "@/services/deployments"
 
 export default function DeploymentDetailsPage() {
   const params = useParams()
   const router = useRouter()
   const deploymentId = params.id as string
-  const [deployment, setDeployment] = React.useState<DeploymentStatus | null>(null)
-  const [loading, setLoading] = React.useState(true)
-  const [copiedLog, setCopiedLog] = React.useState<string | null>(null)
   const { toast } = useToast()
+  const [deployment, setDeployment] = React.useState<DeploymentDetail | null>(null)
+  const [loading, setLoading] = React.useState(true)
   const scrollAreaRef = React.useRef<HTMLDivElement>(null)
 
-  const fetchDeploymentDetails = React.useCallback(() => {
+  const fetchDeploymentDetails = React.useCallback(async () => {
     setLoading(true)
-    // Simulate fetching data
-    setTimeout(() => {
-      setDeployment(mockDeploymentData(deploymentId))
+    try {
+      const data = await fetchDeployment(deploymentId)
+      setDeployment(data)
+    } catch (e) {
+      console.error('Erreur de récupération du déploiement', e)
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }, [deploymentId])
 
   React.useEffect(() => {
     fetchDeploymentDetails()
   }, [fetchDeploymentDetails])
 
-  // Auto-scroll to bottom of logs
   React.useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
     }
-  }, [deployment?.logs])
+  }, [deployment?.log])
 
-  const getStatusBadge = (status: DeploymentStatus['status']) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending": return <Badge variant="secondary" className="bg-blue-500/20 text-blue-600">En attente</Badge>
-      case "in_progress": return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 animate-pulse">En cours...</Badge>
-      case "completed": return <Badge variant="success">Terminé</Badge>
-      case "failed": return <Badge variant="destructive">Échec</Badge>
-      default: return <Badge variant="secondary">Inconnu</Badge>
+      case "in_progress":
+        return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 animate-pulse">En cours..</Badge>
+      case "completed":
+      case "deployed":
+        return <Badge variant="success">Terminé</Badge>
+      case "failed":
+        return <Badge variant="destructive">Échec</Badge>
+      default:
+        return <Badge variant="secondary">Inconnu</Badge>
     }
   }
 
-  const getLogLevelColor = (level: DeploymentLog['level']) => {
-    switch (level) {
-      case "INFO": return "text-blue-400"
-      case "WARN": return "text-yellow-400"
-      case "ERROR": return "text-red-500"
-      case "SUCCESS": return "text-green-500"
-      default: return "text-muted-foreground"
+  const copyLogs = () => {
+    if (deployment?.log) {
+      navigator.clipboard.writeText(deployment.log)
+      toast({ title: "Copié !", description: "Contenu du log copié.", variant: "success" })
     }
-  }
-
-  const copyLogContent = (content: string) => {
-    navigator.clipboard.writeText(content)
-    setCopiedLog(content)
-    toast({ title: "Copié !", description: "Contenu du log copié.", variant: "success" })
-    setTimeout(() => setCopiedLog(null), 2000)
   }
 
   if (loading) {
@@ -165,7 +99,7 @@ export default function DeploymentDetailsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Server className="h-5 w-5" />
-            Déploiement: {deployment.vmName}
+            Déploiement: {deployment.vm_name}
           </CardTitle>
           <CardDescription>
             ID: {deployment.id}
@@ -184,15 +118,15 @@ export default function DeploymentDetailsPage() {
             <p className="text-sm text-muted-foreground">Début du déploiement</p>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>{new Date(deployment.startTime).toLocaleString('fr-FR')}</span>
+              <span>{deployment.started_at ? new Date(deployment.started_at).toLocaleString('fr-FR') : 'N/A'}</span>
             </div>
           </div>
-          {deployment.endTime && (
+          {deployment.ended_at && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Fin du déploiement</p>
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                <span>{new Date(deployment.endTime).toLocaleString('fr-FR')}</span>
+                <span>{new Date(deployment.ended_at).toLocaleString('fr-FR')}</span>
               </div>
             </div>
           )}
@@ -200,68 +134,23 @@ export default function DeploymentDetailsPage() {
       </Card>
 
       <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Journaux de déploiement
+            Logs du déploiement
           </CardTitle>
-          <CardDescription>
-            Suivi en temps réel des étapes du déploiement.
-          </CardDescription>
+          <Button variant="outline" size="sm" onClick={copyLogs} className="rounded-xl">
+            <Copy className="h-4 w-4 mr-2" />Copier
+          </Button>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[400px] border rounded-xl p-4 bg-muted/20 font-mono text-sm relative" ref={scrollAreaRef}>
-            <AnimatePresence initial={false}>
-              {deployment.logs.map((log, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: index * 0.05 }}
-                  className="flex items-start gap-2 py-1 group"
-                >
-                  <span className="text-muted-foreground shrink-0">
-                    [{new Date(log.timestamp).toLocaleTimeString('fr-FR')}]
-                  </span>
-                  <span className={cn("flex-1", getLogLevelColor(log.level))}>
-                    {log.message}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => copyLogContent(log.message)}
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    {copiedLog === log.message ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                  </Button>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-            {deployment.status === "in_progress" && (
-              <div className="flex items-center gap-2 text-muted-foreground mt-4">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Déploiement en cours...</span>
-              </div>
-            )}
+          <ScrollArea className="h-96 rounded-xl border" ref={scrollAreaRef}>
+            <pre className="p-4 text-sm whitespace-pre-wrap">
+              {deployment.log}
+            </pre>
           </ScrollArea>
         </CardContent>
       </Card>
-
-      <div className="flex justify-end gap-4">
-        <Button variant="outline" onClick={() => router.push("/deploy")} className="rounded-xl">
-          Fermer
-        </Button>
-        {deployment.status === "failed" && (
-          <Button variant="destructive" className="rounded-xl">
-            Retenter le déploiement
-          </Button>
-        )}
-        {deployment.status === "completed" && (
-          <Button className="rounded-xl">
-            Accéder à la VM
-          </Button>
-        )}
-      </div>
     </div>
   )
 }

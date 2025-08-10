@@ -20,5 +20,6 @@ router.use('/scripts', require('./scripts/scriptRoutes'));
 router.use('/assistant', require('./assistant/assistantRoutes'));
 router.use('/terminal', require('./terminal/terminalRoutes'));
 router.use('/terminal', require('./terminal/sshRoutes'));
+router.use('/deployments', require('./deployments/deploymentRoutes'));
 
 module.exports = router;

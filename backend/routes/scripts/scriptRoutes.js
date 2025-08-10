@@ -4,6 +4,7 @@ const { preview, listGeneratedScripts, listServiceTypes, getGeneratedScript } = 
 
 router.get('/preview/:serverId/:service', preview);
 router.get('/generated', listGeneratedScripts);
+router.get('/generated/:id', getGeneratedScript);
 router.get('/service-types', listServiceTypes);
 router.get('/:id', getGeneratedScript);
 

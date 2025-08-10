@@ -33,6 +33,9 @@ Run scripts from the repository root so shared dependencies are reused by both a
    npm run dev:frontend  # Frontend
    ```
 
+## Database schema
+The SQL schema used by the backend is documented in [sql/schema.sql](sql/schema.sql). It defines tables for users, roles, permissions, deployments, and monitoring records.
+
 ### Deployment flow
 
 1. Build both apps from the root:
@@ -92,4 +95,6 @@ Define reusable service deployment templates. Each template stores its form sche
 ## Terraform Deployment
 Use `POST /terraform/deploy` to launch a Terraform run that clones a template VM and executes initialization, configuration, monitoring, and service-detection scripts. Script paths are stored in the database and selected by ID at deployment time.
 The base Terraform configuration lives in the `terraform/` directory (`main.tf`, `variables.tf`, `outputs.tf`). The backend copies these files for each run, generates a `variables.tfvars.json`, and executes `terraform init` and `terraform apply` inside a run-specific folder.
+
+Use `GET /deployments/:id` to retrieve deployment metadata and the log contents generated during the run.
 
