@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { cn } from "@/lib/utils"
+import { cn, formatPercent, formatDate } from "@/lib/utils"
 import { fetchMonitoringOverview } from "@/services/monitoring"
 
 interface VM {
@@ -217,7 +217,7 @@ export default function MonitoringPage() {
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span>CPU</span>
-                      <span>{vm.cpu_usage}%</span>
+                      <span>{formatPercent(vm.cpu_usage)}</span>
                     </div>
                     <Progress value={vm.cpu_usage} className="h-2" />
                   </div>
@@ -259,7 +259,7 @@ export default function MonitoringPage() {
                   </div>
 
                   <div className="text-xs text-muted-foreground pt-2 border-t">
-                    Dernière supervision: {vm.last_monitoring}
+                    Dernière supervision: {formatDate(vm.last_monitoring)}
                   </div>
                 </CardContent>
               </Card>
