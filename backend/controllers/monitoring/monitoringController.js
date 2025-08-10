@@ -2,11 +2,43 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const https = require('https');
+const ping = require('ping');
 const { getRemoteFileContent, getRemoteJSON } = require('../../utils/sshClient');
 const { Monitoring, UserSetting, Deployment } = require('../../models');
 const { Op } = require('sequelize');
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+
+async function getVMIPFromProxmox({ apiUrl, headers, node, vmid, type }) {
+  const url = `${apiUrl}/nodes/${node}/${type}/${vmid}/agent/network-get-interfaces`;
+  try {
+    const resp = await axios.get(url, { httpsAgent, headers });
+    const interfaces = resp.data?.data?.result || resp.data?.data || [];
+    for (const iface of interfaces) {
+      const addresses = iface['ip-addresses'] || iface['ip_addresses'] || [];
+      for (const addr of addresses) {
+        const ip = addr['ip-address'] || addr.address;
+        if (ip && ip !== '127.0.0.1' && ip.includes('.')) {
+          return ip;
+        }
+      }
+    }
+    return null;
+  } catch (err) {
+    console.error(`⚠️ IP introuvable via Proxmox pour VM ${vmid}:`, err.message);
+    return null;
+  }
+}
+
+async function isPingable(ip) {
+  try {
+    const result = await ping.promise.probe(ip);
+    return result.alive;
+  } catch (err) {
+    console.error('⚠️ ping error:', err.message);
+    return false;
+  }
+}
 
 exports.collectMonitoringData = async (req, res) => {
   const user = req.user;
@@ -200,61 +232,78 @@ exports.getOverview = async (req, res) => {
     });
 
     // 🔹 Construction de la réponse à partir des VMs Proxmox
-    const servers = proxmoxVms.map((vm) => {
-      const dep = deploymentMap[vm.vmid] || {};
-      const ip = dep.vm_ip || null;
-      const monitor = ip ? latest[ip] : null;
+    const servers = await Promise.all(
+      proxmoxVms.map(async (vm) => {
+        const dep = deploymentMap[vm.vmid] || {};
+        let ip = await getVMIPFromProxmox({
+          apiUrl: settings.proxmox_api_url,
+          headers,
+          node: vm.node,
+          vmid: vm.vmid,
+          type: vm.type,
+        });
+        if (!ip) ip = dep.vm_ip || null;
 
-      let status = vm.status === 'running' ? 'running' : vm.status === 'stopped' ? 'stopped' : 'error';
-      let os = 'unknown';
-      let cpu_usage = 0;
-      let memory_usage = 0;
-      let memory_total = 0;
-      let disk_usage = 0;
-      let uptime = vm.uptime || 'N/A';
-      let last_monitoring = null;
-      let active_services = 0;
-      let services_count = 0;
+        const monitor = ip ? latest[ip] : null;
 
-      if (monitor) {
-        last_monitoring = monitor.retrieved_at;
-        const services = monitor.services_status?.services || [];
-        services_count = services.length;
-        active_services = services.filter((sv) => sv.active === 'active').length;
-        const hasAlert = services.some((sv) => sv.active !== 'active');
-        status = hasAlert ? 'error' : status;
+        let status = vm.status === 'running' ? 'running' : vm.status === 'stopped' ? 'stopped' : 'error';
+        let os = 'unknown';
+        let cpu_usage = 0;
+        let memory_usage = 0;
+        let memory_total = 0;
+        let disk_usage = 0;
+        let uptime = vm.uptime || 'N/A';
+        let last_monitoring = null;
+        let active_services = 0;
+        let services_count = 0;
+        let ping_ok = null;
 
-        const system = monitor.system_status || {};
-        os = system.os || system.hostname || os;
-        cpu_usage = system.cpu_usage || system.cpu?.percent || cpu_usage;
-        const mem = system.memory || {};
-        memory_total = mem.total_kb || mem.total || 0;
-        memory_usage = memory_total - (mem.available_kb || mem.free_kb || 0);
-        const disk = system.disk || {};
-        if (disk.total_bytes && disk.used_bytes) {
-          disk_usage = Math.round((disk.used_bytes / disk.total_bytes) * 100);
-        } else {
-          disk_usage = system.disk_usage || 0;
+        if (ip) {
+          ping_ok = await isPingable(ip);
+          if (ping_ok === false) status = 'error';
         }
-        uptime = system.uptime || system.uptime_sec || system.uptime_seconds || uptime;
-      }
 
-      return {
-        id: String(vm.vmid),
-        name: vm.name || dep.vm_name || `VM ${vm.vmid}`,
-        ip: ip || 'N/A',
-        status,
-        os,
-        cpu_usage,
-        memory_usage,
-        memory_total,
-        disk_usage,
-        uptime,
-        services_count,
-        active_services,
-        last_monitoring: last_monitoring ? last_monitoring.toISOString() : null,
-      };
-    });
+        if (monitor) {
+          last_monitoring = monitor.retrieved_at;
+          const services = monitor.services_status?.services || [];
+          services_count = services.length;
+          active_services = services.filter((sv) => sv.active === 'active').length;
+          const hasAlert = services.some((sv) => sv.active !== 'active');
+          status = hasAlert ? 'error' : status;
+
+          const system = monitor.system_status || {};
+          os = system.os || system.hostname || os;
+          cpu_usage = system.cpu_usage || system.cpu?.percent || cpu_usage;
+          const mem = system.memory || {};
+          memory_total = mem.total_kb || mem.total || 0;
+          memory_usage = memory_total - (mem.available_kb || mem.free_kb || 0);
+          const disk = system.disk || {};
+          if (disk.total_bytes && disk.used_bytes) {
+            disk_usage = Math.round((disk.used_bytes / disk.total_bytes) * 100);
+          } else {
+            disk_usage = system.disk_usage || 0;
+          }
+          uptime = system.uptime || system.uptime_sec || system.uptime_seconds || uptime;
+        }
+
+        return {
+          id: String(vm.vmid),
+          name: vm.name || dep.vm_name || `VM ${vm.vmid}`,
+          ip: ip || 'N/A',
+          status,
+          os,
+          cpu_usage,
+          memory_usage,
+          memory_total,
+          disk_usage,
+          uptime,
+          services_count,
+          active_services,
+          last_monitoring: last_monitoring ? last_monitoring.toISOString() : null,
+          ping_ok,
+        };
+      })
+    );
 
     const summary = {
       total: servers.length,
@@ -300,9 +349,17 @@ exports.getVmDetails = async (req, res) => {
       // Ignorer les erreurs de statut pour ne pas bloquer la réponse
     }
 
-    // Récupération des infos locales
+    // Récupération des infos locales et IP depuis Proxmox
     const deployment = await Deployment.findOne({ where: { vm_id: vmid } });
-    const ip = deployment?.vm_ip || null;
+    let ip = await getVMIPFromProxmox({
+      apiUrl: settings.proxmox_api_url,
+      headers,
+      node: vmInfo.node,
+      vmid,
+      type: vmInfo.type,
+    });
+    if (!ip) ip = deployment?.vm_ip || null;
+
     const monitor = ip
       ? await Monitoring.findOne({
           where: { vm_ip: ip },
@@ -310,10 +367,37 @@ exports.getVmDetails = async (req, res) => {
         })
       : null;
 
+    let ping_ok = null;
+    let cpu_usage = 0;
+    let memory_usage = 0;
+    let memory_total = 0;
+    let disk_usage = 0;
+
+    if (ip) ping_ok = await isPingable(ip);
+
+    if (monitor) {
+      const system = monitor.system_status || {};
+      cpu_usage = system.cpu_usage || system.cpu?.percent || cpu_usage;
+      const mem = system.memory || {};
+      memory_total = mem.total_kb || mem.total || 0;
+      memory_usage = memory_total - (mem.available_kb || mem.free_kb || 0);
+      const disk = system.disk || {};
+      if (disk.total_bytes && disk.used_bytes) {
+        disk_usage = Math.round((disk.used_bytes / disk.total_bytes) * 100);
+      } else {
+        disk_usage = system.disk_usage || 0;
+      }
+    }
+
     res.json({
       id: String(vmid),
       name: vmInfo.name || deployment?.vm_name || `VM ${vmid}`,
       ip,
+      ping_ok,
+      cpu_usage,
+      memory_usage,
+      memory_total,
+      disk_usage,
       proxmox: vmInfo,
       status: statusInfo,
       monitoring: monitor,
