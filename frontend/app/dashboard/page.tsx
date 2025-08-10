@@ -12,80 +12,17 @@ import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
+import { getDashboard, type DashboardData } from "@/services/dashboard"
 
-interface DashboardData {
-  totalVms: number
-  activeServices: number
-  alerts: {
-    critical: number
-    major: number
-    minor: number
-  }
-  systemHealth: number
-  networkTraffic: {
-    incoming: number
-    outgoing: number
-  }
-  recentActivity: Array<{
-    id: string
-    type: "vm_created" | "vm_stopped" | "alert_resolved" | "script_executed"
-    message: string
-    timestamp: string
-  }>
-  lastUpdated: string
-  apiError: boolean
-}
-
-const mockDashboardData = (): DashboardData => {
-  const now = new Date()
-  const randomVms = Math.floor(Math.random() * 20) + 15
-  const randomServices = Math.floor(Math.random() * 50) + 80
-  const randomCritical = Math.floor(Math.random() * 3)
-  const randomMajor = Math.floor(Math.random() * 5) + 1
-  const randomMinor = Math.floor(Math.random() * 8) + 2
-
-  return {
-    totalVms: randomVms,
-    activeServices: randomServices,
-    alerts: {
-      critical: randomCritical,
-      major: randomMajor,
-      minor: randomMinor,
-    },
-    systemHealth: Math.floor(Math.random() * 30) + 70, // 70-100%
-    networkTraffic: {
-      incoming: Math.floor(Math.random() * 1000) + 500, // MB/s
-      outgoing: Math.floor(Math.random() * 800) + 300,
-    },
-    recentActivity: [
-      {
-        id: "1",
-        type: "vm_created",
-        message: "VM 'web-server-03' créée avec succès",
-        timestamp: "Il y a 5 minutes"
-      },
-      {
-        id: "2", 
-        type: "alert_resolved",
-        message: "Alerte CPU résolue sur 'db-server-01'",
-        timestamp: "Il y a 12 minutes"
-      },
-      {
-        id: "3",
-        type: "script_executed",
-        message: "Script de monitoring exécuté sur 5 VMs",
-        timestamp: "Il y a 18 minutes"
-      },
-      {
-        id: "4",
-        type: "vm_stopped",
-        message: "VM 'test-env-02' arrêtée pour maintenance",
-        timestamp: "Il y a 25 minutes"
-      }
-    ],
-    lastUpdated: now.toLocaleTimeString("fr-FR"),
-    apiError: Math.random() < 0.05, // 5% chance of error
-  }
+const emptyData: DashboardData = {
+  totalVms: 0,
+  activeServices: 0,
+  alerts: { critical: 0, major: 0, minor: 0 },
+  systemHealth: 0,
+  networkTraffic: { incoming: 0, outgoing: 0 },
+  recentActivity: [],
+  lastUpdated: new Date().toISOString(),
+  apiError: false,
 }
 
 // Simulate AI analysis for dashboard
@@ -132,12 +69,10 @@ export default function DashboardPage() {
 
   const fetchData = React.useCallback(() => {
     setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      const newData = mockDashboardData()
-      setData(newData)
-      setLoading(false)
-    }, 800)
+    getDashboard()
+      .then((newData) => setData({ ...newData, apiError: false }))
+      .catch(() => setData({ ...emptyData, apiError: true }))
+      .finally(() => setLoading(false))
   }, [])
 
   React.useEffect(() => {

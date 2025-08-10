@@ -45,7 +45,7 @@ exports.listServers = async (req, res) => {
           id: d.vm_id,
           name: d.vm_name,
           ip: d.vm_ip,
-          zone: d.zone,
+          zone: (d.zone || '').toUpperCase(),
           services: new Set(),
         };
       }
@@ -134,7 +134,7 @@ exports.getInfrastructureMap = async (req, res) => {
           id: d.vm_id,
           name: d.vm_name,
           ip: d.vm_ip,
-          zone: d.zone,
+          zone: (d.zone || '').toUpperCase(),
           role: d.service_name || 'unknown',
         };
       }

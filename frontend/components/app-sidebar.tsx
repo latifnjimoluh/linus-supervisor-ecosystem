@@ -18,6 +18,7 @@ import {
   Users,
   X,
   ChevronDown,
+  User,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -77,11 +78,7 @@ const navItems: NavItem[] = [
     icon: FileText,
     children: [{ href: "/logs", icon: FileText, label: "Logs" }],
   },
-  {
-    label: "Terminal",
-    icon: Terminal,
-    children: [{ href: "/terminal", icon: Terminal, label: "Terminal" }],
-  },
+  { label: "Terminal", icon: Terminal, href: "/terminal" },
   {
     label: "Éditeur de code",
     icon: Edit,
@@ -90,7 +87,11 @@ const navItems: NavItem[] = [
   {
     label: "Paramètres",
     icon: Settings,
-    children: [{ href: "/settings", icon: Settings, label: "Paramètres" }],
+    children: [
+      { href: "/settings/account", icon: User, label: "Paramètres du Compte" },
+      { href: "/settings/proxmox", icon: Server, label: "Connexion Proxmox" },
+      { href: "/settings/templates", icon: FileText, label: "Templates de Provisionnement" },
+    ],
   },
 ]
 export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {

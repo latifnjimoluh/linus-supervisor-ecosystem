@@ -27,7 +27,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import {
-  listTemplates,
+  fetchTemplatesAndScripts,
   updateTemplate,
   createTemplate,
   simulateScript,
@@ -44,7 +44,9 @@ export default function CodeEditorPage() {
   const searchParams = useSearchParams()
   const { toast } = useToast()
 
+  const [scripts, setScripts] = React.useState<Template[]>([])
   const [templates, setTemplates] = React.useState<Template[]>([])
+  const [selectedScript, setSelectedScript] = React.useState<Template | null>(null)
   const [selectedTemplate, setSelectedTemplate] = React.useState<Template | null>(null)
   const [scriptContent, setScriptContent] = React.useState("")
   const [scriptName, setScriptName] = React.useState("")
@@ -61,28 +63,52 @@ export default function CodeEditorPage() {
   const [templateContent, setTemplateContent] = React.useState("")
   const [templateStatus, setTemplateStatus] = React.useState<"idle" | "ok" | "error">("idle")
 
-  const templateId = searchParams.get("id")
+  const itemId = searchParams.get("id")
 
   React.useEffect(() => {
-    listTemplates()
-      .then((tpls) => {
+    fetchTemplatesAndScripts()
+      .then(({ templates: tpls, scripts: scr }) => {
         setTemplates(tpls)
-        if (templateId) {
-          const byId = tpls.find((t) => t.id === Number(templateId))
-          setSelectedTemplate(byId || tpls[0] || null)
+        setScripts(scr as Template[])
+        if (itemId) {
+          const id = Number(itemId)
+          const foundScript = scr.find((s) => s.id === id)
+          const foundTemplate = tpls.find((t) => t.id === id)
+          if (foundScript) {
+            setSelectedScript(foundScript)
+            setActiveTab("scripts")
+          } else if (foundTemplate) {
+            setSelectedTemplate(foundTemplate)
+            setActiveTab("templates")
+          } else {
+            setSelectedScript(scr[0] || null)
+          }
         } else {
-          setSelectedTemplate(tpls[0] || null)
+          setSelectedScript(scr[0] || null)
         }
       })
-      .catch(() => setTemplates([]))
-  }, [templateId])
+      .catch(() => {
+        setTemplates([])
+        setScripts([])
+      })
+  }, [itemId])
+
+  React.useEffect(() => {
+    if (selectedScript) {
+      setScriptContent(selectedScript.template_content)
+      setScriptName(selectedScript.name)
+      setIsModified(false)
+      setScriptStatus("idle")
+    }
+  }, [selectedScript])
 
   React.useEffect(() => {
     if (selectedTemplate) {
-      setScriptContent(selectedTemplate.template_content)
-      setScriptName(selectedTemplate.name)
-      setIsModified(false)
-      setScriptStatus("idle")
+      setTemplateName(selectedTemplate.name)
+      setTemplateCategory(selectedTemplate.category)
+      setTemplateService(selectedTemplate.service_type)
+      setTemplateContent(selectedTemplate.template_content)
+      setTemplateStatus("idle")
     }
   }, [selectedTemplate])
 
@@ -108,15 +134,15 @@ export default function CodeEditorPage() {
   }
 
   const saveScript = async () => {
-    if (!selectedTemplate) return
+    if (!selectedScript) return
     setIsSaving(true)
     try {
-      const updated = await updateTemplate(selectedTemplate.id, {
+      const updated = await updateTemplate(selectedScript.id, {
         name: scriptName,
         template_content: scriptContent,
       })
-      setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-      setSelectedTemplate(updated)
+      setScripts((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+      setSelectedScript(updated)
       setIsModified(false)
       toast({
         title: "Script sauvegardé",
@@ -134,7 +160,7 @@ export default function CodeEditorPage() {
     }
   }
 
-  const createNewTemplate = async () => {
+  const createNewScript = async () => {
     try {
       const name = `script_${Date.now()}.sh`
       const tpl = await createTemplate({
@@ -145,8 +171,8 @@ export default function CodeEditorPage() {
         template_content: defaultBashScript,
         fields_schema: { fields: [] },
       })
-      setTemplates((prev) => [...prev, tpl])
-      setSelectedTemplate(tpl)
+      setScripts((prev) => [...prev, tpl])
+      setSelectedScript(tpl)
     } catch (error) {
       toast({
         title: "Erreur",
@@ -216,6 +242,15 @@ export default function CodeEditorPage() {
     })
   }
 
+  const copyTemplateToClipboard = () => {
+    navigator.clipboard.writeText(templateContent)
+    toast({
+      title: "Copié !",
+      description: "Template copié dans le presse-papiers",
+      variant: "success",
+    })
+  }
+
   const simulateTemplate = async () => {
     try {
       await simulateScript(templateContent)
@@ -237,28 +272,66 @@ export default function CodeEditorPage() {
 
   const saveTemplate = async () => {
     try {
-      await createTemplate({
-        name: templateName,
-        category: templateCategory || "general",
-        service_type: templateService || "custom",
-        description: "",
-        template_content: templateContent,
-        fields_schema: { fields: [] },
-      })
-      toast({
-        title: "Template sauvegardé",
-        description: `${templateName} a été enregistré"`,
-        variant: "success",
-      })
-      setTemplateName("")
-      setTemplateCategory("")
-      setTemplateService("")
-      setTemplateContent("")
+      if (selectedTemplate) {
+        const updated = await updateTemplate(selectedTemplate.id, {
+          name: templateName,
+          category: templateCategory || "general",
+          service_type: templateService || "custom",
+          description: "",
+          template_content: templateContent,
+          fields_schema: { fields: [] },
+        })
+        setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+        setSelectedTemplate(updated)
+        toast({
+          title: "Template sauvegardé",
+          description: `${templateName} a été enregistré`,
+          variant: "success",
+        })
+      } else {
+        const created = await createTemplate({
+          name: templateName,
+          category: templateCategory || "general",
+          service_type: templateService || "custom",
+          description: "",
+          template_content: templateContent,
+          fields_schema: { fields: [] },
+        })
+        setTemplates((prev) => [...prev, created])
+        setSelectedTemplate(created)
+        toast({
+          title: "Template créé",
+          description: `${templateName} a été enregistré`,
+          variant: "success",
+        })
+      }
       setTemplateStatus("idle")
     } catch (error) {
       toast({
         title: "Erreur",
         description: "Impossible de sauvegarder le template",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const createNewTemplate = async () => {
+    try {
+      const name = `template_${Date.now()}.sh`
+      const tpl = await createTemplate({
+        name,
+        service_type: "custom",
+        category: "general",
+        description: "",
+        template_content: defaultBashScript,
+        fields_schema: { fields: [] },
+      })
+      setTemplates((prev) => [...prev, tpl])
+      setSelectedTemplate(tpl)
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le template",
         variant: "destructive",
       })
     }
@@ -323,19 +396,19 @@ export default function CodeEditorPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-              {templates.map((tpl) => (
+              {scripts.map((tpl) => (
                 <div
                   key={tpl.id}
-                  onClick={() => setSelectedTemplate(tpl)}
+                  onClick={() => setSelectedScript(tpl)}
                   className={cn(
                     "p-3 rounded-xl border cursor-pointer transition-colors hover:bg-muted/50",
-                    selectedTemplate?.id === tpl.id && "bg-primary/10 border-primary"
+                    selectedScript?.id === tpl.id && "bg-primary/10 border-primary"
                   )}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-medium text-sm">{tpl.name}</span>
                     <Badge variant="secondary" className="text-xs">
-                      Template
+                      Script
                     </Badge>
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -347,7 +420,7 @@ export default function CodeEditorPage() {
               <Button
                 variant="outline"
                 className="w-full rounded-xl"
-                onClick={createNewTemplate}
+                onClick={createNewScript}
               >
                 <Code className="mr-2 h-4 w-4" />
                 Nouveau script
@@ -452,9 +525,15 @@ export default function CodeEditorPage() {
                   value={scriptContent}
                   language="bash"
                   onChange={(value) => handleContentChange(value || "")}
-                  height="400px"
+                  height="500px"
                   theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                  options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true }}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    automaticLayout: true,
+                    wordWrap: "on",
+                    scrollBeyondLastLine: false,
+                  }}
                 />
                 <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
                   {scriptContent.split("\n").length} lignes
@@ -465,6 +544,155 @@ export default function CodeEditorPage() {
         </div>
       </div>
       </div>
+        </TabsContent>
+        <TabsContent value="templates">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-4xl font-semibold">Templates</h1>
+                <p className="text-muted-foreground mt-1">
+                  Gérez vos templates paramétrables
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button onClick={simulateTemplate} variant="outline" className="rounded-xl">
+                  <Play className="mr-2 h-4 w-4" /> Simuler
+                </Button>
+                <Button onClick={saveTemplate} className="rounded-xl">
+                  <Save className="mr-2 h-4 w-4" /> Sauvegarder
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-1">
+                <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5" /> Templates
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 max-h-96 overflow-y-auto">
+                    {templates.map((tpl) => (
+                      <div
+                        key={tpl.id}
+                        onClick={() => setSelectedTemplate(tpl)}
+                        className={cn(
+                          "p-3 rounded-xl border cursor-pointer transition-colors hover:bg-muted/50",
+                          selectedTemplate?.id === tpl.id && "bg-primary/10 border-primary"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm">{tpl.name}</span>
+                          <Badge variant="secondary" className="text-xs">
+                            Template
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {tpl.category}
+                        </div>
+                      </div>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-xl"
+                      onClick={createNewTemplate}
+                    >
+                      <Code className="mr-2 h-4 w-4" />
+                      Nouveau template
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="lg:col-span-3 space-y-6">
+                <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Informations</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="template-name">Nom</Label>
+                      <Input
+                        id="template-name"
+                        value={templateName}
+                        onChange={(e) => setTemplateName(e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="template-category">Catégorie</Label>
+                      <Input
+                        id="template-category"
+                        value={templateCategory}
+                        onChange={(e) => setTemplateCategory(e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="template-service">Service</Label>
+                      <Input
+                        id="template-service"
+                        value={templateService}
+                        onChange={(e) => setTemplateService(e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Code className="h-5 w-5" /> Contenu
+                        {templateStatus === "ok" && (
+                          <Badge variant="success" className="text-xs">
+                            <CheckCircle className="h-3 w-3 mr-1" /> Valide
+                          </Badge>
+                        )}
+                        {templateStatus === "error" && (
+                          <Badge variant="destructive" className="text-xs">
+                            <AlertTriangle className="h-3 w-3 mr-1" /> Erreur
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyTemplateToClipboard()}
+                        className="rounded-xl"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="relative rounded-xl overflow-hidden">
+                      <MonacoEditor
+                        value={templateContent}
+                        language="bash"
+                        onChange={(value) => setTemplateContent(value || "")}
+                        height="500px"
+                        theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                        options={{
+                          minimap: { enabled: false },
+                          fontSize: 14,
+                          automaticLayout: true,
+                          wordWrap: "on",
+                          scrollBeyondLastLine: false,
+                        }}
+                      />
+                      <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                        {templateContent.split("\n").length} lignes
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
