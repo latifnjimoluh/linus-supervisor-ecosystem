@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { X, Send, Bot, User, ImageIcon, Mic } from 'lucide-react'
+import { askChatbot } from "@/services/chatbot"
 
 interface Message {
   id: string
@@ -29,6 +30,7 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
     },
   ])
   const [input, setInput] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const imageInputRef = useRef<HTMLInputElement>(null)
   const audioInputRef = useRef<HTMLInputElement>(null)
@@ -39,8 +41,8 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
     endRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleSend = () => {
-    if (!input.trim()) return
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -55,16 +57,31 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
       textareaRef.current.style.height = "auto"
     }
 
-    setTimeout(() => {
+    try {
+      setIsLoading(true)
+      const history = [...messages, userMessage].map((m) => ({
+        role: m.type === "bot" ? "assistant" : "user",
+        content: m.content || "",
+      }))
+      const { reply } = await askChatbot(history)
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "bot",
-        content:
-          "Je comprends votre question. Laissez-moi analyser vos données et vous proposer des actions concrètes en quelques instants…",
+        content: reply,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, botMessage])
-    }, 800)
+    } catch (err) {
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "bot",
+        content: "Erreur lors de la réponse du chatbot.",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, botMessage])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleImageUpload = (file: File) => {
@@ -197,7 +214,7 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
               }}
               className="flex-1 h-10 min-h-0 max-h-40 resize-none overflow-auto text-sm"
             />
-            <Button onClick={handleSend} size="icon" aria-label="Envoyer">
+            <Button onClick={handleSend} size="icon" aria-label="Envoyer" disabled={isLoading}>
               <Send className="h-4 w-4" />
             </Button>
           </div>

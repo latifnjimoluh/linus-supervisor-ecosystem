@@ -21,5 +21,6 @@ router.use('/assistant', require('./assistant/assistantRoutes'));
 router.use('/terminal', require('./terminal/terminalRoutes'));
 router.use('/terminal', require('./terminal/sshRoutes'));
 router.use('/deployments', require('./deployments/deploymentRoutes'));
+router.use('/chatbot', require('./chatbot/chatbotRoutes'));
 
 module.exports = router;
