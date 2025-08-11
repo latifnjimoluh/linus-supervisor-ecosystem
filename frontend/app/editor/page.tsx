@@ -83,20 +83,23 @@ export default function CodeEditorPage() {
   )
 
   const templateJson = React.useMemo(() => {
+    let parsedContent: unknown
     try {
-      return JSON.stringify(
-        {
-          name: templateName,
-          category: templateCategory || "general",
-          service_type: templateService || "custom",
-          template_content: JSON.parse(templateContent || "{}"),
-        },
-        null,
-        2
-      )
+      parsedContent = JSON.parse(templateContent || "{}")
     } catch {
-      return JSON.stringify({ error: "Template JSON invalide" }, null, 2)
+      parsedContent = templateContent
     }
+
+    return JSON.stringify(
+      {
+        name: templateName,
+        category: templateCategory || "general",
+        service_type: templateService || "custom",
+        template_content: parsedContent,
+      },
+      null,
+      2
+    )
   }, [templateName, templateCategory, templateService, templateContent])
 
   React.useEffect(() => {

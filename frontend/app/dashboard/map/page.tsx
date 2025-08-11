@@ -1,15 +1,34 @@
 "use client"
 
 import * as React from "react"
-import { Server, Globe, HardDrive, Network, AlertTriangle, CheckCircle, XCircle, Info, RefreshCw, Plus, Activity, Shield } from 'lucide-react'
+import { Server, Globe, HardDrive, Network, AlertTriangle, CheckCircle, Info, RefreshCw, Plus, Activity, Shield } from 'lucide-react'
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { cn } from "@/lib/utils" // Ensure cn is imported
 import { getInfrastructureMap, type InfrastructureServer } from "@/services/dashboard"
 import { useRouter } from "next/navigation"
+
+const simulateMapAIAnalysis = async (_context: string): Promise<string> => {
+  await new Promise(resolve => setTimeout(resolve, 2000))
+
+  const serverNodes = Array.from(document.querySelectorAll('[data-map-server]'))
+  const total = serverNodes.length
+  const zones: Record<string, number> = { LAN: 0, WAN: 0, DMZ: 0 }
+  const statuses: Record<string, number> = { ok: 0, alert: 0, unsupervised: 0 }
+
+  serverNodes.forEach(node => {
+    const zone = node.getAttribute('data-zone') || ''
+    const status = node.getAttribute('data-status') || ''
+    if (zones[zone] !== undefined) zones[zone]++
+    if (statuses[status] !== undefined) statuses[status]++
+  })
+
+  return `🤖 **Analyse IA de la carte d'infrastructure**\n\n${total} serveurs affichés : LAN ${zones.LAN}, WAN ${zones.WAN}, DMZ ${zones.DMZ}.\nStatuts — OK: ${statuses.ok}, Alerte: ${statuses.alert}, Hors supervision: ${statuses.unsupervised}.\n\n**Suggestions :**\n- Surveillez les serveurs en alerte ou hors supervision\n- Utilisez les filtres pour cibler une zone spécifique\n\n*Analyse générée le ${new Date().toLocaleString('fr-FR')}*`
+}
 
 export default function InfrastructureMapPage() {
   const [servers, setServers] = React.useState<InfrastructureServer[]>([])
@@ -32,6 +51,14 @@ export default function InfrastructureMapPage() {
   const filteredServers = servers.filter(server =>
     filterZone === "all" || server.zone === filterZone
   )
+
+  const zoneSummary = { LAN: 0, WAN: 0, DMZ: 0 }
+  const statusSummary = { ok: 0, alert: 0, unsupervised: 0 }
+  filteredServers.forEach(s => {
+    zoneSummary[s.zone]++
+    statusSummary[s.status]++
+  })
+  const aiContext = `Serveurs affichés: ${filteredServers.length}, LAN: ${zoneSummary.LAN}, WAN: ${zoneSummary.WAN}, DMZ: ${zoneSummary.DMZ}, OK: ${statusSummary.ok}, Alerte: ${statusSummary.alert}, Hors supervision: ${statusSummary.unsupervised}`
 
   const getStatusIcon = (status: InfrastructureServer['status']) => {
     switch (status) {
@@ -162,6 +189,9 @@ export default function InfrastructureMapPage() {
                 {filteredServers.map((server) => (
                   <motion.div
                     key={server.id}
+                    data-map-server
+                    data-zone={server.zone}
+                    data-status={server.status}
                     className={cn(
                       "absolute flex flex-col items-center justify-center p-2 rounded-lg shadow-md cursor-pointer transition-all duration-200",
                       "bg-card border",
@@ -249,6 +279,13 @@ export default function InfrastructureMapPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AssistantAIBlock
+        title="Assistant IA de la carte"
+        context={aiContext}
+        onAnalyze={simulateMapAIAnalysis}
+        className="w-full"
+      />
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import {
   Select,
   SelectContent,
@@ -32,6 +33,17 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+
+const simulateMonitoringAIAnalysis = async (_context: string): Promise<string> => {
+  await new Promise(resolve => setTimeout(resolve, 2000))
+
+  const totalCards = document.querySelectorAll('[data-vm-card]').length
+  const running = document.querySelectorAll('[data-status="running"]').length
+  const stopped = document.querySelectorAll('[data-status="stopped"]').length
+  const error = document.querySelectorAll('[data-status="error"]').length
+
+  return `🤖 **Analyse IA de la supervision des VMs**\n\n${totalCards} cartes de VM sont affichées : ${running} en marche, ${stopped} arrêtées et ${error} en erreur.\n\n**Suggestions :**\n- Surveillez de près les VMs en erreur\n- Utilisez les filtres pour cibler un statut particulier\n\n*Analyse générée le ${new Date().toLocaleString('fr-FR')}*`
+}
 
 export default function MonitoringPage() {
   const [vms, setVms] = React.useState<MonitoringVm[]>([])
@@ -103,12 +115,13 @@ export default function MonitoringPage() {
         description: `Impossible de ${action === 'start' ? 'démarrer' : 'arrêter'} la VM`,
         variant: 'destructive',
       })
-    } finally {
+  } finally {
       setActionLoading(null)
     }
   }
 
   // stats are provided by the backend in the summary response
+  const aiContext = `Total VMs: ${stats.total}, en marche: ${stats.running}, arrêtées: ${stats.stopped}, en erreur: ${stats.error}.`
 
   return (
     <div className="space-y-6">
@@ -228,7 +241,7 @@ export default function MonitoringPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
               >
-                <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40 hover:shadow-lg transition-shadow">
+                <Card data-vm-card data-status={vm.status} className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40 hover:shadow-lg transition-shadow">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">{vm.name}</CardTitle>
@@ -381,7 +394,7 @@ export default function MonitoringPage() {
           <Server className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">Aucune VM trouvée</h3>
           <p className="text-muted-foreground mb-4">
-            {searchTerm || statusFilter !== "all" 
+            {searchTerm || statusFilter !== "all"
               ? "Aucune VM ne correspond à vos critères de recherche."
               : "Aucune machine virtuelle n'est configurée."}
           </p>
@@ -393,6 +406,13 @@ export default function MonitoringPage() {
           </Button>
         </div>
       )}
+
+      <AssistantAIBlock
+        title="Assistant IA de la supervision"
+        context={aiContext}
+        onAnalyze={simulateMonitoringAIAnalysis}
+        className="w-full"
+      />
     </div>
   )
 }

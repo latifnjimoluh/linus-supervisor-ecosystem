@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Plus, Code, Sparkles, Filter, Copy, Check, Edit } from "lucide-react"
+import { Search, Plus, Code, Filter, Copy, Check, Edit } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 
@@ -32,8 +32,19 @@ import type { Script } from "@/lib/scripts"
 import { getScriptContent } from "@/lib/scripts"
 import dynamic from "next/dynamic"
 import { useTheme } from "next-themes"
+import { AssistantAIBlock } from "@/components/assistant-ai-block"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
+
+const simulateScriptsTemplatesAIAnalysis = async (_context: string): Promise<string> => {
+  await new Promise(resolve => setTimeout(resolve, 2000))
+
+  const scriptCount = document.querySelectorAll('[data-item-type="script"]').length
+  const templateCount = document.querySelectorAll('[data-item-type="template"]').length
+  const total = scriptCount + templateCount
+
+  return `🤖 **Analyse IA des scripts et templates**\\n\\n${total} éléments sont affichés : ${scriptCount} scripts et ${templateCount} templates.\\n\\n**Suggestions :**\\n- Utilisez la barre de recherche pour filtrer rapidement\\n- Organisez vos éléments par catégorie\\n\\n*Analyse générée le ${new Date().toLocaleString('fr-FR')}*`
+}
 
 export type ScriptOrTemplate = Template | Script
 
@@ -87,6 +98,7 @@ export default function ScriptsTemplatesBrowser({
 
   const filteredScripts = filteredBase.filter((t) => t.type === "script")
   const filteredTemplates = filteredBase.filter((t) => t.type === "template")
+  const aiContext = `Scripts: ${filteredScripts.length}, Templates: ${filteredTemplates.length}`
 
   const copyContent = (content: string) => {
     navigator.clipboard.writeText(content)
@@ -123,7 +135,7 @@ export default function ScriptsTemplatesBrowser({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
           >
-            <Card className="h-full flex flex-col hover:shadow-lg transition-shadow rounded-2xl">
+            <Card data-item-type={item.type} className="h-full flex flex-col hover:shadow-lg transition-shadow rounded-2xl">
               <CardHeader>
                 <CardTitle className="text-lg">{item.name}</CardTitle>
                 <div className="flex flex-wrap gap-2 pt-2">
@@ -144,7 +156,7 @@ export default function ScriptsTemplatesBrowser({
                     </Button>
                   </DialogTrigger>
                   {selectedItem?.id === item.id && (
-                    <DialogContent className="max-w-3xl">
+                    <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>{selectedItem.name}</DialogTitle>
                         <DialogDescription>
@@ -203,9 +215,6 @@ export default function ScriptsTemplatesBrowser({
                   <Link href={`/editor?id=${item.id}`}>
                     <Edit className="mr-2 h-4 w-4" /> Éditer
                   </Link>
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Sparkles className="mr-2 h-4 w-4" /> Analyser (IA)
                 </Button>
               </div>
             </Card>
@@ -284,6 +293,12 @@ export default function ScriptsTemplatesBrowser({
         <TabsContent value="scripts">{renderSection(filteredScripts)}</TabsContent>
         <TabsContent value="templates">{renderSection(filteredTemplates)}</TabsContent>
       </Tabs>
+      <AssistantAIBlock
+        title="Assistant IA des scripts & templates"
+        context={aiContext}
+        onAnalyze={simulateScriptsTemplatesAIAnalysis}
+        className="w-full"
+      />
     </div>
   )
 }
