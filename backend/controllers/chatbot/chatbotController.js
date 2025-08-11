@@ -7,6 +7,8 @@ try {
   GoogleGenerativeAI = null;
 }
 
+const { fetchContext } = require('../../services/ragService');
+
 const SYSTEM_PROMPT =
   'Tu es assistant BUNEC. Réponds en français, techniquement et de façon concise, ' +
   'avec des étapes actionnables (DevOps, Linux, Terraform, Proxmox, supervision, sécurité). ' +
@@ -87,7 +89,15 @@ exports.askChatbot = asyncHandler(async (req, res) => {
       return res.status(400).json({ error: 'messages[] requis' });
     }
 
-    const { prompt } = buildPrompt(messages, SYSTEM_PROMPT);
+    const lastUser = messages
+      .filter((m) => m?.role !== 'assistant')
+      .slice(-1)[0]?.content;
+    const context = await fetchContext(lastUser);
+    const system = context
+      ? `${SYSTEM_PROMPT}\n\nCONTEXTE:\n${context}`
+      : SYSTEM_PROMPT;
+
+    const { prompt } = buildPrompt(messages, system);
     const timeoutMs = Number(process.env.REQUEST_TIMEOUT_MS || 45000);
 
     const result = await withTimeout(generateContent(prompt), timeoutMs);
@@ -96,18 +106,67 @@ exports.askChatbot = asyncHandler(async (req, res) => {
       "Désolé, je n'ai pas pu générer de réponse.";
 
     const durationMs = Date.now() - started;
-    return res.json({ reply: text, meta: { durationMs, rid } });
+
+    const isStream =
+      String(req.query.stream || req.body?.stream || '')
+        .toLowerCase()
+        .startsWith('t') ||
+      String(req.query.stream || req.body?.stream || '') === '1';
+
+    if (!isStream) {
+      return res.json({ reply: text, meta: { durationMs, rid } });
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+
+    const splitMode = (process.env.STREAM_SPLIT || 'word').toLowerCase();
+    const delayMs = Number(process.env.STREAM_DELAY_MS || 0);
+    const heartbeatMs = Number(process.env.STREAM_HEARTBEAT_MS || 0);
+
+    const splitText = (s = '') => {
+      if (splitMode === 'char') return s.split('');
+      if (splitMode === 'word') return s.match(/\S+\s*/g) || [];
+      return [s];
+    };
+
+    let heartbeat;
+    if (heartbeatMs > 0) {
+      heartbeat = setInterval(() => {
+        res.write(':heartbeat\n\n');
+      }, heartbeatMs);
+    }
+
+    for (const part of splitText(text)) {
+      res.write(`data: ${part}\n\n`);
+      if (delayMs > 0) {
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+
+    res.write('data: [DONE]\n\n');
+    if (heartbeat) clearInterval(heartbeat);
+    res.end();
   } catch (err) {
     const durationMs = Date.now() - started;
     if (err?.status === 429 || /quota|Too Many Requests/i.test(String(err?.message))) {
-      return res
-        .status(429)
-        .json({ error: 'quota_exceeded', retryAfterSec: parseRetryAfterSec(err), rid, durationMs });
+      if (!res.headersSent) {
+        return res
+          .status(429)
+          .json({ error: 'quota_exceeded', retryAfterSec: parseRetryAfterSec(err), rid, durationMs });
+      }
+      res.end();
+      return;
     }
     if (err?.message === 'timeout') {
-      return res.status(504).json({ error: 'LLM_error', rid, durationMs });
+      if (!res.headersSent) return res.status(504).json({ error: 'LLM_error', rid, durationMs });
+      res.end();
+      return;
     }
-    return res.status(500).json({ error: 'LLM_error', rid, durationMs });
+    if (!res.headersSent) return res.status(500).json({ error: 'LLM_error', rid, durationMs });
+    res.end();
   }
 });
 
