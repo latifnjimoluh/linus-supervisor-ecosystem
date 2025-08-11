@@ -1,0 +1,108 @@
+# Erreurs DNS connues (BIND9) — BUNEC
+
+[001] Port 53 déjà occupé (systemd-resolved)
+Symptômes : bind9 refuse de démarrer, logs "address already in use".
+Cause : DNSStubListener actif sur 127.0.0.53.
+Fix :
+  - Editer /etc/systemd/resolved.conf -> DNSStubListener=no
+  - systemctl restart systemd-resolved
+  - relancer bind9
+
+[002] SERVFAIL sur toutes les requêtes
+Causes possibles :
+  - Erreur de syntaxe dans named.conf / zone (point-virgule manquant).
+  - Fichier de zone introuvable.
+  - Permissions sur /etc/bind/zones.
+Diagnostics :
+  - named-checkconf
+  - named-checkzone <zone> <fichier>
+  - journalctl -u bind9
+Correctifs :
+  - Corriger la syntaxe/chemins, chown bind:bind sur dossiers.
+
+[003] REFUSED pour les clients
+Cause : allow-recursion non autorisé pour le LAN.
+Fix : dans named.conf.options -> acl "lan" { 10.10.0.0/24; 127.0.0.1; }; allow-recursion { "lan"; };
+
+[004] NXDOMAIN inattendu
+Cause : enregistrements absents ou zone non chargée.
+Fix :
+  - Vérifier SOA/NS et le Serial.
+  - named-checkzone et recharger bind9.
+
+[005] PTR (reverse) ne répond pas
+Cause : mauvaise zone inverse (ex: 0.10.10.in-addr.arpa) ou entrée PTR manquante.
+Fix :
+  - Déclarer la zone inverse dans named.conf.local.
+  - Ajouter l’entrée "20 IN PTR proxmox.bunec.local." etc.
+
+[006] Serial non incrémenté
+Symptôme : secondaires ne se mettent pas à jour.
+Fix : incrémenter le Serial (format YYYYMMDDnn recommandé), `rndc reload`.
+
+[007] Transferts de zone bloqués
+Cause : allow-transfer non configuré ou firewall.
+Fix : named.conf.options -> allow-transfer { <IP_ns2>; }; + ouvrir 53/tcp.
+
+[008] Conflit IPv6/IPv4
+Symptôme : écoute seulement en v6, les clients v4 échouent.
+Fix : listen-on { 10.10.0.10; 127.0.0.1; }; listen-on-v6 { any; };
+
+[009] Récursion ouverte (risque d’amplification)
+Symptôme : serveurs externes utilisent votre DNS.
+Fix : limiter allow-recursion au LAN, activer rate-limit.
+
+[010] Fuite d’information de version
+Fix : options { version "not-disclosed"; };
+
+[011] Forwarders injoignables → lenteur
+Symptôme : latence élevée, timeouts.
+Fix :
+  - Vérifier connectivité vers 1.1.1.1 / 8.8.8.8
+  - Mettre des forwarders alternatifs (Quad9 9.9.9.9, FDN 80.67.169.12)
+
+[012] Fichiers de zone dynamiques *.jnl bloquent l’édition
+Cause : DDNS actif.
+Fix :
+  - `rndc freeze <zone>` → éditer → `rndc thaw <zone>`
+
+[013] Droits /var/log/named
+Symptôme : pas de logs, erreurs permission denied.
+Fix :
+  - mkdir -p /var/log/named && chown bind:bind /var/log/named
+  - ajouter block logging dans named.conf.options
+
+[014] Problème résolveur client (resolv.conf)
+Symptôme : le client n’interroge pas le bon DNS.
+Fix :
+  - `/etc/resolv.conf` doit contenir `nameserver 10.10.0.10`
+  - Netplan/NetworkManager peuvent écraser le fichier (utiliser leurs options)
+
+[015] DNSSEC "bogus"
+Cause : heure système fausse, chaîne de confiance cassée.
+Fix :
+  - NTP actif, `dnssec-validation auto;`
+  - Vérifier le domaine signé en question.
+
+[016] Erreurs de syntaxe fréquentes
+- Oubli du point final dans FQDN (ex: `host IN CNAME cible.`).
+- Point-virgule manquant dans les options.
+- Mauvais chemin de fichier de zone.
+
+[017] Firewall
+Symptômes : UDP ok, TCP bloqué (transferts, réponses longues).
+Fix : ouvrir **53/udp** et **53/tcp**.
+
+[018] Vue split-horizon mal ordonnée
+Symptôme : réponses incohérentes selon l’origine.
+Fix : ordonner les `views` du plus spécifique au plus général, tester avec `dig @... +subnet=` si EDNS Client Subnet.
+
+[019] `rndc` ne marche pas
+Cause : clé rndc key mismatch.
+Fix :
+  - Regénérer `rndc-confgen -a` puis `systemctl restart bind9`
+
+[020] Intégration Proxmox
+Symptôme : VMs ne résolvent pas.
+Fix :
+  - Définir DNS dans Proxmox (Datacenter → DNS ou Cloud-Init `dns_nameservers`).
