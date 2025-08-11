@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Plus, Search, Filter, RefreshCw, Server, Activity, AlertTriangle, CheckCircle, XCircle, Eye, BarChart3, Loader2 } from 'lucide-react'
+import { Plus, Search, Filter, RefreshCw, Server, Activity, AlertTriangle, CheckCircle, XCircle, Eye, BarChart3, Loader2, Copy, Play, Square } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -18,36 +18,37 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn, formatPercent, formatDate } from "@/lib/utils"
-import { fetchMonitoringOverview } from "@/services/monitoring"
-
-interface VM {
-  id: string
-  name: string
-  ip: string
-  status: "running" | "stopped" | "error"
-  os: string
-  cpu_usage: number
-  memory_usage: number
-  memory_total: number
-  disk_usage: number
-  uptime: string
-  services_count: number
-  active_services: number
-  last_monitoring: string | null
-}
+import { fetchMonitoringOverview, MonitoringVm } from "@/services/monitoring"
+import { startProxmoxVM, stopProxmoxVM } from "@/services/vms"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { useToast } from "@/hooks/use-toast"
 
 export default function MonitoringPage() {
-  const [vms, setVms] = React.useState<VM[]>([])
+  const [vms, setVms] = React.useState<MonitoringVm[]>([])
+  const [templates, setTemplates] = React.useState<MonitoringVm[]>([])
   const [stats, setStats] = React.useState({ total: 0, running: 0, stopped: 0, error: 0 })
   const [loading, setLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
+  const [actionLoading, setActionLoading] = React.useState<string | null>(null)
+  const { toast } = useToast()
 
   const fetchVMs = React.useCallback(async () => {
     setLoading(true)
     try {
       const data = await fetchMonitoringOverview()
       setVms(data.vms)
+      setTemplates(data.templates)
       setStats(data.summary)
     } catch (e) {
       console.error("Erreur de récupération du monitoring", e)
@@ -85,6 +86,28 @@ export default function MonitoringPage() {
     }
   }
 
+  const handleVMAction = async (vm: MonitoringVm, action: 'start' | 'stop') => {
+    setActionLoading(vm.id)
+    try {
+      if (action === 'start') await startProxmoxVM(Number(vm.id))
+      else await stopProxmoxVM(Number(vm.id))
+      toast({
+        title: 'Action',
+        description: `VM ${vm.name} ${action === 'start' ? 'démarrée' : 'arrêtée'} avec succès`,
+        variant: 'success',
+      })
+      fetchVMs()
+    } catch (e) {
+      toast({
+        title: 'Erreur',
+        description: `Impossible de ${action === 'start' ? 'démarrer' : 'arrêter'} la VM`,
+        variant: 'destructive',
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   // stats are provided by the backend in the summary response
 
   return (
@@ -107,7 +130,7 @@ export default function MonitoringPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card className="rounded-2xl">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -152,6 +175,17 @@ export default function MonitoringPage() {
             </div>
           </CardContent>
         </Card>
+        <Card className="rounded-2xl">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Templates</p>
+                <p className="text-2xl font-bold">{templates.length}</p>
+              </div>
+              <Copy className="h-8 w-8 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -185,85 +219,161 @@ export default function MonitoringPage() {
           <span className="ml-2">Chargement des VMs...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredVMs.map((vm, index) => (
-            <motion.div
-              key={vm.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-            >
-              <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40 hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{vm.name}</CardTitle>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(vm.status)}
-                      <Badge variant={getStatusColor(vm.status)} className="text-xs">
-                        {vm.status === "running" ? "En marche" : 
-                         vm.status === "stopped" ? "Arrêtée" : "Erreur"}
-                      </Badge>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredVMs.map((vm, index) => (
+              <motion.div
+                key={vm.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
+                <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40 hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{vm.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(vm.status)}
+                        <Badge variant={getStatusColor(vm.status)} className="text-xs">
+                          {vm.status === "running" ? "En marche" :
+                           vm.status === "stopped" ? "Arrêtée" : "Erreur"}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                  <CardDescription>
-                    <code className="text-xs bg-muted px-2 py-1 rounded">{vm.ip}</code>
-                    <span className="ml-2 text-xs">{vm.os}</span>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* CPU Usage */}
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>CPU</span>
-                      <span>{formatPercent(vm.cpu_usage)}</span>
+                    <CardDescription>
+                      <code className="text-xs bg-muted px-2 py-1 rounded">{vm.ip}</code>
+                      <span className="ml-2 text-xs">{vm.os}</span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* CPU Usage */}
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>CPU</span>
+                        <span>{formatPercent(vm.cpu_usage)}</span>
+                      </div>
+                      <Progress value={vm.cpu_usage} className="h-2" />
                     </div>
-                    <Progress value={vm.cpu_usage} className="h-2" />
-                  </div>
 
-                  {/* Memory Usage */}
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>RAM</span>
-                      <span>{Math.round((vm.memory_usage / vm.memory_total) * 100)}%</span>
+                    {/* Memory Usage */}
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>RAM</span>
+                        <span>{Math.round((vm.memory_usage / vm.memory_total) * 100)}%</span>
+                      </div>
+                      <Progress value={(vm.memory_usage / vm.memory_total) * 100} className="h-2" />
                     </div>
-                    <Progress value={(vm.memory_usage / vm.memory_total) * 100} className="h-2" />
-                  </div>
 
-                  {/* Services */}
-                  <div className="flex justify-between text-sm">
-                    <span>Services</span>
-                    <span>{vm.active_services}/{vm.services_count} actifs</span>
-                  </div>
+                    {/* Services */}
+                    <div className="flex justify-between text-sm">
+                      <span>Services</span>
+                      <span>{vm.active_services}/{vm.services_count} actifs</span>
+                    </div>
 
-                  {/* Uptime */}
-                  <div className="flex justify-between text-sm">
-                    <span>Uptime</span>
-                    <span>{vm.uptime}</span>
-                  </div>
+                    {/* Uptime */}
+                    <div className="flex justify-between text-sm">
+                      <span>Uptime</span>
+                      <span>{vm.uptime}</span>
+                    </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-2">
-                    <Button asChild size="sm" className="flex-1 rounded-xl">
-                      <Link href={`/monitoring/${vm.id}`}>
-                        <Eye className="mr-2 h-4 w-4" />
-                        Détails
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" size="sm" className="rounded-xl">
-                      <Link href={`/monitoring/${vm.id}/history`}>
-                        <BarChart3 className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2">
+                      {vm.status === 'running' ? (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={actionLoading === vm.id}
+                              className="rounded-xl"
+                            >
+                              {actionLoading === vm.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Square className="mr-2 h-4 w-4" />
+                              )}
+                              Arrêter
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Arrêter la VM</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Êtes-vous sûr de vouloir arrêter "{vm.name}" ?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleVMAction(vm, 'stop')}>
+                                Arrêter
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      ) : (
+                        <Button
+                          onClick={() => handleVMAction(vm, 'start')}
+                          disabled={actionLoading === vm.id}
+                          size="sm"
+                          className="rounded-xl"
+                        >
+                          {actionLoading === vm.id ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Play className="mr-2 h-4 w-4" />
+                          )}
+                          Démarrer
+                        </Button>
+                      )}
+                      <Button asChild size="sm" className="flex-1 rounded-xl">
+                        <Link href={`/monitoring/${vm.id}`}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Détails
+                        </Link>
+                      </Button>
+                      <Button asChild variant="outline" size="sm" className="rounded-xl">
+                        <Link href={`/monitoring/${vm.id}/history`}>
+                          <BarChart3 className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
 
-                  <div className="text-xs text-muted-foreground pt-2 border-t">
-                    Dernière supervision: {formatDate(vm.last_monitoring)}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+                    <div className="text-xs text-muted-foreground pt-2 border-t">
+                      Dernière supervision: {formatDate(vm.last_monitoring)}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+          {templates.length > 0 && (
+            <div className="mt-8 space-y-4">
+              <h2 className="text-2xl font-semibold">Templates</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {templates.map((tpl, index) => (
+                  <motion.div
+                    key={tpl.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                  >
+                    <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">{tpl.name}</CardTitle>
+                          <Badge variant="outline" className="text-xs">Template</Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">Non supervisé</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {filteredVMs.length === 0 && !loading && (

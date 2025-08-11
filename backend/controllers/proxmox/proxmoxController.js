@@ -28,10 +28,14 @@ exports.listVMs = async (req, res) => {
     const url = `${settings.proxmox_api_url}/cluster/resources?type=vm`;
     const headers = getHeaders(settings.proxmox_api_token_id, settings.proxmox_api_token_name, settings.proxmox_api_token_secret);
     const response = await axios.get(url, { httpsAgent, headers });
-    const vms = response.data?.data || [];
-    console.log(`📤 ${vms.length} VM récupérées`);
+    const all = response.data?.data || [];
+
+    const vms = all.filter((r) => r.type === 'qemu' && r.template === 0);
+    const templates = all.filter((r) => r.type === 'qemu' && r.template === 1);
+
+    console.log(`📤 ${vms.length} VMs et ${templates.length} templates récupérés`);
     await logAction(req, 'list_vms');
-    res.json(vms);
+    res.json({ vms, templates });
   } catch (err) {
     console.error('❌ Erreur listVMs:', err);
     res.status(500).json({ message: 'Erreur serveur.' });

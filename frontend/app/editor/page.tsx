@@ -65,13 +65,39 @@ export default function CodeEditorPage() {
   const tabParam = searchParams.get("tab") || "scripts"
   const [activeTab, setActiveTab] = React.useState(tabParam)
 
+  const [scriptView, setScriptView] = React.useState<"code" | "json">("code")
+
   const [templateName, setTemplateName] = React.useState("")
   const [templateCategory, setTemplateCategory] = React.useState("")
   const [templateService, setTemplateService] = React.useState("")
   const [templateContent, setTemplateContent] = React.useState("")
   const [templateStatus, setTemplateStatus] = React.useState<"idle" | "ok" | "error">("idle")
 
+  const [templateView, setTemplateView] = React.useState<"code" | "json">("code")
+
   const itemId = searchParams.get("id")
+
+  const scriptJson = React.useMemo(
+    () => JSON.stringify({ name: scriptName, content: scriptContent }, null, 2),
+    [scriptName, scriptContent]
+  )
+
+  const templateJson = React.useMemo(() => {
+    try {
+      return JSON.stringify(
+        {
+          name: templateName,
+          category: templateCategory || "general",
+          service_type: templateService || "custom",
+          template_content: JSON.parse(templateContent || "{}"),
+        },
+        null,
+        2
+      )
+    } catch {
+      return JSON.stringify({ error: "Template JSON invalide" }, null, 2)
+    }
+  }, [templateName, templateCategory, templateService, templateContent])
 
   React.useEffect(() => {
     fetchTemplatesAndScripts()
@@ -113,6 +139,7 @@ export default function CodeEditorPage() {
           .then((content) => setScriptContent(content))
           .catch(() => setScriptContent(""))
       }
+      setScriptView("code")
     }
   }, [selectedScript])
 
@@ -133,6 +160,7 @@ export default function CodeEditorPage() {
         setTemplateContent(selectedTemplate.template_content)
       }
       setTemplateStatus("idle")
+      setTemplateView("code")
     }
   }, [selectedTemplate])
 
@@ -580,25 +608,54 @@ export default function CodeEditorPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="relative rounded-xl overflow-hidden">
-                <MonacoEditor
-                  value={scriptContent}
-                  language="bash"
-                  onChange={(value) => handleContentChange(value || "")}
-                  height="500px"
-                  theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    automaticLayout: true,
-                    wordWrap: "on",
-                    scrollBeyondLastLine: false,
-                  }}
-                />
-                <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-                  {scriptContent.split("\n").length} lignes
-                </div>
-              </div>
+              <Tabs value={scriptView} onValueChange={setScriptView} className="space-y-2">
+                <TabsList className="w-full md:w-auto">
+                  <TabsTrigger value="code">Code</TabsTrigger>
+                  <TabsTrigger value="json">JSON</TabsTrigger>
+                </TabsList>
+                <TabsContent value="code">
+                  <div className="relative rounded-xl overflow-hidden">
+                    <MonacoEditor
+                      value={scriptContent}
+                      language="bash"
+                      onChange={(value) => handleContentChange(value || "")}
+                      height="500px"
+                      theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        automaticLayout: true,
+                        wordWrap: "on",
+                        scrollBeyondLastLine: false,
+                      }}
+                    />
+                    <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                      {scriptContent.split("\n").length} lignes
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="json">
+                  <div className="relative rounded-xl overflow-hidden">
+                    <MonacoEditor
+                      value={scriptJson}
+                      language="json"
+                      height="500px"
+                      theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                      options={{
+                        readOnly: true,
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        automaticLayout: true,
+                        wordWrap: "on",
+                        scrollBeyondLastLine: false,
+                      }}
+                    />
+                    <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                      {scriptJson.split("\n").length} lignes
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
@@ -729,25 +786,54 @@ export default function CodeEditorPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="relative rounded-xl overflow-hidden">
-                      <MonacoEditor
-                        value={templateContent}
-                        language="json"
-                        onChange={(value) => setTemplateContent(value || "")}
-                        height="500px"
-                        theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                        options={{
-                          minimap: { enabled: true },
-                          fontSize: 14,
-                          automaticLayout: true,
-                          wordWrap: "on",
-                          scrollBeyondLastLine: false,
-                        }}
-                      />
-                      <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-                        {templateContent.split("\n").length} lignes
-                      </div>
-                    </div>
+                    <Tabs value={templateView} onValueChange={setTemplateView} className="space-y-2">
+                      <TabsList className="w-full md:w-auto">
+                        <TabsTrigger value="code">Code</TabsTrigger>
+                        <TabsTrigger value="json">JSON</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="code">
+                        <div className="relative rounded-xl overflow-hidden">
+                          <MonacoEditor
+                            value={templateContent}
+                            language="json"
+                            onChange={(value) => setTemplateContent(value || "")}
+                            height="500px"
+                            theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                            options={{
+                              minimap: { enabled: true },
+                              fontSize: 14,
+                              automaticLayout: true,
+                              wordWrap: "on",
+                              scrollBeyondLastLine: false,
+                            }}
+                          />
+                          <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                            {templateContent.split("\n").length} lignes
+                          </div>
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="json">
+                        <div className="relative rounded-xl overflow-hidden">
+                          <MonacoEditor
+                            value={templateJson}
+                            language="json"
+                            height="500px"
+                            theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                            options={{
+                              readOnly: true,
+                              minimap: { enabled: true },
+                              fontSize: 14,
+                              automaticLayout: true,
+                              wordWrap: "on",
+                              scrollBeyondLastLine: false,
+                            }}
+                          />
+                          <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                            {templateJson.split("\n").length} lignes
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </CardContent>
                 </Card>
               </div>

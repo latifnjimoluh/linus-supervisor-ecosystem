@@ -1,6 +1,6 @@
 const axios = require('axios');
 const https = require('https');
-const { Deployment, Monitoring, UserSetting } = require('../../models');
+const { Deployment, Monitoring, UserSetting, Log, User } = require('../../models');
 const { randomUUID } = require('crypto');
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
@@ -165,13 +165,35 @@ exports.getDashboardData = async (req, res) => {
     const totalVms = proxmoxVms.length;
     const systemHealth = totalVms ? Math.max(0, 100 - Math.round((critical / totalVms) * 100)) : 100;
 
+    const logs = await Log.findAll({
+      include: [{ model: User, as: 'user', attributes: ['email'] }],
+      order: [['created_at', 'DESC']],
+      limit: 5,
+    });
+
+    const deriveType = (action = '') => {
+      if (/deploy/i.test(action)) return 'deployment';
+      if (/delete|destroy/i.test(action)) return 'deletion';
+      if (/restart|reboot/i.test(action)) return 'restart';
+      if (/user/i.test(action)) return 'user_creation';
+      if (/role/i.test(action)) return 'role_change';
+      return 'vm_action';
+    };
+
+    const recentActivity = logs.map((log) => ({
+      id: String(log.id),
+      type: deriveType(log.action),
+      message: log.user ? `${log.action} par ${log.user.email}` : log.action,
+      timestamp: log.created_at,
+    }));
+
     res.json({
       totalVms,
       activeServices,
       alerts: { critical, major: 0, minor: 0 },
       systemHealth,
       networkTraffic: { incoming: 0, outgoing: 0 },
-      recentActivity: [],
+      recentActivity,
       lastUpdated: new Date().toISOString(),
       apiError: false,
     });
@@ -193,33 +215,50 @@ exports.getInfrastructureMap = async (req, res) => {
     const proxmoxUrl = `${settings.proxmox_api_url}/cluster/resources?type=vm`;
     const proxmoxResp = await axios.get(proxmoxUrl, { httpsAgent, headers });
     const proxmoxVms = proxmoxResp.data?.data || [];
-    const proxmoxMap = {};
-    proxmoxVms.forEach((vm) => {
-      proxmoxMap[vm.vmid] = vm;
+
+    // Map deployments by VM ID for quick lookup
+    const deployments = await Deployment.findAll();
+    const deploymentMap = {};
+    deployments.forEach((d) => {
+      if (!deploymentMap[d.vm_id]) {
+        deploymentMap[d.vm_id] = d;
+      }
     });
 
-    const deployments = await Deployment.findAll();
+    // Latest monitoring records indexed by IP
     const records = await Monitoring.findAll({
       order: [['vm_ip', 'ASC'], ['retrieved_at', 'DESC']],
     });
     const latestMap = extractLatestMonitoring(records);
 
-    const serversMap = {};
-    deployments.forEach((d) => {
-      const vm = proxmoxMap[d.vm_id];
-      if (!vm) return; // skip machines not present in Proxmox
-      if (!serversMap[d.vm_id]) {
-        serversMap[d.vm_id] = {
-          id: d.vm_id,
-          name: d.vm_name,
-          ip: d.vm_ip,
-          zone: (d.zone || '').toUpperCase(),
-          role: d.service_name || 'unknown',
-          isTemplate: vm.template === 1,
-        };
-      }
-    });
+    // Build server list starting from Proxmox VMs and enriching with DB data
+    const servers = proxmoxVms
+      .map((vm) => {
+        const dep = deploymentMap[vm.vmid];
+        if (!dep) return null; // only keep VMs that exist in both Proxmox and DB
 
+        const monitor = latestMap[dep.vm_ip];
+        let status = 'unsupervised';
+        let uptime = 'N/A';
+        if (monitor) {
+          const services = monitor.services_status?.services || [];
+          const hasAlert = services.some((sv) => sv.active !== 'active');
+          status = hasAlert ? 'alert' : 'ok';
+          uptime = monitor.system_status?.uptime || monitor.system_status?.uptime_sec || 'N/A';
+        }
+
+        return {
+          id: String(vm.vmid),
+          name: dep.vm_name || vm.name,
+          ip: dep.vm_ip,
+          zone: (dep.zone || '').toUpperCase(),
+          role: dep.service_name || 'unknown',
+          isTemplate: vm.template === 1,
+          status,
+          uptime,
+        };
+      })
+      .filter(Boolean);
     // Layout configuration for each zone expressed as ratios of the map container
     const zoneLayouts = {
       LAN: { left: 0.05, top: 0.1, width: 0.4, height: 0.8 },
@@ -229,18 +268,8 @@ exports.getInfrastructureMap = async (req, res) => {
     };
     const zoneCounters = { LAN: 0, DMZ: 0, WAN: 0, DEFAULT: 0 };
 
-    const servers = Object.values(serversMap).map((s) => {
-      const monitor = latestMap[s.ip];
-      let status = 'unsupervised';
-      let uptime = 'N/A';
-      if (monitor) {
-        const services = monitor.services_status?.services || [];
-        const hasAlert = services.some((sv) => sv.active !== 'active');
-        status = hasAlert ? 'alert' : 'ok';
-        uptime = monitor.system_status?.uptime || monitor.system_status?.uptime_sec || 'N/A';
-      }
-
-      // Determine position within its zone using a simple grid
+    // Determine position for each server within its zone using a simple grid
+    const positioned = servers.map((s) => {
       const layout = zoneLayouts[s.zone] || zoneLayouts.DEFAULT;
       const zoneKey = zoneCounters.hasOwnProperty(s.zone) ? s.zone : 'DEFAULT';
       const idx = zoneCounters[zoneKey];
@@ -248,11 +277,10 @@ exports.getInfrastructureMap = async (req, res) => {
       const x = layout.left + ((idx % cols) + 0.5) * (layout.width / cols);
       const y = layout.top + (Math.floor(idx / cols) + 0.5) * (layout.height / cols);
       zoneCounters[zoneKey] += 1;
-
-      return { ...s, status, uptime, position: { x, y } };
+      return { ...s, position: { x, y } };
     });
 
-    res.json(servers);
+    res.json(positioned);
   } catch (err) {
     res.status(500).json({ message: 'Erreur lors de la récupération de la carte', error: err.message });
   }

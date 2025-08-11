@@ -7,25 +7,28 @@ export interface MonitoringSummary {
   error: number;
 }
 
+export interface MonitoringVm {
+  id: string;
+  name: string;
+  ip: string;
+  status: 'running' | 'stopped' | 'error';
+  os: string;
+  cpu_usage: number;
+  memory_usage: number;
+  memory_total: number;
+  disk_usage: number;
+  uptime: string;
+  services_count: number;
+  active_services: number;
+  last_monitoring: string | null;
+  template?: string;
+  created_at?: string | null;
+}
+
 export interface MonitoringOverview {
   summary: MonitoringSummary;
-  vms: Array<{
-    id: string;
-    name: string;
-    ip: string;
-    status: 'running' | 'stopped' | 'error';
-    os: string;
-    cpu_usage: number;
-    memory_usage: number;
-    memory_total: number;
-    disk_usage: number;
-    uptime: string;
-    services_count: number;
-    active_services: number;
-    last_monitoring: string | null;
-    template?: string;
-    created_at?: string | null;
-  }>;
+  vms: MonitoringVm[];
+  templates: MonitoringVm[];
 }
 
 export async function fetchMonitoringOverview(): Promise<MonitoringOverview> {
