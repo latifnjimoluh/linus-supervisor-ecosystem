@@ -76,13 +76,7 @@ export default function DashboardPage() {
   }, [])
 
   React.useEffect(() => {
-    fetchData() // Initial fetch
-
-    const interval = setInterval(() => {
-      fetchData()
-    }, 10000) // Refresh every 10 seconds as per UC04
-
-    return () => clearInterval(interval)
+    fetchData() // Initial fetch only
   }, [fetchData])
 
   const getAlertVariant = (count: number, type: 'critical' | 'major' | 'minor') => {

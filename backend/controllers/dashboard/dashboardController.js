@@ -182,6 +182,22 @@ exports.getDashboardData = async (req, res) => {
 
 exports.getInfrastructureMap = async (req, res) => {
   try {
+    const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
+    if (!settings) {
+      return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
+    }
+
+    const headers = {
+      Authorization: `PVEAPIToken=${settings.proxmox_api_token_id}!${settings.proxmox_api_token_name}=${settings.proxmox_api_token_secret}`,
+    };
+    const proxmoxUrl = `${settings.proxmox_api_url}/cluster/resources?type=vm`;
+    const proxmoxResp = await axios.get(proxmoxUrl, { httpsAgent, headers });
+    const proxmoxVms = proxmoxResp.data?.data || [];
+    const proxmoxMap = {};
+    proxmoxVms.forEach((vm) => {
+      proxmoxMap[vm.vmid] = vm;
+    });
+
     const deployments = await Deployment.findAll();
     const records = await Monitoring.findAll({
       order: [['vm_ip', 'ASC'], ['retrieved_at', 'DESC']],
@@ -190,6 +206,8 @@ exports.getInfrastructureMap = async (req, res) => {
 
     const serversMap = {};
     deployments.forEach((d) => {
+      const vm = proxmoxMap[d.vm_id];
+      if (!vm) return; // skip machines not present in Proxmox
       if (!serversMap[d.vm_id]) {
         serversMap[d.vm_id] = {
           id: d.vm_id,
@@ -197,6 +215,7 @@ exports.getInfrastructureMap = async (req, res) => {
           ip: d.vm_ip,
           zone: (d.zone || '').toUpperCase(),
           role: d.service_name || 'unknown',
+          isTemplate: vm.template === 1,
         };
       }
     });

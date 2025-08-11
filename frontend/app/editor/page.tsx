@@ -24,6 +24,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import {
@@ -33,10 +39,12 @@ import {
   simulateScript,
   type Template,
 } from "@/lib/templates"
+import { getScriptContent } from "@/lib/scripts"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
 const defaultBashScript = `#!/bin/bash\n\n# Nouveau script`
+const defaultTemplateJson = '{\n  "key": "value"\n}'
 
 
 export default function CodeEditorPage() {
@@ -95,10 +103,16 @@ export default function CodeEditorPage() {
 
   React.useEffect(() => {
     if (selectedScript) {
-      setScriptContent(selectedScript.template_content)
       setScriptName(selectedScript.name)
       setIsModified(false)
       setScriptStatus("idle")
+      if (selectedScript.template_content && selectedScript.template_content.trim()) {
+        setScriptContent(selectedScript.template_content)
+      } else {
+        getScriptContent(selectedScript.id)
+          .then((content) => setScriptContent(content))
+          .catch(() => setScriptContent(""))
+      }
     }
   }, [selectedScript])
 
@@ -107,7 +121,17 @@ export default function CodeEditorPage() {
       setTemplateName(selectedTemplate.name)
       setTemplateCategory(selectedTemplate.category)
       setTemplateService(selectedTemplate.service_type)
-      setTemplateContent(selectedTemplate.template_content)
+      try {
+        setTemplateContent(
+          JSON.stringify(
+            JSON.parse(selectedTemplate.template_content),
+            null,
+            2
+          )
+        )
+      } catch {
+        setTemplateContent(selectedTemplate.template_content)
+      }
       setTemplateStatus("idle")
     }
   }, [selectedTemplate])
@@ -201,12 +225,28 @@ export default function CodeEditorPage() {
     }
   }
 
-  const exportScript = () => {
-    const blob = new Blob([scriptContent], { type: "text/plain" })
+  const exportScript = (format: "sh" | "txt" | "json") => {
+    let content = scriptContent
+    let filename = scriptName || "script"
+    let type = "text/plain"
+
+    if (format === "json") {
+      content = JSON.stringify({ name: filename, content: scriptContent }, null, 2)
+      type = "application/json"
+      filename = filename.endsWith(".json") ? filename : `${filename}.json`
+    } else if (format === "txt") {
+      type = "text/plain"
+      filename = filename.endsWith(".txt") ? filename : `${filename}.txt`
+    } else {
+      type = "text/x-sh"
+      filename = filename.endsWith(".sh") ? filename : `${filename}.sh`
+    }
+
+    const blob = new Blob([content], { type })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = scriptName
+    a.download = filename
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -214,7 +254,7 @@ export default function CodeEditorPage() {
 
     toast({
       title: "Script exporté",
-      description: `${scriptName} a été téléchargé`,
+      description: `${filename} a été téléchargé`,
       variant: "success",
     })
   }
@@ -253,7 +293,7 @@ export default function CodeEditorPage() {
 
   const simulateTemplate = async () => {
     try {
-      await simulateScript(templateContent)
+      await simulateScript(JSON.stringify(JSON.parse(templateContent)))
       setTemplateStatus("ok")
       toast({
         title: "Simulation réussie",
@@ -271,6 +311,17 @@ export default function CodeEditorPage() {
   }
 
   const saveTemplate = async () => {
+    let parsed
+    try {
+      parsed = JSON.parse(templateContent)
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Template JSON invalide",
+        variant: "destructive",
+      })
+      return
+    }
     try {
       if (selectedTemplate) {
         const updated = await updateTemplate(selectedTemplate.id, {
@@ -278,7 +329,7 @@ export default function CodeEditorPage() {
           category: templateCategory || "general",
           service_type: templateService || "custom",
           description: "",
-          template_content: templateContent,
+          template_content: JSON.stringify(parsed),
           fields_schema: { fields: [] },
         })
         setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
@@ -294,7 +345,7 @@ export default function CodeEditorPage() {
           category: templateCategory || "general",
           service_type: templateService || "custom",
           description: "",
-          template_content: templateContent,
+          template_content: JSON.stringify(parsed),
           fields_schema: { fields: [] },
         })
         setTemplates((prev) => [...prev, created])
@@ -317,13 +368,13 @@ export default function CodeEditorPage() {
 
   const createNewTemplate = async () => {
     try {
-      const name = `template_${Date.now()}.sh`
+      const name = `template_${Date.now()}.json`
       const tpl = await createTemplate({
         name,
         service_type: "custom",
         category: "general",
         description: "",
-        template_content: defaultBashScript,
+        template_content: defaultTemplateJson,
         fields_schema: { fields: [] },
       })
       setTemplates((prev) => [...prev, tpl])
@@ -367,10 +418,19 @@ export default function CodeEditorPage() {
               Importer
             </label>
           </Button>
-          <Button onClick={exportScript} variant="outline" className="rounded-xl">
-            <Download className="mr-2 h-4 w-4" />
-            Exporter
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="rounded-xl">
+                <Download className="mr-2 h-4 w-4" />
+                Exporter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => exportScript("sh")}>Format .sh</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportScript("txt")}>Format .txt</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportScript("json")}>Format .json</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={testScript} variant="outline" className="rounded-xl">
             <Play className="mr-2 h-4 w-4" />
             Tester
@@ -672,12 +732,12 @@ export default function CodeEditorPage() {
                     <div className="relative rounded-xl overflow-hidden">
                       <MonacoEditor
                         value={templateContent}
-                        language="bash"
+                        language="json"
                         onChange={(value) => setTemplateContent(value || "")}
                         height="500px"
                         theme={theme === "dark" ? "vs-dark" : "vs-light"}
                         options={{
-                          minimap: { enabled: false },
+                          minimap: { enabled: true },
                           fontSize: 14,
                           automaticLayout: true,
                           wordWrap: "on",

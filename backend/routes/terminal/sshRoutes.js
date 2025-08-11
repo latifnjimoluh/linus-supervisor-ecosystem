@@ -18,8 +18,8 @@ router.post('/ssh/test', verifyToken, checkPermission('vm.list'), logRequest, as
     const key = fs.readFileSync(path.resolve(s.ssh_private_key_path), 'utf-8');
 
     // simple check: run 'echo ok'
-    const out = await execSSHCommand({ host: ip, username: ssh_user, privateKey: key, command: 'echo ok' });
-    if (String(out).toLowerCase().includes('ok')) return res.json({ ok: true });
+    const { stdout } = await execSSHCommand({ host: ip, username: ssh_user, privateKey: key, command: 'echo ok' });
+    if (stdout.toLowerCase().includes('ok')) return res.json({ ok: true });
     return res.status(500).json({ ok: false, message: 'SSH ok mais commande de test a échoué' });
   } catch (e) {
     return res.status(500).json({ ok: false, message: e.message });
@@ -40,8 +40,7 @@ router.post('/ssh/exec', verifyToken, checkPermission('vm.list'), logRequest, as
     const key = fs.readFileSync(path.resolve(s.ssh_private_key_path), 'utf-8');
 
     const result = await execSSHCommand({ host: ip, username: ssh_user, privateKey: key, command });
-    // adapte si execSSHCommand renvoie { stdout, stderr, code } autrement, emballer le string
-    return res.json(typeof result === 'string' ? { stdout: result } : result);
+    return res.json(result);
   } catch (e) {
     return res.status(500).json({ message: e.message });
   }

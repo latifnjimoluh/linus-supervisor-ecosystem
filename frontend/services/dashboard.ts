@@ -25,6 +25,7 @@ export interface InfrastructureServer {
   status: "ok" | "alert" | "unsupervised" | "unknown";
   uptime: string;
   position: { x: number; y: number };
+  isTemplate: boolean;
 }
 
 export const getInfrastructureMap = async (): Promise<InfrastructureServer[]> => {

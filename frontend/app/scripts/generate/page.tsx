@@ -8,6 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+import dynamic from "next/dynamic"
+import { useTheme } from "next-themes"
+
+const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
 export default function GenerateScriptPage({
   searchParams,
@@ -15,6 +19,7 @@ export default function GenerateScriptPage({
   searchParams: { template?: string }
 }) {
   const params = React.use(searchParams)
+  const { theme } = useTheme()
   const [templates, setTemplates] = React.useState<Template[]>([])
   const [templateId, setTemplateId] = React.useState<number | null>(null)
   const [formData, setFormData] = React.useState<Record<string, string>>({})
@@ -99,9 +104,22 @@ export default function GenerateScriptPage({
               <Button type="button" onClick={handleGenerate}>
                 Générer
               </Button>
-              <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto">
-                {jsonPreview}
-              </pre>
+              <div className="rounded-md border overflow-hidden">
+                <MonacoEditor
+                  value={jsonPreview}
+                  language="json"
+                  theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                  height="200px"
+                  options={{
+                    readOnly: true,
+                    minimap: { enabled: true },
+                    fontSize: 12,
+                    automaticLayout: true,
+                    wordWrap: "on",
+                    scrollBeyondLastLine: false,
+                  }}
+                />
+              </div>
             </div>
           )}
 

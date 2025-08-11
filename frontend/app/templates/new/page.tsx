@@ -10,9 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FieldSchemaField, createTemplate } from "@/lib/templates"
 import Link from "next/link"
+import dynamic from "next/dynamic"
+import { useTheme } from "next-themes"
+
+const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
 export default function NewTemplatePage() {
   const router = useRouter()
+  const { theme } = useTheme()
   const [name, setName] = React.useState("")
   const [serviceType, setServiceType] = React.useState("")
   const [category, setCategory] = React.useState("")
@@ -43,12 +48,19 @@ export default function NewTemplatePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    let parsed
+    try {
+      parsed = JSON.parse(templateContent)
+    } catch (err) {
+      alert("Template JSON invalide")
+      return
+    }
     const payload = {
       name,
       service_type: serviceType,
       category,
       description,
-      template_content: templateContent,
+      template_content: JSON.stringify(parsed),
       script_path: scriptPath,
       fields_schema: { fields },
     }
@@ -56,19 +68,25 @@ export default function NewTemplatePage() {
     router.push("/templates")
   }
 
-  const jsonPreview = JSON.stringify(
-    {
-      name,
-      service_type: serviceType,
-      category,
-      description,
-      template_content: templateContent,
-      script_path: scriptPath,
-      fields_schema: { fields },
-    },
-    null,
-    2
-  )
+  const jsonPreview = React.useMemo(() => {
+    try {
+      return JSON.stringify(
+        {
+          name,
+          service_type: serviceType,
+          category,
+          description,
+          template_content: JSON.parse(templateContent || "{}"),
+          script_path: scriptPath,
+          fields_schema: { fields },
+        },
+        null,
+        2
+      )
+    } catch {
+      return "Contenu du template invalide"
+    }
+  }, [name, serviceType, category, description, templateContent, scriptPath, fields])
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -103,12 +121,22 @@ export default function NewTemplatePage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="content">Contenu du template</Label>
-            <Textarea
-              id="content"
-              value={templateContent}
-              onChange={(e) => setTemplateContent(e.target.value)}
-              className="h-60 font-mono"
-            />
+            <div className="rounded-md border">
+              <MonacoEditor
+                value={templateContent}
+                language="json"
+                onChange={(value) => setTemplateContent(value || "")}
+                height="240px"
+                theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                options={{
+                  minimap: { enabled: true },
+                  fontSize: 14,
+                  automaticLayout: true,
+                  wordWrap: "on",
+                  scrollBeyondLastLine: false,
+                }}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -174,7 +202,22 @@ export default function NewTemplatePage() {
           <CardTitle>Aperçu JSON</CardTitle>
         </CardHeader>
         <CardContent>
-          <pre className="bg-muted p-4 rounded-md text-xs overflow-x-auto">{jsonPreview}</pre>
+          <div className="rounded-md border overflow-hidden">
+            <MonacoEditor
+              value={jsonPreview}
+              language="json"
+              theme={theme === "dark" ? "vs-dark" : "vs-light"}
+              height="240px"
+              options={{
+                readOnly: true,
+                minimap: { enabled: true },
+                fontSize: 12,
+                automaticLayout: true,
+                wordWrap: "on",
+                scrollBeyondLastLine: false,
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 

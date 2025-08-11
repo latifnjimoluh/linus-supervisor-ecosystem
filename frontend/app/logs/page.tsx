@@ -80,10 +80,8 @@ export default function LogsPage() {
     const timeout = setTimeout(() => {
       fetchLogs()
     }, 300)
-    const interval = setInterval(fetchLogs, 60000)
     return () => {
       clearTimeout(timeout)
-      clearInterval(interval)
     }
   }, [fetchLogs])
 

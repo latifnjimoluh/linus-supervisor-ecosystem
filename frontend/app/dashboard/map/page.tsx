@@ -182,6 +182,9 @@ export default function InfrastructureMapPage() {
                     <div className="flex items-center gap-1 mb-1">
                       {getRoleIcon(server.role)}
                       <span className="font-medium text-sm">{server.name}</span>
+                      {server.isTemplate && (
+                        <Badge variant="outline" className="text-[10px]">Template</Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       {getStatusIcon(server.status)}
@@ -196,6 +199,7 @@ export default function InfrastructureMapPage() {
                         <p className="font-semibold">{server.name}</p>
                         <p>IP: {server.ip}</p>
                         <p>Rôle: {server.role}</p>
+                        <p>Type: {server.isTemplate ? "Template" : "VM"}</p>
                         <p>Statut: {server.status === "ok" ? "OK" : server.status === "alert" ? "Alerte" : "Hors supervision"}</p>
                         <p>Uptime: {server.uptime}</p>
                       </TooltipContent>

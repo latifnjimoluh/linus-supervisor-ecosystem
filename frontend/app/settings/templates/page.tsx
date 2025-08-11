@@ -38,12 +38,17 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { listTemplates, deleteTemplate, type Template } from "@/lib/templates"
+import dynamic from "next/dynamic"
+import { useTheme } from "next-themes"
+
+const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
 export default function SettingsTemplatesPage() {
   const [rows, setRows] = React.useState<Template[]>([])
   const [selectedTemplate, setSelectedTemplate] = React.useState<Template | null>(null)
   const [copied, setCopied] = React.useState(false)
   const { toast } = useToast()
+  const { theme } = useTheme()
 
   React.useEffect(() => {
     listTemplates().then(setRows).catch(() => setRows([]))
@@ -151,7 +156,7 @@ export default function SettingsTemplatesPage() {
               <DialogTitle>{selectedTemplate.name}</DialogTitle>
               <DialogDescription>Aperçu du contenu du template et de ses champs.</DialogDescription>
             </DialogHeader>
-            <div className="relative bg-muted rounded-lg p-4 mt-4">
+            <div className="relative mt-4">
               <Button
                 size="sm"
                 variant="ghost"
@@ -161,9 +166,22 @@ export default function SettingsTemplatesPage() {
               >
                 {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
               </Button>
-              <pre className="text-sm whitespace-pre-wrap overflow-auto max-h-[60vh] break-words break-all">
-                <code className="font-mono">{selectedTemplate.template_content}</code>
-              </pre>
+              <div className="rounded-lg border overflow-hidden">
+                <MonacoEditor
+                  value={selectedTemplate.template_content}
+                  language="json"
+                  theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                  height="400px"
+                  options={{
+                    readOnly: true,
+                    minimap: { enabled: true },
+                    fontSize: 12,
+                    automaticLayout: true,
+                    wordWrap: "on",
+                    scrollBeyondLastLine: false,
+                  }}
+                />
+              </div>
             </div>
             {selectedTemplate.fields_schema && (
               <div className="mt-4">
