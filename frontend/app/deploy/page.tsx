@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Server, Plus, Cpu, MemoryStick, AlertTriangle, HardDrive, Network, Sparkles, FileJson, ChevronDown, ChevronUp, Copy, Check, X } from 'lucide-react'
+import { Server, Plus, Cpu, MemoryStick, AlertTriangle, HardDrive, Network, FileJson, ChevronDown, ChevronUp, Copy, Check, X } from 'lucide-react'
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -380,12 +380,33 @@ export default function DeployPage() {
               <AssistantAIBlock
                 title="Suggestion IA"
                 context={aiContext}
-                onAnalyze={async (ctx) => {
-                  await new Promise(r => setTimeout(r, 1000));
-                  return "Pour un serveur web, une configuration de 4096Mo de RAM et 4 coeurs est recommandée pour une meilleure performance.";
+                onAnalyze={async () => {
+                  await new Promise((r) => setTimeout(r, 500));
+
+                  const form = document.querySelector("form");
+                  const fields = form ? form.querySelectorAll("input, select, textarea") : [];
+                  const filled = Array.from(fields).filter((el) => {
+                    if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) {
+                      return !!el.value;
+                    }
+                    return false;
+                  });
+
+                  const suggestions: string[] = [];
+                  if (formData.memory_mb < 4096) {
+                    suggestions.push("Envisagez au moins 4096Mo de RAM pour de meilleures performances.");
+                  }
+                  if (formData.vcpu_cores < 4) {
+                    suggestions.push("4 coeurs CPU sont recommandés pour ce type de service.");
+                  }
+                  if (!formData.service_type) {
+                    suggestions.push("Le type de service n'est pas défini.");
+                  }
+
+                  return `Le formulaire contient ${fields.length} champ(s), dont ${filled.length} rempli(s). ` +
+                    `Configuration actuelle : ${formData.memory_mb}Mo de RAM, ${formData.vcpu_cores} coeur(s) CPU, disque ${formData.disk_size}Go.` +
+                    (suggestions.length ? "\n\n" + suggestions.join(" ") : "\n\nLa configuration semble adéquate.");
                 }}
-                buttonText="Suggérer une configuration"
-                buttonIcon={<Sparkles className="h-4 w-4 mr-2" />}
               />
             </CardContent>
           </Card>

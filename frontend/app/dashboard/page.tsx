@@ -26,40 +26,23 @@ const emptyData: DashboardData = {
   apiError: false,
 }
 
-// Simulate AI analysis for dashboard
-const simulateDashboardAIAnalysis = async (context: string): Promise<string> => {
+// Simulate AI analysis for dashboard interface
+const simulateDashboardAIAnalysis = async (_context: string): Promise<string> => {
   await new Promise(resolve => setTimeout(resolve, 2000))
-  
-  const criticalCount = parseInt(context.match(/critiques: (\d+)/)?.[1] || "0")
-  const majorCount = parseInt(context.match(/majeures: (\d+)/)?.[1] || "0")
-  const vmCount = parseInt(context.match(/VMs: (\d+)/)?.[1] || "0")
-  
-  return `🤖 **Analyse IA du tableau de bord**
 
-**📊 Résumé:**
-Votre infrastructure supervise actuellement ${vmCount} machines virtuelles avec un niveau d'alerte ${criticalCount > 0 ? 'critique' : majorCount > 2 ? 'modéré' : 'faible'}.
+  // Collect basic information about the rendered dashboard
+  const sections = Array.from(document.querySelectorAll('h2')).map((el) =>
+    el.textContent?.trim()
+  ).filter(Boolean) as string[]
+  const widgets = document.querySelectorAll('div.shadow-md').length
 
-**🔍 Analyse technique:**
-${criticalCount > 0 ? 
-  `⚠️ ATTENTION: ${criticalCount} alerte(s) critique(s) détectée(s). Ces alertes nécessitent une intervention immédiate car elles peuvent affecter la disponibilité des services.` : 
-  '✅ Aucune alerte critique détectée. Le système fonctionne dans les paramètres normaux.'
-}
+  return `🤖 **Analyse IA de l'interface du tableau de bord**
 
-${majorCount > 3 ? 
-  `🟡 ${majorCount} alertes majeures sont présentes. Bien qu'elles ne soient pas critiques, elles méritent votre attention pour éviter une escalade.` : 
-  `🟢 Nombre d'alertes majeures acceptable (${majorCount}).`
-}
+Le tableau de bord comporte ${widgets} widgets principaux et ${sections.length} sections : ${sections.join(', ')}.
 
-**💡 Conseils et recommandations:**
-${criticalCount > 0 ? 
-  '1. Consultez immédiatement les détails des alertes critiques via le bouton "Superviser"\n2. Vérifiez les logs des VMs concernées\n3. Envisagez une collecte manuelle des métriques' :
-  '1. Continuez la surveillance régulière\n2. Planifiez une maintenance préventive\n3. Optimisez les ressources sous-utilisées'
-}
-
-**🎯 Actions recommandées:**
-- Supervision en temps réel des VMs critiques
-- Analyse des tendances de performance
-- Mise à jour des scripts de monitoring si nécessaire
+**Suggestions :**
+- Vérifiez que chaque section contient les informations attendues
+- Surveillez l'évolution des indicateurs clés affichés
 
 *Analyse générée le ${new Date().toLocaleString('fr-FR')}*`
 }
