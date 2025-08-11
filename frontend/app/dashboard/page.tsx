@@ -26,25 +26,20 @@ const emptyData: DashboardData = {
   apiError: false,
 }
 
-// Simulate AI analysis for dashboard interface
-const simulateDashboardAIAnalysis = async (_context: string): Promise<string> => {
+// Simulate AI analysis for dashboard interface using data context
+const simulateDashboardAIAnalysis = async (context: string): Promise<string> => {
   await new Promise(resolve => setTimeout(resolve, 2000))
 
-  // Collect basic information about the rendered dashboard
-  const sections = Array.from(document.querySelectorAll('h2')).map((el) =>
-    el.textContent?.trim()
-  ).filter(Boolean) as string[]
-  const widgets = document.querySelectorAll('div.shadow-md').length
+  const prompt = `Tu es un assistant de pilotage. Évalue l'état général à partir de ces indicateurs et suggère deux actions clés : ${context}`
+  const match = context.match(/Nombre de VMs: (\d+), Services actifs: (\d+), Alertes critiques: (\d+), majeures: (\d+), mineures: (\d+), Santé système: (\d+)%/)
+  const vms = match ? parseInt(match[1]) : 0
+  const services = match ? parseInt(match[2]) : 0
+  const crit = match ? parseInt(match[3]) : 0
+  const major = match ? parseInt(match[4]) : 0
+  const minor = match ? parseInt(match[5]) : 0
+  const health = match ? parseInt(match[6]) : 0
 
-  return `🤖 **Analyse IA de l'interface du tableau de bord**
-
-Le tableau de bord comporte ${widgets} widgets principaux et ${sections.length} sections : ${sections.join(', ')}.
-
-**Suggestions :**
-- Vérifiez que chaque section contient les informations attendues
-- Surveillez l'évolution des indicateurs clés affichés
-
-*Analyse générée le ${new Date().toLocaleString('fr-FR')}*`
+  return `🤖 **Analyse IA du tableau de bord**\n\n${vms} VMs, ${services} services actifs. Alertes — critiques ${crit}, majeures ${major}, mineures ${minor}. Santé système : ${health}%.\n\n**Actions proposées :**\n- Traiter en priorité les ${crit} alerte(s) critique(s)\n- Optimiser les services pour augmenter la santé globale\n\n*Prompt utilisé :* ${prompt}`
 }
 
 export default function DashboardPage() {

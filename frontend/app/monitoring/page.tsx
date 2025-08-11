@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Plus, Search, Filter, RefreshCw, Server, Activity, AlertTriangle, CheckCircle, XCircle, Eye, BarChart3, Loader2, Copy, Play, Square } from 'lucide-react'
+import { Plus, Search, Filter, RefreshCw, Server, Activity, AlertTriangle, CheckCircle, XCircle, Eye, BarChart3, Loader2, Copy, Play, Square, Trash2 } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select"
 import { cn, formatPercent, formatDate } from "@/lib/utils"
 import { fetchMonitoringOverview, MonitoringVm } from "@/services/monitoring"
-import { startProxmoxVM, stopProxmoxVM } from "@/services/vms"
+import { startProxmoxVM, stopProxmoxVM, deleteProxmoxVM } from "@/services/vms"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,15 +34,17 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 
-const simulateMonitoringAIAnalysis = async (_context: string): Promise<string> => {
+const simulateMonitoringAIAnalysis = async (context: string): Promise<string> => {
   await new Promise(resolve => setTimeout(resolve, 2000))
 
-  const totalCards = document.querySelectorAll('[data-vm-card]').length
-  const running = document.querySelectorAll('[data-status="running"]').length
-  const stopped = document.querySelectorAll('[data-status="stopped"]').length
-  const error = document.querySelectorAll('[data-status="error"]').length
+  const prompt = `Tu es un assistant de supervision. Analyse ces statistiques et donne une vue d'ensemble ainsi que deux actions prioritaires : ${context}`
+  const match = context.match(/Total VMs: (\d+), en marche: (\d+), arrêtées: (\d+), en erreur: (\d+)/)
+  const total = match ? parseInt(match[1]) : 0
+  const running = match ? parseInt(match[2]) : 0
+  const stopped = match ? parseInt(match[3]) : 0
+  const error = match ? parseInt(match[4]) : 0
 
-  return `🤖 **Analyse IA de la supervision des VMs**\n\n${totalCards} cartes de VM sont affichées : ${running} en marche, ${stopped} arrêtées et ${error} en erreur.\n\n**Suggestions :**\n- Surveillez de près les VMs en erreur\n- Utilisez les filtres pour cibler un statut particulier\n\n*Analyse générée le ${new Date().toLocaleString('fr-FR')}*`
+  return `🤖 **Analyse IA de la supervision des VMs**\n\n${total} VMs : ${running} en marche, ${stopped} arrêtées, ${error} en erreur.\n\n**Priorités :**\n- Examiner les ${error} VM(s) en erreur\n- Considérer l'arrêt des VMs inactives (${stopped})\n\n*Prompt utilisé :* ${prompt}`
 }
 
 export default function MonitoringPage() {
@@ -116,6 +118,27 @@ export default function MonitoringPage() {
         variant: 'destructive',
       })
   } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleVMDelete = async (vm: MonitoringVm) => {
+    setActionLoading(vm.id)
+    try {
+      await deleteProxmoxVM({ vm_id: Number(vm.id), instance_id: vm.instance_id || '' })
+      toast({
+        title: 'Suppression',
+        description: `VM ${vm.name} supprimée avec succès`,
+        variant: 'success',
+      })
+      fetchVMs()
+    } catch (e) {
+      toast({
+        title: 'Erreur',
+        description: "Impossible de supprimer la VM",
+        variant: 'destructive',
+      })
+    } finally {
       setActionLoading(null)
     }
   }
@@ -349,6 +372,37 @@ export default function MonitoringPage() {
                           <BarChart3 className="h-4 w-4" />
                         </Link>
                       </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={actionLoading === vm.id}
+                            className="rounded-xl"
+                          >
+                            {actionLoading === vm.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="mr-2 h-4 w-4" />
+                            )}
+                            Supprimer
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Supprimer la VM</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Êtes-vous sûr de vouloir supprimer "{vm.name}" ?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleVMDelete(vm)}>
+                              Supprimer
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
 
                     <div className="text-xs text-muted-foreground pt-2 border-t">

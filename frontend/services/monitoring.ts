@@ -23,6 +23,7 @@ export interface MonitoringVm {
   last_monitoring: string | null;
   template?: string;
   created_at?: string | null;
+  instance_id?: string | null;
 }
 
 export interface MonitoringOverview {
@@ -51,6 +52,7 @@ export interface VmDetailResponse {
   load_average: number;
   template: string;
   created_at: string | null;
+  instance_id: string | null;
   proxmox: any;
   status: any;
   monitoring: any;

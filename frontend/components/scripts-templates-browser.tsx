@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Plus, Code, Filter, Copy, Check, Edit } from "lucide-react"
+import { Search, Plus, Code, Filter, Copy, Check, Edit, Sparkles } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 
@@ -36,14 +36,28 @@ import { AssistantAIBlock } from "@/components/assistant-ai-block"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
-const simulateScriptsTemplatesAIAnalysis = async (_context: string): Promise<string> => {
+const simulateScriptsTemplatesAIAnalysis = async (context: string): Promise<string> => {
   await new Promise(resolve => setTimeout(resolve, 2000))
 
-  const scriptCount = document.querySelectorAll('[data-item-type="script"]').length
-  const templateCount = document.querySelectorAll('[data-item-type="template"]').length
-  const total = scriptCount + templateCount
+  const prompt = `Tu es un assistant qui évalue l'inventaire de scripts. D'après les données suivantes, résume la répartition et donne deux recommandations : ${context}`
+  const match = context.match(/Scripts: (\d+), Templates: (\d+)/)
+  const scripts = match ? parseInt(match[1]) : 0
+  const templates = match ? parseInt(match[2]) : 0
+  const total = scripts + templates
 
-  return `🤖 **Analyse IA des scripts et templates**\\n\\n${total} éléments sont affichés : ${scriptCount} scripts et ${templateCount} templates.\\n\\n**Suggestions :**\\n- Utilisez la barre de recherche pour filtrer rapidement\\n- Organisez vos éléments par catégorie\\n\\n*Analyse générée le ${new Date().toLocaleString('fr-FR')}*`
+  return `🤖 **Analyse IA des scripts et templates**\\n\\n${total} éléments : ${scripts} scripts et ${templates} templates.\\n\\n**Recommandations :**\\n- Optimisez l'organisation par catégorie\\n- Créez des scripts pour compléter les templates manquants\\n\\n*Prompt utilisé :* ${prompt}`
+}
+
+const simulateItemAIAnalysis = async (context: string): Promise<string> => {
+  await new Promise(resolve => setTimeout(resolve, 2000))
+
+  const prompt = `Analyse l'élément suivant et explique son utilité en une phrase puis propose une amélioration : ${context}`
+  const [nameLine = "", typeLine = "", descLine = ""] = context.split("\n")
+  const name = nameLine.replace("Nom: ", "")
+  const type = typeLine.replace("Type: ", "")
+  const desc = descLine.replace("Description: ", "")
+
+  return `🤖 **Analyse IA du ${type} "${name}"**\\n\\nRésumé : ${desc}\\n\\n**Suggestion :** envisagez de documenter davantage ou de factoriser ce ${type}.\\n\\n*Prompt utilisé :* ${prompt}`
 }
 
 export type ScriptOrTemplate = Template | Script
@@ -216,6 +230,21 @@ export default function ScriptsTemplatesBrowser({
                     <Edit className="mr-2 h-4 w-4" /> Éditer
                   </Link>
                 </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Sparkles className="mr-2 h-4 w-4" /> Analyse IA
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <AssistantAIBlock
+                      title={`Analyse IA de ${item.name}`}
+                      context={`Nom: ${item.name}\nType: ${item.type}\nDescription: ${item.description || 'Aucune description'}`}
+                      onAnalyze={simulateItemAIAnalysis}
+                      className="w-full"
+                    />
+                  </DialogContent>
+                </Dialog>
               </div>
             </Card>
           </motion.div>

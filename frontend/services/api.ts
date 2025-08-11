@@ -41,7 +41,16 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("Erreur API:", error.message || "Erreur inconnue");
+    const status = error.response?.status;
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      "Erreur inconnue";
+
+    const logger = status && status < 500 ? console.warn : console.error;
+    logger("Erreur API:", message);
+
     if (error.message === "Network Error") {
       console.error(
         "Erreur réseau - Vérifiez votre connexion ou si le serveur est en cours d'exécution"

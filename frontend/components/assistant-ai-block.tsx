@@ -10,6 +10,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
+// Global cache shared across all AssistantAIBlock instances
+const aiResponseCache = new Map<string, string>()
+
 interface AssistantAIBlockProps {
   title: string
   context: string // The data/text to be analyzed by AI
@@ -25,10 +28,21 @@ export function AssistantAIBlock({ title, context, onAnalyze, initialOpen = fals
   const { toast } = useToast()
 
   const handleAnalyze = async () => {
-    setIsLoading(true)
     setIsOpen(true) // Open the collapsible when analysis starts
+    const cached = aiResponseCache.get(context)
+    if (cached) {
+      setAiResponse(cached)
+      toast({
+        title: "Réponse IA en cache",
+        description: "Résultat fourni sans nouvelle requête.",
+        variant: "info",
+      })
+      return
+    }
+    setIsLoading(true)
     try {
       const response = await onAnalyze(context)
+      aiResponseCache.set(context, response)
       setAiResponse(response)
       toast({
         title: "Analyse IA terminée",
