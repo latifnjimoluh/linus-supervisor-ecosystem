@@ -14,3 +14,37 @@ export async function askChatbot(messages: ChatMessage[]): Promise<ChatbotReply>
   const res = await api.post("/chatbot/ask", { messages });
   return res.data as ChatbotReply;
 }
+
+export async function askChatbotStream(
+  messages: ChatMessage[],
+  onToken: (token: string) => void
+): Promise<void> {
+  const res = await fetch(`${api.defaults.baseURL}/chatbot/ask?stream=1`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages }),
+  });
+
+  if (!res.body) {
+    throw new Error("No stream returned");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      if (line.startsWith("data:")) {
+        const token = line.slice(5).trim();
+        if (token === "[DONE]") return;
+        onToken(token);
+      }
+    }
+  }
+}

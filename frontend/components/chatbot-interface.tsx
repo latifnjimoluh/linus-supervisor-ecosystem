@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { X, Send, Bot, User, ImageIcon, Mic } from 'lucide-react'
-import { askChatbot } from "@/services/chatbot"
+import { askChatbotStream } from "@/services/chatbot"
 
 interface Message {
   id: string
@@ -51,7 +51,14 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
       timestamp: new Date(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    const botId = (Date.now() + 1).toString()
+    const botMessage: Message = {
+      id: botId,
+      type: "bot",
+      content: "",
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, userMessage, botMessage])
     setInput("")
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"
@@ -63,22 +70,21 @@ export function ChatbotInterface({ onClose }: ChatbotInterfaceProps) {
         role: m.type === "bot" ? "assistant" : "user",
         content: m.content || "",
       }))
-      const { reply } = await askChatbot(history)
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "bot",
-        content: reply,
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, botMessage])
+      await askChatbotStream(history, (token) => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === botId ? { ...m, content: (m.content || "") + token } : m
+          )
+        )
+      })
     } catch (err) {
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "bot",
-        content: "Erreur lors de la réponse du chatbot.",
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, botMessage])
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === botId
+            ? { ...m, content: "Erreur lors de la réponse du chatbot." }
+            : m
+        )
+      )
     } finally {
       setIsLoading(false)
     }
