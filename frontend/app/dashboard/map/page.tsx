@@ -12,22 +12,20 @@ import { cn } from "@/lib/utils" // Ensure cn is imported
 import { getInfrastructureMap, type InfrastructureServer } from "@/services/dashboard"
 import { useRouter } from "next/navigation"
 
-const simulateMapAIAnalysis = async (_context: string): Promise<string> => {
+const simulateMapAIAnalysis = async (context: string): Promise<string> => {
   await new Promise(resolve => setTimeout(resolve, 2000))
 
-  const serverNodes = Array.from(document.querySelectorAll('[data-map-server]'))
-  const total = serverNodes.length
-  const zones: Record<string, number> = { LAN: 0, WAN: 0, DMZ: 0 }
-  const statuses: Record<string, number> = { ok: 0, alert: 0, unsupervised: 0 }
+  const prompt = `Tu es un assistant réseau. À partir des statistiques suivantes, résume l'état des zones et signale les priorités : ${context}`
+  const match = context.match(/Serveurs affichés: (\d+), LAN: (\d+), WAN: (\d+), DMZ: (\d+), OK: (\d+), Alerte: (\d+), Hors supervision: (\d+)/)
+  const total = match ? parseInt(match[1]) : 0
+  const lan = match ? parseInt(match[2]) : 0
+  const wan = match ? parseInt(match[3]) : 0
+  const dmz = match ? parseInt(match[4]) : 0
+  const ok = match ? parseInt(match[5]) : 0
+  const alert = match ? parseInt(match[6]) : 0
+  const unsupervised = match ? parseInt(match[7]) : 0
 
-  serverNodes.forEach(node => {
-    const zone = node.getAttribute('data-zone') || ''
-    const status = node.getAttribute('data-status') || ''
-    if (zones[zone] !== undefined) zones[zone]++
-    if (statuses[status] !== undefined) statuses[status]++
-  })
-
-  return `🤖 **Analyse IA de la carte d'infrastructure**\n\n${total} serveurs affichés : LAN ${zones.LAN}, WAN ${zones.WAN}, DMZ ${zones.DMZ}.\nStatuts — OK: ${statuses.ok}, Alerte: ${statuses.alert}, Hors supervision: ${statuses.unsupervised}.\n\n**Suggestions :**\n- Surveillez les serveurs en alerte ou hors supervision\n- Utilisez les filtres pour cibler une zone spécifique\n\n*Analyse générée le ${new Date().toLocaleString('fr-FR')}*`
+  return `🤖 **Analyse IA de la carte d'infrastructure**\n\n${total} serveurs : LAN ${lan}, WAN ${wan}, DMZ ${dmz}. Statuts — OK ${ok}, Alerte ${alert}, Hors supervision ${unsupervised}.\n\n**Actions recommandées :**\n- Inspecter les ${alert} serveur(s) en alerte\n- Vérifier la supervision de ${unsupervised} hôte(s)\n\n*Prompt utilisé :* ${prompt}`
 }
 
 export default function InfrastructureMapPage() {

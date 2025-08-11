@@ -259,7 +259,8 @@ exports.getOverview = async (req, res) => {
 
         if (ip) {
           ping_ok = await isPingable(ip);
-          if (ping_ok === false) status = 'error';
+          // 🔁 Only flag an error if the VM is supposed to be running
+          if (vm.status === 'running' && ping_ok === false) status = 'error';
         }
 
         if (monitor) {
@@ -268,7 +269,8 @@ exports.getOverview = async (req, res) => {
           services_count = services.length;
           active_services = services.filter((sv) => sv.active === 'active').length;
           const hasAlert = services.some((sv) => sv.active !== 'active');
-          status = hasAlert ? 'error' : status;
+          // Only escalate to error when the VM is running
+          status = status === 'running' && hasAlert ? 'error' : status;
 
           const system = monitor.system_status || {};
           os = system.os || system.hostname || os;
@@ -304,6 +306,7 @@ exports.getOverview = async (req, res) => {
           ping_ok,
           template: dep?.vm_specs?.template_name || '',
           created_at: dep?.createdAt ? dep.createdAt.toISOString() : null,
+          instance_id: dep?.instance_id || null,
           is_template: vm.template === 1,
         };
       })
@@ -444,6 +447,7 @@ exports.getVmDetails = async (req, res) => {
       load_average,
       template: deployment?.vm_specs?.template_name || '',
       created_at: deployment?.createdAt ? deployment.createdAt.toISOString() : null,
+      instance_id: deployment?.instance_id || monitor?.instance_id || null,
       proxmox: vmInfo,
       status: statusInfo,
       monitoring: monitor,

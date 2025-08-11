@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Play, Square, Copy, RefreshCw, Activity, HardDrive, Cpu, MemoryStick, Clock, AlertTriangle, CheckCircle, XCircle, Settings, FileText, Loader2, Eye, BarChart3 } from 'lucide-react'
+import { ArrowLeft, Play, Square, Copy, RefreshCw, Activity, HardDrive, Cpu, MemoryStick, Clock, AlertTriangle, CheckCircle, XCircle, Settings, FileText, Loader2, Eye, BarChart3, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dialog"
 import { cn, formatKB, formatPercent, formatDate } from "@/lib/utils"
 import { fetchVmDetails, collectMonitoringData } from "@/services/monitoring"
-import { startProxmoxVM, stopProxmoxVM } from "@/services/vms"
+import { startProxmoxVM, stopProxmoxVM, deleteProxmoxVM } from "@/services/vms"
 
 interface VMDetails {
   id: string
@@ -48,6 +48,7 @@ interface VMDetails {
   vcpu: number
   memory: string
   disk: string
+  instance_id: string
   metrics: {
     cpu_usage: number
     memory_usage: number // KB
@@ -157,6 +158,7 @@ export default function VMDetailsPage() {
         vcpu: data.status?.cpus || 0,
         memory: formatKB(memoryTotalKb),
         disk: formatKB(diskTotalKb),
+        instance_id: data.instance_id || '',
         metrics: {
           cpu_usage: data.cpu_usage || 0,
           memory_usage: data.memory_usage || 0,
@@ -200,6 +202,11 @@ export default function VMDetailsPage() {
         case 'stop':
           await stopProxmoxVM(Number(vmId))
           message = `VM ${vmData?.name} arrêtée avec succès`
+          break
+        case 'delete':
+          await deleteProxmoxVM({ vm_id: Number(vmId), instance_id: vmData?.instance_id || '' })
+          message = `VM ${vmData?.name} supprimée avec succès`
+          router.push('/monitoring')
           break
         case 'collect':
           if (!vmData?.ip) throw new Error('VM IP inconnue')
@@ -377,7 +384,38 @@ export default function VMDetailsPage() {
           Forcer collecte
         </Button>
 
-        
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="destructive"
+              disabled={actionLoading !== null}
+              className="rounded-xl"
+            >
+              {actionLoading === "delete" ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Supprimer
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Supprimer la VM</AlertDialogTitle>
+              <AlertDialogDescription>
+                Cette action est irréversible. Supprimer la VM "{vmData.name}" ?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction onClick={() => handleVMAction('delete')}>
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+
       </div>
 
       {/* VM Info and Metrics */}
