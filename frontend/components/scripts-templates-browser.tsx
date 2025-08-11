@@ -19,9 +19,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { fetchTemplatesAndScripts, type Template } from "@/lib/templates"
 import type { Script } from "@/lib/scripts"
+import { getScriptContent } from "@/lib/scripts"
 
 export type ScriptOrTemplate = Template | Script
 
@@ -34,8 +42,12 @@ export default function ScriptsTemplatesBrowser({
 }: ScriptsTemplatesBrowserProps) {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [selectedItem, setSelectedItem] = React.useState<ScriptOrTemplate | null>(null)
+  const [itemContent, setItemContent] = React.useState("")
+  const [loading, setLoading] = React.useState(false)
+  const [tab, setTab] = React.useState<"scripts" | "templates">(defaultTab)
   const [copied, setCopied] = React.useState(false)
   const [items, setItems] = React.useState<ScriptOrTemplate[]>([])
+  const [categoryFilter, setCategoryFilter] = React.useState("")
   const { toast } = useToast()
 
   React.useEffect(() => {
@@ -44,11 +56,17 @@ export default function ScriptsTemplatesBrowser({
       .catch(() => setItems([]))
   }, [])
 
-  const filtered = items.filter(
-    (t) =>
+  const categories = React.useMemo(
+    () => Array.from(new Set(items.map((i) => i.category))),
+    [items]
+  )
+
+  const filtered = items
+    .filter((t) =>
       t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (t.description ?? "").toLowerCase().includes(searchTerm.toLowerCase())
-  )
+    )
+    .filter((t) => (categoryFilter ? t.category === categoryFilter : true))
   const filteredScripts = filtered.filter((t) => t.type === "script")
   const filteredTemplates = filtered.filter((t) => t.type === "template")
 
@@ -57,6 +75,19 @@ export default function ScriptsTemplatesBrowser({
     setCopied(true)
     toast({ title: "Copié !", description: "Le contenu du script a été copié.", variant: "success" })
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  const handleViewCode = (item: ScriptOrTemplate) => {
+    setSelectedItem(item)
+    if (item.type === "script") {
+      setLoading(true)
+      setItemContent("")
+      getScriptContent(item.id)
+        .then((content) => setItemContent(content))
+        .finally(() => setLoading(false))
+    } else {
+      setItemContent(item.template_content)
+    }
   }
 
   const renderGrid = (items: ScriptOrTemplate[]) => (
@@ -86,7 +117,7 @@ export default function ScriptsTemplatesBrowser({
               <div className="p-4 border-t flex flex-wrap gap-2">
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="secondary" size="sm" onClick={() => setSelectedItem(item)}>
+                    <Button variant="secondary" size="sm" onClick={() => handleViewCode(item)}>
                       <Code className="mr-2 h-4 w-4" /> Voir le code
                     </Button>
                   </DialogTrigger>
@@ -94,36 +125,42 @@ export default function ScriptsTemplatesBrowser({
                     <DialogContent className="max-w-3xl">
                       <DialogHeader>
                         <DialogTitle>{selectedItem.name}</DialogTitle>
-                        <DialogDescription>Aperçu du contenu du template et de ses champs.</DialogDescription>
+                        <DialogDescription>
+                          {selectedItem.type === "script"
+                            ? "Aperçu du contenu du script."
+                            : "Aperçu du contenu du template et de ses champs."}
+                        </DialogDescription>
                       </DialogHeader>
                       <div className="relative bg-muted rounded-lg p-4 mt-4">
                         <Button
                           size="sm"
                           variant="ghost"
                           className="absolute top-2 right-2 h-7 w-7 p-0"
-                          onClick={() => copyContent(selectedItem.template_content)}
+                          onClick={() => copyContent(itemContent)}
                           aria-label="Copier"
                         >
                           {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                         </Button>
                         <pre className="text-sm whitespace-pre-wrap overflow-auto max-h-[60vh] break-words break-all">
-                          <code className="font-mono">{selectedItem.template_content}</code>
+                          <code className="font-mono">{loading ? "Chargement..." : itemContent}</code>
                         </pre>
                       </div>
-                      {"fields_schema" in selectedItem && selectedItem.fields_schema && (
-                        <div className="mt-4">
-                          <h3 className="font-semibold mb-2">Champs de configuration :</h3>
-                          <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                            {selectedItem.fields_schema.fields.map((field, index) => (
-                              <li key={index}>
-                                <strong>{field.label}</strong> ({field.name}): {field.type}{" "}
-                                {field.required ? "(Requis)" : "(Optionnel)"}{" "}
-                                {field.default !== undefined && `(Défaut: ${String(field.default)})`}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                      {selectedItem.type === "template" &&
+                        "fields_schema" in selectedItem &&
+                        selectedItem.fields_schema && (
+                          <div className="mt-4">
+                            <h3 className="font-semibold mb-2">Champs de configuration :</h3>
+                            <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                              {selectedItem.fields_schema.fields.map((field, index) => (
+                                <li key={index}>
+                                  <strong>{field.label}</strong> ({field.name}): {field.type}{" "}
+                                  {field.required ? "(Requis)" : "(Optionnel)"}{" "}
+                                  {field.default !== undefined && `(Défaut: ${String(field.default)})`}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                     </DialogContent>
                   )}
                 </Dialog>
@@ -155,9 +192,22 @@ export default function ScriptsTemplatesBrowser({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="w-full md:w-auto">
-          <Filter className="mr-2 h-4 w-4" /> Filtrer
-        </Button>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-full md:w-[200px]">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              <SelectValue placeholder="Toutes les catégories" />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Toutes les catégories</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       {renderGrid(items)}
     </div>
@@ -175,12 +225,18 @@ export default function ScriptsTemplatesBrowser({
             </p>
           </div>
         </div>
-        <Button className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white">
-          <Plus className="mr-2 h-4 w-4" /> Créer un nouveau template
+        <Button
+          asChild
+          className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <Link href={tab === "scripts" ? "/scripts/generate" : "/templates/new"}>
+            <Plus className="mr-2 h-4 w-4" />
+            {tab === "scripts" ? "Créer un nouveau script" : "Créer un nouveau template"}
+          </Link>
         </Button>
       </header>
 
-      <Tabs defaultValue={defaultTab} className="space-y-6">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="space-y-6">
         <TabsList className="w-full md:w-auto">
           <TabsTrigger value="scripts">Scripts</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>

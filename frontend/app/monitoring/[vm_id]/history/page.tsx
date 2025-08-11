@@ -1,13 +1,15 @@
 "use client"
 
 import * as React from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDate, formatPercent } from "@/lib/utils"
 import { fetchVmHistory, MonitoringRecord } from "@/services/monitoring"
 
 export default function VmHistoryPage() {
   const params = useParams()
+  const router = useRouter()
   const vmId = params.vm_id as string
   const [records, setRecords] = React.useState<MonitoringRecord[]>([])
 
@@ -17,7 +19,12 @@ export default function VmHistoryPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Historique de supervision</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Historique de supervision</h1>
+        <Button variant="outline" onClick={() => router.back()}>
+          Retour
+        </Button>
+      </div>
       <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle>Métriques collectées</CardTitle>
@@ -33,8 +40,16 @@ export default function VmHistoryPage() {
             </thead>
             <tbody>
               {records.map(rec => {
-                const cpu = rec.system_status?.cpu_usage || rec.system_status?.cpu?.percent || 0
-                const mem = rec.system_status?.memory || {}
+                const sys = rec.system_status || {}
+                let cpu = sys.cpu_usage ?? sys.cpu?.percent
+                if (cpu == null && Array.isArray(sys.top_processes)) {
+                  cpu = sys.top_processes.reduce(
+                    (sum: number, p: any) => sum + Number(p.cpu || 0),
+                    0
+                  )
+                }
+                cpu = typeof cpu === "number" ? (cpu <= 1 ? cpu * 100 : cpu) : 0
+                const mem = sys.memory || {}
                 const total = mem.total_kb || mem.total || 0
                 const used = total - (mem.available_kb || mem.free_kb || 0)
                 const memPercent = total ? (used / total) * 100 : 0
