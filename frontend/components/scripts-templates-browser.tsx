@@ -37,6 +37,9 @@ interface ScriptsTemplatesBrowserProps {
   defaultTab?: "scripts" | "templates"
 }
 
+type TabKey = "scripts" | "templates"
+type CategoryFilter = "ALL" | string
+
 export default function ScriptsTemplatesBrowser({
   defaultTab = "templates",
 }: ScriptsTemplatesBrowserProps) {
@@ -44,36 +47,50 @@ export default function ScriptsTemplatesBrowser({
   const [selectedItem, setSelectedItem] = React.useState<ScriptOrTemplate | null>(null)
   const [itemContent, setItemContent] = React.useState("")
   const [loading, setLoading] = React.useState(false)
-  const [tab, setTab] = React.useState<"scripts" | "templates">(defaultTab)
+  const [tab, setTab] = React.useState<TabKey>(defaultTab)
   const [copied, setCopied] = React.useState(false)
   const [items, setItems] = React.useState<ScriptOrTemplate[]>([])
-  const [categoryFilter, setCategoryFilter] = React.useState("")
+  const [categoryFilter, setCategoryFilter] = React.useState<CategoryFilter>("ALL")
   const { toast } = useToast()
 
   React.useEffect(() => {
     fetchTemplatesAndScripts()
-      .then(({ templates, scripts }) => setItems([...scripts, ...templates]))
+      .then(({ templates, scripts }) => setItems([...(scripts ?? []), ...(templates ?? [])]))
       .catch(() => setItems([]))
   }, [])
 
   const categories = React.useMemo(
-    () => Array.from(new Set(items.map((i) => i.category))),
+    () =>
+      Array.from(
+        new Set(
+          items
+            .map((i) => i.category)
+            .filter((c): c is string => Boolean(c && String(c).trim().length > 0))
+        )
+      ),
     [items]
   )
 
-  const filtered = items
-    .filter((t) =>
-      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (t.description ?? "").toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .filter((t) => (categoryFilter ? t.category === categoryFilter : true))
-  const filteredScripts = filtered.filter((t) => t.type === "script")
-  const filteredTemplates = filtered.filter((t) => t.type === "template")
+  const filteredBase = items.filter((t) => {
+    const q = searchTerm.toLowerCase()
+    const inText =
+      t.name.toLowerCase().includes(q) ||
+      (t.description ?? "").toLowerCase().includes(q)
+    const inCategory = categoryFilter === "ALL" ? true : t.category === categoryFilter
+    return inText && inCategory
+  })
+
+  const filteredScripts = filteredBase.filter((t) => t.type === "script")
+  const filteredTemplates = filteredBase.filter((t) => t.type === "template")
 
   const copyContent = (content: string) => {
     navigator.clipboard.writeText(content)
     setCopied(true)
-    toast({ title: "Copié !", description: "Le contenu du script a été copié.", variant: "success" })
+    toast({
+      title: "Copié !",
+      description: "Le contenu a été copié dans le presse-papiers.",
+      variant: "success",
+    })
     setTimeout(() => setCopied(false), 1500)
   }
 
@@ -90,10 +107,10 @@ export default function ScriptsTemplatesBrowser({
     }
   }
 
-  const renderGrid = (items: ScriptOrTemplate[]) => (
+  const renderGrid = (itemsToShow: ScriptOrTemplate[]) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <AnimatePresence>
-        {items.map((item) => (
+        {itemsToShow.map((item) => (
           <motion.div
             key={`${item.type}-${item.id}`}
             layout
@@ -105,7 +122,7 @@ export default function ScriptsTemplatesBrowser({
               <CardHeader>
                 <CardTitle className="text-lg">{item.name}</CardTitle>
                 <div className="flex flex-wrap gap-2 pt-2">
-                  <Badge variant="secondary">{item.category}</Badge>
+                  <Badge variant="secondary">{item.category || "Non catégorisé"}</Badge>
                   <Badge variant={item.type === "template" ? "default" : "outline"}>
                     {item.type === "template" ? "Paramétrable" : "Script simple"}
                   </Badge>
@@ -121,7 +138,7 @@ export default function ScriptsTemplatesBrowser({
                       <Code className="mr-2 h-4 w-4" /> Voir le code
                     </Button>
                   </DialogTrigger>
-                  {selectedItem && (
+                  {selectedItem?.id === item.id && (
                     <DialogContent className="max-w-3xl">
                       <DialogHeader>
                         <DialogTitle>{selectedItem.name}</DialogTitle>
@@ -180,7 +197,7 @@ export default function ScriptsTemplatesBrowser({
     </div>
   )
 
-  const renderSection = (items: ScriptOrTemplate[]) => (
+  const renderSection = (itemsToShow: ScriptOrTemplate[]) => (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-center gap-3">
         <div className="relative w-full md:max-w-sm">
@@ -192,15 +209,19 @@ export default function ScriptsTemplatesBrowser({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full md:w-[200px]">
+
+        <Select
+          value={categoryFilter}
+          onValueChange={(v) => setCategoryFilter(v as CategoryFilter)}
+        >
+          <SelectTrigger className="w-full md:w-[220px]">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
               <SelectValue placeholder="Toutes les catégories" />
             </div>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Toutes les catégories</SelectItem>
+            <SelectItem value="ALL">Toutes les catégories</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
@@ -209,7 +230,8 @@ export default function ScriptsTemplatesBrowser({
           </SelectContent>
         </Select>
       </div>
-      {renderGrid(items)}
+
+      {renderGrid(itemsToShow)}
     </div>
   )
 
@@ -236,7 +258,7 @@ export default function ScriptsTemplatesBrowser({
         </Button>
       </header>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="space-y-6">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="space-y-6">
         <TabsList className="w-full md:w-auto">
           <TabsTrigger value="scripts">Scripts</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
@@ -247,4 +269,3 @@ export default function ScriptsTemplatesBrowser({
     </div>
   )
 }
-

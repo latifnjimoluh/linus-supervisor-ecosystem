@@ -77,8 +77,3 @@ export async function fetchVmHistory(id: string): Promise<MonitoringRecord[]> {
   const res = await api.get(`/monitoring/${id}/history`);
   return res.data;
 }
-
-export async function collectMonitoringData(vm_ip: string, username: string) {
-  const res = await api.post('/monitoring/collect', { vm_ip, username });
-  return res.data;
-}
