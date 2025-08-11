@@ -57,8 +57,14 @@ export interface ProxmoxVM {
   name: string;
   status: string;
   node: string;
+  template?: number;
   uptime?: number;
   [key: string]: any;
+}
+
+export interface ProxmoxVMList {
+  vms: ProxmoxVM[];
+  templates: ProxmoxVM[];
 }
 
 export interface VmDeletionPayload {
@@ -66,9 +72,9 @@ export interface VmDeletionPayload {
   instance_id: string;
 }
 
-export async function listProxmoxVMs(): Promise<ProxmoxVM[]> {
+export async function listProxmoxVMs(): Promise<ProxmoxVMList> {
   const res = await api.get('/vms');
-  return res.data;
+  return res.data as ProxmoxVMList;
 }
 
 export async function startProxmoxVM(vmId: number) {

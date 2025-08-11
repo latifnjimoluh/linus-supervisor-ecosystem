@@ -48,19 +48,12 @@ export default function NewTemplatePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    let parsed
-    try {
-      parsed = JSON.parse(templateContent)
-    } catch (err) {
-      alert("Template JSON invalide")
-      return
-    }
     const payload = {
       name,
       service_type: serviceType,
       category,
       description,
-      template_content: JSON.stringify(parsed),
+      template_content: templateContent,
       script_path: scriptPath,
       fields_schema: { fields },
     }
@@ -69,23 +62,19 @@ export default function NewTemplatePage() {
   }
 
   const jsonPreview = React.useMemo(() => {
-    try {
-      return JSON.stringify(
-        {
-          name,
-          service_type: serviceType,
-          category,
-          description,
-          template_content: JSON.parse(templateContent || "{}"),
-          script_path: scriptPath,
-          fields_schema: { fields },
-        },
-        null,
-        2
-      )
-    } catch {
-      return "Contenu du template invalide"
-    }
+    return JSON.stringify(
+      {
+        name,
+        service_type: serviceType,
+        category,
+        description,
+        template_content: templateContent,
+        script_path: scriptPath,
+        fields_schema: { fields },
+      },
+      null,
+      2,
+    )
   }, [name, serviceType, category, description, templateContent, scriptPath, fields])
 
   return (
@@ -124,7 +113,7 @@ export default function NewTemplatePage() {
             <div className="rounded-md border">
               <MonacoEditor
                 value={templateContent}
-                language="json"
+                language="shell"
                 onChange={(value) => setTemplateContent(value || "")}
                 height="240px"
                 theme={theme === "dark" ? "vs-dark" : "vs-light"}

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { LayoutDashboard, Server, AlertTriangle, Plus, Eye, Code, RefreshCw, Info, XCircle, TrendingUp, TrendingDown, Activity } from 'lucide-react'
+import { LayoutDashboard, Server, AlertTriangle, Plus, Eye, Code, RefreshCw, Info, XCircle, TrendingUp, TrendingDown, Activity, UserPlus } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { getDashboard, type DashboardData } from "@/services/dashboard"
+import { listProxmoxVMs, type ProxmoxVM } from "@/services/vms"
 
 const emptyData: DashboardData = {
   totalVms: 0,
@@ -66,12 +67,22 @@ ${criticalCount > 0 ?
 export default function DashboardPage() {
   const [data, setData] = React.useState<DashboardData | null>(null)
   const [loading, setLoading] = React.useState(true)
+  const [vms, setVms] = React.useState<ProxmoxVM[]>([])
+  const [templates, setTemplates] = React.useState<ProxmoxVM[]>([])
 
   const fetchData = React.useCallback(() => {
     setLoading(true)
-    getDashboard()
-      .then((newData) => setData({ ...newData, apiError: false }))
-      .catch(() => setData({ ...emptyData, apiError: true }))
+    Promise.all([getDashboard(), listProxmoxVMs()])
+      .then(([newData, proxmox]) => {
+        setData({ ...newData, apiError: false })
+        setVms(proxmox.vms)
+        setTemplates(proxmox.templates)
+      })
+      .catch(() => {
+        setData({ ...emptyData, apiError: true })
+        setVms([])
+        setTemplates([])
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -88,11 +99,23 @@ export default function DashboardPage() {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case "vm_created": return <Plus className="h-4 w-4 text-success" />
-      case "vm_stopped": return <XCircle className="h-4 w-4 text-warning" />
-      case "alert_resolved": return <RefreshCw className="h-4 w-4 text-info" />
-      case "script_executed": return <Code className="h-4 w-4 text-primary" />
-      default: return <Activity className="h-4 w-4" />
+      case "deployment":
+      case "vm_created":
+        return <Plus className="h-4 w-4 text-success" />
+      case "deletion":
+      case "vm_stopped":
+        return <XCircle className="h-4 w-4 text-warning" />
+      case "restart":
+      case "alert_resolved":
+        return <RefreshCw className="h-4 w-4 text-info" />
+      case "script_executed":
+        return <Code className="h-4 w-4 text-primary" />
+      case "user_creation":
+        return <UserPlus className="h-4 w-4 text-primary" />
+      case "role_change":
+        return <Info className="h-4 w-4 text-warning" />
+      default:
+        return <Activity className="h-4 w-4" />
     }
   }
 
@@ -252,6 +275,49 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader>
+            <CardTitle>Machines virtuelles</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Chargement...</p>
+            ) : vms.length ? (
+              <ul className="space-y-2">
+                {vms.map((vm) => (
+                  <li key={vm.vmid} className="p-2 border rounded-lg">
+                    {vm.name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">Aucune VM</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader>
+            <CardTitle>Templates</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Chargement...</p>
+            ) : templates.length ? (
+              <ul className="space-y-2">
+                {templates.map((tpl) => (
+                  <li key={tpl.vmid} className="p-2 border rounded-lg">
+                    {tpl.name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">Aucun template</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Actions and AI Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quick Actions */}
@@ -292,7 +358,7 @@ export default function DashboardPage() {
                   {getActivityIcon(activity.type)}
                   <div className="flex-1">
                     <p className="font-medium">{activity.message}</p>
-                    <p className="text-xs text-muted-foreground">{activity.timestamp}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleString('fr-FR')}</p>
                   </div>
                 </div>
               ))}

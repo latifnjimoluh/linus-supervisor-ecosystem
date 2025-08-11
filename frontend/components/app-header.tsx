@@ -66,7 +66,7 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="#" className="flex items-center">
+            <Link href="/help" className="flex items-center">
               <HelpCircle className="mr-2 h-4 w-4" /> Aide
             </Link>
           </DropdownMenuItem>

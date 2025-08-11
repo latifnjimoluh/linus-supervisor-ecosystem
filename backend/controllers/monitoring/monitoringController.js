@@ -304,18 +304,25 @@ exports.getOverview = async (req, res) => {
           ping_ok,
           template: dep?.vm_specs?.template_name || '',
           created_at: dep?.createdAt ? dep.createdAt.toISOString() : null,
+          is_template: vm.template === 1,
         };
       })
     );
+    const vms = [];
+    const templates = [];
+    servers.forEach(({ is_template, ...rest }) => {
+      if (is_template) templates.push(rest);
+      else vms.push(rest);
+    });
 
     const summary = {
-      total: servers.length,
-      running: servers.filter((s) => s.status === 'running').length,
-      stopped: servers.filter((s) => s.status === 'stopped').length,
-      error: servers.filter((s) => s.status === 'error').length,
+      total: vms.length,
+      running: vms.filter((s) => s.status === 'running').length,
+      stopped: vms.filter((s) => s.status === 'stopped').length,
+      error: vms.filter((s) => s.status === 'error').length,
     };
 
-    res.json({ summary, vms: servers });
+    res.json({ summary, vms, templates });
   } catch (err) {
     res.status(500).json({ message: "Erreur lors de l'obtention de l'aperçu", error: err.message });
   }
