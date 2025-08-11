@@ -148,7 +148,14 @@ exports.deploy = async (req, res) => {
       status: 'deployed'
     });
 
-    await logAction(req, 'Déploiement Terraform', { vm_name: vmName, service_type, success });
+    await logAction(req, 'Déploiement Terraform', {
+      vm_name: vmName,
+      service_type,
+      success,
+      log_path: logPath,
+      stdout: stdout.slice(-1000),
+      stderr: stderr.slice(-1000)
+    });
 
     res.status(200).json({
       message: '✅ Déploiement réussi',

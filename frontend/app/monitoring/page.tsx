@@ -58,8 +58,6 @@ export default function MonitoringPage() {
 
   React.useEffect(() => {
     fetchVMs()
-    const interval = setInterval(fetchVMs, 30000) // Refresh every 30 seconds
-    return () => clearInterval(interval)
   }, [fetchVMs])
 
   const filteredVMs = vms.filter(vm => {

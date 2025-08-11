@@ -43,13 +43,15 @@ const getRemoteFileContent = async ({ host, username, privateKey, filePath }) =>
  * @param {string} options.username
  * @param {string} options.privateKey
  * @param {string} options.command
- * @returns {Promise<string>} stdout/stderr combined
+ * @returns {Promise<{ stdout: string, stderr: string, code: number | null }>} separate output streams
  */
 const execSSHCommand = ({ host, username, privateKey, command }) => {
   console.log(`🔐 execSSHCommand ${command} on ${username}@${host}`);
   return new Promise((resolve, reject) => {
     const conn = new Client();
-    let output = '';
+    let stdout = '';
+    let stderr = '';
+    let exitCode = null;
 
     conn
       .on('ready', () => {
@@ -57,15 +59,17 @@ const execSSHCommand = ({ host, username, privateKey, command }) => {
           if (err) return reject(err);
           stream
             .on('data', data => {
-              output += data.toString();
+              stdout += data.toString();
             })
-            .on('close', () => {
+            .on('close', code => {
+              exitCode = code;
               conn.end();
-              console.log('📤 execSSHCommand output:', output.trim());
-              resolve(output.trim());
+              console.log('📤 execSSHCommand stdout:', stdout);
+              if (stderr) console.log('📤 execSSHCommand stderr:', stderr);
+              resolve({ stdout, stderr, code: exitCode });
             })
             .stderr.on('data', data => {
-              output += data.toString();
+              stderr += data.toString();
             });
         });
       })

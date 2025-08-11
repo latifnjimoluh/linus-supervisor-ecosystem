@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { useToast } from "@/hooks/use-toast"
 import {
-  listPermissions,
+  listAllPermissions,
   createPermission,
   deletePermission,
   assignPermissions,
@@ -77,6 +77,7 @@ Votre système compte ${totalPermissions} permissions dont ${activePermissions} 
 
 export default function PermissionsPage() {
   const [permissions, setPermissions] = React.useState<Permission[]>([])
+  const [allPermissions, setAllPermissions] = React.useState<Permission[]>([])
   const [roles, setRoles] = React.useState<Role[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
@@ -89,17 +90,17 @@ export default function PermissionsPage() {
   const [pagination, setPagination] = React.useState({ page: 1, pages: 1, total: 0, limit: 10 })
   const { toast } = useToast()
 
-  const fetchData = React.useCallback(async (page = 1) => {
+  const fetchData = React.useCallback(async () => {
     setLoading(true)
     try {
-      const permRes = await listPermissions(page, pagination.limit)
+      const permRes = await listAllPermissions()
       const roleData = await listRoles()
-      const mappedPerms = permRes.data.map(p => ({
+      const mappedPerms = permRes.map(p => ({
         ...p,
         module: 'general',
         is_active: p.status !== 'inactif',
       }))
-      setPermissions(mappedPerms)
+      setAllPermissions(mappedPerms)
       const rolesWithPerms = await Promise.all(
         roleData.map(async r => {
           const perms = await getPermissionsByRole(r.id)
@@ -107,7 +108,12 @@ export default function PermissionsPage() {
         })
       )
       setRoles(rolesWithPerms)
-      setPagination(permRes.pagination)
+      setPagination(prev => ({
+        ...prev,
+        total: mappedPerms.length,
+        pages: Math.ceil(mappedPerms.length / prev.limit),
+        page: 1,
+      }))
     } catch (err) {
       console.error('fetchData error', err)
     } finally {
@@ -119,14 +125,21 @@ export default function PermissionsPage() {
     fetchData()
   }, [fetchData])
 
-  const filteredPermissions = permissions.filter(permission => {
+  React.useEffect(() => {
+    const start = (pagination.page - 1) * pagination.limit
+    const end = start + pagination.limit
+    setPermissions(allPermissions.slice(start, end))
+  }, [allPermissions, pagination.page, pagination.limit])
+
+  const basePermissions = searchTerm ? allPermissions : permissions
+  const filteredPermissions = basePermissions.filter(permission => {
     const matchesSearch = permission.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          permission.description.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesModule = moduleFilter === "all" || permission.module === moduleFilter
     return matchesSearch && matchesModule
   })
 
-  const modules = Array.from(new Set(permissions.map(p => p.module)))
+  const modules = Array.from(new Set(allPermissions.map(p => p.module)))
 
   const handleCreatePermission = async () => {
     if (!formData.name.trim() || !formData.description.trim() || !formData.module.trim()) {
@@ -149,7 +162,7 @@ export default function PermissionsPage() {
     }
 
     // Check if permission already exists
-    if (permissions.some(p => p.name === formData.name)) {
+    if (allPermissions.some(p => p.name === formData.name)) {
       toast({
         title: "Erreur",
         description: "Cette permission existe déjà",
@@ -167,7 +180,15 @@ export default function PermissionsPage() {
         module: formData.module,
         is_active: true,
       }
-      setPermissions(prev => [...prev, newPermission])
+      setAllPermissions(prev => {
+        const updated = [...prev, newPermission]
+        setPagination(p => ({
+          ...p,
+          total: updated.length,
+          pages: Math.ceil(updated.length / p.limit),
+        }))
+        return updated
+      })
       setFormData({ name: "", description: "", module: "" })
       setIsCreateDialogOpen(false)
 
@@ -202,7 +223,16 @@ export default function PermissionsPage() {
 
     try {
       await deletePermission(permissionId)
-      setPermissions(prev => prev.filter(p => p.id !== permissionId))
+      setAllPermissions(prev => {
+        const updated = prev.filter(p => p.id !== permissionId)
+        setPagination(p => ({
+          ...p,
+          total: updated.length,
+          pages: Math.ceil(updated.length / p.limit),
+          page: Math.min(p.page, Math.ceil(updated.length / p.limit) || 1),
+        }))
+        return updated
+      })
 
       toast({
         title: "Permission supprimée",
@@ -238,7 +268,7 @@ export default function PermissionsPage() {
         return role
       }))
 
-      const permission = permissions.find(p => p.id === permissionId)
+      const permission = allPermissions.find(p => p.id === permissionId)
       const role = roles.find(r => r.id === roleId)
 
       toast({
@@ -259,8 +289,8 @@ export default function PermissionsPage() {
 
   const selectedRoleData = roles.find(r => String(r.id) === selectedRole) // Compare with string value from select
   const stats = {
-    total: permissions.length,
-    active: permissions.filter(p => p.is_active).length,
+    total: allPermissions.length,
+    active: allPermissions.filter(p => p.is_active).length,
     modules: modules.length,
   }
 
@@ -539,29 +569,35 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
                 )
               })}
             </div>
-            <div className="flex items-center justify-between pt-4">
-              <span className="text-sm text-muted-foreground">
-                Page {pagination.page} sur {pagination.pages}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pagination.page <= 1}
-                  onClick={() => fetchData(pagination.page - 1)}
-                >
-                  Précédent
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pagination.page >= pagination.pages}
-                  onClick={() => fetchData(pagination.page + 1)}
-                >
-                  Suivant
-                </Button>
+            {!searchTerm && (
+              <div className="flex items-center justify-between pt-4">
+                <span className="text-sm text-muted-foreground">
+                  Page {pagination.page} sur {pagination.pages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pagination.page <= 1}
+                    onClick={() =>
+                      setPagination(p => ({ ...p, page: p.page - 1 }))
+                    }
+                  >
+                    Précédent
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pagination.page >= pagination.pages}
+                    onClick={() =>
+                      setPagination(p => ({ ...p, page: p.page + 1 }))
+                    }
+                  >
+                    Suivant
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
             </>
           )}
         </CardContent>

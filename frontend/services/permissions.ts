@@ -24,6 +24,21 @@ export const listPermissions = async (page = 1, limit = 10): Promise<PermissionL
   return res.data;
 };
 
+export const listAllPermissions = async (): Promise<Permission[]> => {
+  let page = 1;
+  const limit = 100;
+  let all: Permission[] = [];
+  while (true) {
+    const { data, pagination } = await listPermissions(page, limit);
+    all = all.concat(data);
+    if (page >= pagination.pages) {
+      break;
+    }
+    page++;
+  }
+  return all;
+};
+
 export const getPermission = async (id: number): Promise<Permission> => {
   const res = await api.get(`/permissions/${id}`);
   return res.data;

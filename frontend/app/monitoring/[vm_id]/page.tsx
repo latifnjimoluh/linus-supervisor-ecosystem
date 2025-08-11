@@ -186,10 +186,6 @@ export default function VMDetailsPage() {
 
   React.useEffect(() => {
     fetchVMData()
-    
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchVMData, 30000)
-    return () => clearInterval(interval)
   }, [fetchVMData])
 
   const handleVMAction = async (action: string) => {

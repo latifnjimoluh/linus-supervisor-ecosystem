@@ -281,8 +281,10 @@ exports.convertToTemplate = async (req, res) => {
 
     for (const cmd of cmds) {
       outputLog += `\n$ ${cmd}\n`;
-      const result = await execSSHCommand({ host, username, privateKey, command: cmd });
-      outputLog += result + '\n';
+      const { stdout, stderr } = await execSSHCommand({ host, username, privateKey, command: cmd });
+      outputLog += stdout || '';
+      if (stderr) outputLog += stderr;
+      outputLog += '\n';
     }
 
     fs.writeFileSync(logPath, outputLog);
