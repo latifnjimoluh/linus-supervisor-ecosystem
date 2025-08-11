@@ -18,3 +18,8 @@ export async function deleteScript(id: number): Promise<{ message: string }> {
   const res = await api.delete(`/scripts/${id}`)
   return res.data
 }
+
+export async function getScriptContent(id: number): Promise<string> {
+  const res = await api.get(`/scripts/${id}`)
+  return res.data?.content || ""
+}
