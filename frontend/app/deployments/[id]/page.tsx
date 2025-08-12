@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
-import { fetchDeployment, DeploymentDetail } from "@/services/deployments"
+import { fetchDeployment, summarizeDeploymentLogs, DeploymentDetail } from "@/services/deployments"
+import { AssistantAIBlock } from "@/components/assistant-ai-block"
 
 // --- Helpers d'affichage de log (clean & normalise) ---
 const stripAnsi = (s: string) => s.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
@@ -256,6 +257,15 @@ export default function DeploymentDetailsPage() {
           </ScrollArea>
         </CardContent>
       </Card>
+      <AssistantAIBlock
+        title="Résumé IA des logs"
+        context={deployment.log || ''}
+        onAnalyze={async (_ctx) => {
+          const { summary } = await summarizeDeploymentLogs(deploymentId)
+          return summary
+        }}
+        className="w-full"
+      />
     </div>
   )
 }

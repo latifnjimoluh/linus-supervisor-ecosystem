@@ -258,7 +258,9 @@ exports.getAllTemplates = async (req, res) => {
     const offset = (page - 1) * limit;
     const sort = req.query.sort || 'created_at';
     const direction = req.query.order === 'asc' ? 'ASC' : 'DESC';
+    const status = req.query.status || 'actif';
     const where = {};
+    if (status !== 'all') where.status = status;
     if (req.query.q) {
       const q = req.query.q;
       where[Op.or] = [
@@ -273,7 +275,8 @@ exports.getAllTemplates = async (req, res) => {
       limit,
       offset,
     });
-    const scripts = await GeneratedScript.findAll();
+    const scriptWhere = status !== 'all' ? { status } : {};
+    const scripts = await GeneratedScript.findAll({ where: scriptWhere });
     console.log('📤 Templates retrieved:', rows.length, 'Scripts:', scripts.length);
     res.json({
       data: {
@@ -328,7 +331,7 @@ exports.updateTemplate = async (req, res) => {
   }
 };
 
-// 🗑️ Désactiver un template
+// 🗑️ Marquer un template comme supprimé
 exports.deleteTemplate = async (req, res) => {
   console.log('📥 deleteTemplate called', req.params.id);
   try {
@@ -337,13 +340,33 @@ exports.deleteTemplate = async (req, res) => {
       console.log('⚠️ Template non trouvé');
       return res.status(404).json({ message: 'Template non trouvé' });
     }
-    tpl.status = 'inactif';
+    tpl.status = 'supprime';
     await tpl.save();
     await logAction(req, `delete_template:${tpl.id}`);
-    console.log('🗑️ Template désactivé', tpl.id);
-    res.json({ message: 'Template désactivé' });
+    console.log('🗑️ Template marqué supprimé', tpl.id);
+    res.json({ message: 'Template supprimé' });
   } catch (err) {
     console.error('❌ Erreur deleteTemplate:', err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+// ♻️ Réactiver un template supprimé
+exports.restoreTemplate = async (req, res) => {
+  console.log('📥 restoreTemplate called', req.params.id);
+  try {
+    const tpl = await ServiceTemplate.findByPk(req.params.id);
+    if (!tpl) {
+      console.log('⚠️ Template non trouvé');
+      return res.status(404).json({ message: 'Template non trouvé' });
+    }
+    tpl.status = 'actif';
+    await tpl.save();
+    await logAction(req, `restore_template:${tpl.id}`);
+    console.log('♻️ Template réactivé', tpl.id);
+    res.json({ message: 'Template réactivé' });
+  } catch (err) {
+    console.error('❌ Erreur restoreTemplate:', err);
     res.status(500).json({ message: 'Erreur serveur.' });
   }
 };

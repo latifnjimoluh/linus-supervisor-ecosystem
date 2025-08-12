@@ -21,6 +21,7 @@ export interface Template {
   template_content: string;
   script_path?: string;
   fields_schema?: FieldSchema;
+  status?: string;
 }
 
 export const listTemplates = async (): Promise<Template[]> => {
@@ -55,6 +56,13 @@ export const deleteTemplate = async (
   return res.data;
 };
 
+export const restoreTemplate = async (
+  id: number
+): Promise<{ message: string }> => {
+  const res = await api.post(`/templates/${id}/restore`);
+  return res.data;
+};
+
 export const generateScript = async (
   template_id: number,
   config_data: Record<string, string | number>
@@ -70,5 +78,17 @@ export const simulateScript = async (
   script: string
 ): Promise<{ simulation: string }> => {
   const res = await api.post("/templates/simulate", { script });
+  return res.data;
+};
+
+export const analyzeTemplate = async (
+  script: string,
+  id?: number
+): Promise<{ analysis: string }> => {
+  const res = await api.post("/templates/analyze", {
+    script,
+    entity_type: 'template',
+    entity_id: id,
+  });
   return res.data;
 };

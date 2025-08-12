@@ -1,6 +1,7 @@
 const axios = require('axios');
 const https = require('https');
-const { Deployment, Monitoring, UserSetting, Log, User } = require('../../models');
+const { Deployment, Delete, Monitoring, UserSetting, Log, User } = require('../../models');
+const { analyzeDeploymentStats } = require('../../services/iaService');
 const { randomUUID } = require('crypto');
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
@@ -140,9 +141,16 @@ exports.getDashboardData = async (req, res) => {
 
     const deployments = await Deployment.findAll();
     const deploymentMap = {};
+    let totalDeployments = 0;
+    let successDeployments = 0;
+    let failedDeployments = 0;
     deployments.forEach((d) => {
       deploymentMap[d.vm_id] = d;
+      totalDeployments += 1;
+      if (d.success === true) successDeployments += 1;
+      else if (d.success === false) failedDeployments += 1;
     });
+    const totalDeleted = await Delete.count();
 
     const records = await Monitoring.findAll({
       order: [['vm_ip', 'ASC'], ['retrieved_at', 'DESC']],
@@ -196,9 +204,79 @@ exports.getDashboardData = async (req, res) => {
       recentActivity,
       lastUpdated: new Date().toISOString(),
       apiError: false,
+      deploymentStats: {
+        total: totalDeployments,
+        success: successDeployments,
+        failed: failedDeployments,
+        deleted: totalDeleted,
+      },
     });
   } catch (err) {
     res.status(500).json({ message: 'Erreur lors de la récupération du tableau de bord', error: err.message });
+  }
+};
+
+async function collectDeploymentStats(period = 'day') {
+  const deployments = await Deployment.findAll({ attributes: ['started_at', 'success'], raw: true });
+  const deletions = await Delete.findAll({ attributes: ['deleted_at'], raw: true });
+
+  const formatKey = (date) => {
+    const d = new Date(date);
+    if (period === 'month') {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    if (period === 'week') {
+      const firstJan = new Date(d.getFullYear(), 0, 1);
+      const day = Math.floor((d - firstJan) / 86400000);
+      const week = Math.ceil((day + firstJan.getDay() + 1) / 7);
+      return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
+    }
+    return d.toISOString().slice(0, 10);
+  };
+
+  const map = {};
+  deployments.forEach((dep) => {
+    if (!dep.started_at) return;
+    const key = formatKey(dep.started_at);
+    if (!map[key]) map[key] = { period: key, deployed: 0, deleted: 0, success: 0, failed: 0 };
+    map[key].deployed += 1;
+    if (dep.success === true) map[key].success += 1;
+    if (dep.success === false) map[key].failed += 1;
+  });
+  deletions.forEach((del) => {
+    if (!del.deleted_at) return;
+    const key = formatKey(del.deleted_at);
+    if (!map[key]) map[key] = { period: key, deployed: 0, deleted: 0, success: 0, failed: 0 };
+    map[key].deleted += 1;
+  });
+  const timeline = Object.values(map).sort((a, b) => (a.period < b.period ? -1 : 1));
+
+  const total = deployments.length;
+  const success = deployments.filter((d) => d.success === true).length;
+  const failed = deployments.filter((d) => d.success === false).length;
+  const deleted = deletions.length;
+
+  return { totals: { deployed: total, success, failed, deleted }, timeline };
+}
+
+exports.getDeploymentStats = async (req, res) => {
+  try {
+    const period = req.query.period || 'day';
+    const stats = await collectDeploymentStats(period);
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur lors du calcul des statistiques', error: err.message });
+  }
+};
+
+exports.getDeploymentInsights = async (req, res) => {
+  try {
+    const period = req.query.period || 'day';
+    const stats = await collectDeploymentStats(period);
+    const analysis = await analyzeDeploymentStats(stats);
+    res.json({ analysis });
+  } catch (err) {
+    res.status(500).json({ message: "Erreur lors de l'analyse des statistiques", error: err.message });
   }
 };
 
@@ -216,12 +294,15 @@ exports.getInfrastructureMap = async (req, res) => {
     const proxmoxResp = await axios.get(proxmoxUrl, { httpsAgent, headers });
     const proxmoxVms = proxmoxResp.data?.data || [];
 
-    // Map deployments by VM ID for quick lookup
-    const deployments = await Deployment.findAll();
+    // Latest "deployed" records indexed by VM ID (vm_id not unique)
+    const deployments = await Deployment.findAll({
+      where: { status: 'deployed' },
+      order: [['created_at', 'DESC']],
+    });
     const deploymentMap = {};
     deployments.forEach((d) => {
       if (!deploymentMap[d.vm_id]) {
-        deploymentMap[d.vm_id] = d;
+        deploymentMap[d.vm_id] = d; // keep most recent
       }
     });
 
@@ -232,33 +313,32 @@ exports.getInfrastructureMap = async (req, res) => {
     const latestMap = extractLatestMonitoring(records);
 
     // Build server list starting from Proxmox VMs and enriching with DB data
-    const servers = proxmoxVms
-      .map((vm) => {
-        const dep = deploymentMap[vm.vmid];
-        if (!dep) return null; // only keep VMs that exist in both Proxmox and DB
+    const servers = proxmoxVms.map((vm) => {
+      const dep = deploymentMap[vm.vmid];
+      const ip = dep?.vm_ip || vm.ip || 'N/A';
+      const zone = (dep?.zone || 'LAN').toUpperCase();
 
-        const monitor = latestMap[dep.vm_ip];
-        let status = 'unsupervised';
-        let uptime = 'N/A';
-        if (monitor) {
-          const services = monitor.services_status?.services || [];
-          const hasAlert = services.some((sv) => sv.active !== 'active');
-          status = hasAlert ? 'alert' : 'ok';
-          uptime = monitor.system_status?.uptime || monitor.system_status?.uptime_sec || 'N/A';
-        }
+      const monitor = dep ? latestMap[ip] : null;
+      let status = 'unsupervised';
+      let uptime = 'N/A';
+      if (monitor) {
+        const services = monitor.services_status?.services || [];
+        const hasAlert = services.some((sv) => sv.active !== 'active');
+        status = hasAlert ? 'alert' : 'ok';
+        uptime = monitor.system_status?.uptime || monitor.system_status?.uptime_sec || 'N/A';
+      }
 
-        return {
-          id: String(vm.vmid),
-          name: dep.vm_name || vm.name,
-          ip: dep.vm_ip,
-          zone: (dep.zone || '').toUpperCase(),
-          role: dep.service_name || 'unknown',
-          isTemplate: vm.template === 1,
-          status,
-          uptime,
-        };
-      })
-      .filter(Boolean);
+      return {
+        id: String(vm.vmid),
+        name: dep?.vm_name || vm.name || `vm-${vm.vmid}`,
+        ip,
+        zone,
+        role: dep?.service_name || 'unknown',
+        isTemplate: vm.template === 1,
+        status,
+        uptime,
+      };
+    });
     // Layout configuration for each zone expressed as ratios of the map container
     const zoneLayouts = {
       LAN: { left: 0.05, top: 0.1, width: 0.4, height: 0.8 },

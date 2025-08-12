@@ -102,7 +102,43 @@ Voici des logs de déploiement :
 ${content}
 \`\`\`
 
-Résume en quelques lignes ce que ces logs montrent.
+1. Résume les événements principaux de ce déploiement.
+2. Indique si la configuration utilisée semblait adaptée.
+3. Propose des optimisations possibles après le déploiement (performance, sécurité, monitoring).
+`,
+    ref,
+  );
+}
+
+async function analyzeDeploymentPlan(plan, ref) {
+  return cachedResponse(
+    'analyze_deployment_plan',
+    typeof plan === 'string' ? plan : JSON.stringify(plan),
+    (content) => `
+Les paramètres suivants seront utilisés pour un déploiement de VM :
+${content}
+
+1. Analyse si cette configuration est optimale pour le serveur et les services à déployer.
+2. Suggère des améliorations avant le déploiement (optimisation des ressources, configurations alternatives, services complémentaires).
+3. Donne des recommandations post-déploiement concernant la performance, la sécurité ou le monitoring.
+`,
+    ref,
+  );
+}
+
+async function analyzeDeploymentStats(stats, ref) {
+  return cachedResponse(
+    'analyze_dashboard',
+    typeof stats === 'string' ? stats : JSON.stringify(stats),
+    (content) => `
+Les statistiques suivantes concernent les déploiements et suppressions de VM :
+${content}
+
+Analyse ces données pour un administrateur système.
+1. Mets en avant les tendances marquantes (succès/échecs, pics d'activité).
+2. Fournis une conclusion claire sur l'état global des déploiements.
+3. Propose des recommandations ou actions pour améliorer les déploiements.
+Ne te contente pas de décrire les chiffres, interprète-les et conseille.
 `,
     ref,
   );
@@ -155,6 +191,8 @@ module.exports = {
   analyzeAndImproveScript,
   explainTemplateVariables,
   summarizeDeploymentLogs,
+  analyzeDeploymentPlan,
+  analyzeDeploymentStats,
   suggestSmartBundle,
   simulateScriptExecution,
   generateScript,

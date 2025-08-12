@@ -19,12 +19,26 @@ exports.stream = async (req, res) => {
   });
   res.write("\n");
 
-  // Abonnement
+  // Abonnement au hub
   addClient(dep.instance_id, res);
 
   // Envoyer l’état courant immédiatement
   publish(dep.instance_id, "status", { status: dep.status });
 
+  // Heartbeat: ping périodique pour garder la connexion ouverte
+  const pingTimer = setInterval(() => {
+    try {
+      res.write(`event: ping\n`);
+      res.write(`data: {"ts":${Date.now()}}\n\n`);
+    } catch {
+      clearInterval(pingTimer);
+      removeClient(dep.instance_id, res);
+    }
+  }, 10_000);
+
   // Cleanup à la fermeture
-  req.on("close", () => removeClient(dep.instance_id, res));
+  req.on("close", () => {
+    clearInterval(pingTimer);
+    removeClient(dep.instance_id, res);
+  });
 };

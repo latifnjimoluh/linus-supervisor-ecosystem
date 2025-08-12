@@ -7,7 +7,8 @@ const { ServiceTemplate, GeneratedScript, UserSetting, Deployment } = require('.
 const { checkIfVMNameExists } = require('../proxmox/proxmoxController');
 const { runTerraformApplyStream } = require('../../utils/terraformRunner');
 const { logAction } = require('../../middlewares/log');
-const { publish } = require('../../utils/sseHub'); // pour pousser des events SSE (error/status/done)
+const axios = require('axios');
+const https = require('https');
 const isUUID = (v) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 
@@ -89,6 +90,26 @@ exports.deploy = async (req, res) => {
     const nameAlreadyExists = await checkIfVMNameExists(proxmoxCreds, vmName);
     if (nameAlreadyExists) {
       return res.status(400).json({ message: `❌ Le nom de VM '${vmName}' existe déjà.` });
+    }
+
+    // Vérification de l'espace disque disponible sur le stockage cible
+    try {
+      const url = `${payload.proxmox_api_url}/nodes/${payload.proxmox_node}/storage/${payload.vm_storage}/status`;
+      const headers = {
+        Authorization: `PVEAPIToken=${payload.proxmox_api_token_id}!${payload.proxmox_api_token_name}=${payload.proxmox_api_token_secret}`,
+      };
+      const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+      const resp = await axios.get(url, { httpsAgent, headers });
+      const available = Math.floor((resp.data?.data?.avail || 0) / (1024 ** 3));
+      const requested = parseInt(String(payload.disk_size).replace(/\D/g, ''), 10);
+      if (Number.isFinite(requested) && requested > available) {
+        return res.status(400).json({
+          message: `Espace disponible : ${available} Go – Taille VM demandée : ${requested} Go`,
+          suggested_size: available,
+        });
+      }
+    } catch (e) {
+      console.warn('⚠️ Impossible de vérifier l\'espace de stockage :', e.message);
     }
 
     // Résolution des scripts (accepte 'template' ou 'config' pour ServiceTemplate)
@@ -201,8 +222,6 @@ exports.deploy = async (req, res) => {
           log_path: logPath,
         });
 
-        // Double-sécurité: notifier la fin au flux SSE (le runner envoie déjà 'done')
-        publish(instanceId, 'done', {});
       } catch (error) {
         const endTime = new Date();
         const durationSec = Math.round((endTime - startTime) / 1000);
@@ -228,11 +247,6 @@ exports.deploy = async (req, res) => {
         // Audit interne
         await logAction(req, 'Échec Déploiement Terraform', { code: errCode, message: errMsg });
 
-        // Pousser sur le flux SSE pour l’UX
-        publish(instanceId, 'error', { code: errCode, message: errMsg });
-        publish(instanceId, 'status', { status: 'failed' });
-        publish(instanceId, 'done', {});
-
         console.error('❌ Job déploiement (async) :', error);
       }
     })();
@@ -243,50 +257,4 @@ exports.deploy = async (req, res) => {
       error: error.message,
     });
   }
-};
-
-// backend/controllers/deployments/stream.js
-const { Deployment } = require("../../models");
-const { addClient, removeClient, publish } = require("../../utils/sseHub");
-
-
-exports.stream = async (req, res) => {
-  const { id } = req.params;
-
-  const where = isUUID(id) ? { instance_id: id } : { id: Number(id) };
-  const dep = await Deployment.findOne({ where });
-  if (!dep) return res.status(404).end();
-
-  // Headers SSE
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache, no-transform",
-    "Connection": "keep-alive",
-    "X-Accel-Buffering": "no",
-  });
-  res.write("\n");
-
-  // Abonnement au hub
-  addClient(dep.instance_id, res);
-
-  // Envoyer l’état courant immédiatement
-  publish(dep.instance_id, "status", { status: dep.status });
-
-  // Heartbeat: un "ping" toutes les 10s pour signaler que le backend est vivant
-  const pingTimer = setInterval(() => {
-    try {
-      res.write(`event: ping\n`);
-      res.write(`data: {"ts":${Date.now()}}\n\n`);
-    } catch {
-      // si écriture impossible, on cleanup
-      clearInterval(pingTimer);
-      removeClient(dep.instance_id, res);
-    }
-  }, 10_000);
-
-  // Cleanup quand le client ferme
-  req.on("close", () => {
-    clearInterval(pingTimer);
-    removeClient(dep.instance_id, res);
-  });
 };

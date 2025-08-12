@@ -9,10 +9,23 @@ export interface DashboardData {
   recentActivity: Array<{ id: string; type: string; message: string; timestamp: string }>;
   lastUpdated: string;
   apiError: boolean;
+  deploymentStats: { total: number; success: number; failed: number; deleted: number };
 }
 
 export const getDashboard = async (): Promise<DashboardData> => {
   const res = await api.get("/dashboard");
+  return res.data;
+};
+
+export interface DeploymentStatsResponse {
+  totals: { deployed: number; success: number; failed: number; deleted: number };
+  timeline: Array<{ period: string; deployed: number; deleted: number; success: number; failed: number }>;
+}
+
+export const getDeploymentStats = async (
+  period: "day" | "week" | "month" = "day"
+): Promise<DeploymentStatsResponse> => {
+  const res = await api.get(`/dashboard/stats?period=${period}`);
   return res.data;
 };
 
@@ -31,4 +44,9 @@ export interface InfrastructureServer {
 export const getInfrastructureMap = async (): Promise<InfrastructureServer[]> => {
   const res = await api.get("/dashboard/map");
   return res.data;
+};
+
+export const getDashboardInsights = async (): Promise<string> => {
+  const res = await api.get("/dashboard/insights");
+  return res.data.analysis;
 };

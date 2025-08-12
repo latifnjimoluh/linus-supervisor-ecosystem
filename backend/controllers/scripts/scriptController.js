@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { GeneratedScript, Sequelize } = require('../../models');
+const { logAction } = require('../../middlewares/log');
+const { analyzeAndImproveScript } = require('../../services/iaService');
 
 const preview = (req, res) => {
   const { serverId, service } = req.params;
@@ -18,13 +20,14 @@ const preview = (req, res) => {
 
 const listGeneratedScripts = async (req, res) => {
   try {
-    const { category, service_type } = req.query;
+    const { category, service_type, status = 'actif' } = req.query;
     const where = {};
     if (category) where.category = category;
     if (service_type) where.service_type = service_type;
+    if (status !== 'all') where.status = status;
 
     const scripts = await GeneratedScript.findAll({
-      attributes: ['id', 'category', 'service_type', 'script_path', 'description'],
+      attributes: ['id', 'category', 'service_type', 'script_path', 'description', 'status'],
       where,
       order: [['category', 'ASC'], ['id', 'ASC']],
     });
@@ -65,6 +68,49 @@ const getGeneratedScript = async (req, res) => {
   }
 };
 
+const analyzeScript = async (req, res) => {
+  const { script } = req.body;
+  if (!script) return res.status(400).json({ message: 'Script manquant.' });
+  try {
+    const aiResponse = await analyzeAndImproveScript(script, {
+      entityType: 'script',
+      entityId: req.params.id,
+    });
+    res.status(200).json({ analysis: aiResponse });
+  } catch (err) {
+    console.error('Erreur analyzeScript:', err);
+    res.status(500).json({ message: "Échec de l'analyse IA." });
+  }
+};
+
+const deleteScript = async (req, res) => {
+  try {
+    const script = await GeneratedScript.findByPk(req.params.id);
+    if (!script) return res.status(404).json({ message: 'Script introuvable' });
+    script.status = 'supprime';
+    await script.save();
+    await logAction(req, `delete_script:${script.id}`);
+    res.json({ message: 'Script supprimé' });
+  } catch (err) {
+    console.error('Erreur deleteScript:', err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+const restoreScript = async (req, res) => {
+  try {
+    const script = await GeneratedScript.findByPk(req.params.id);
+    if (!script) return res.status(404).json({ message: 'Script introuvable' });
+    script.status = 'actif';
+    await script.save();
+    await logAction(req, `restore_script:${script.id}`);
+    res.json({ message: 'Script réactivé' });
+  } catch (err) {
+    console.error('Erreur restoreScript:', err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
 const listServiceTypes = async (req, res) => {
   try {
     const types = await GeneratedScript.findAll({
@@ -78,4 +124,12 @@ const listServiceTypes = async (req, res) => {
   }
 };
 
-module.exports = { preview, listGeneratedScripts, listServiceTypes, getGeneratedScript };
+module.exports = {
+  preview,
+  listGeneratedScripts,
+  listServiceTypes,
+  getGeneratedScript,
+  analyzeScript,
+  deleteScript,
+  restoreScript,
+};

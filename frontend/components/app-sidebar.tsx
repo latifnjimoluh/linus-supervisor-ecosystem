@@ -19,6 +19,10 @@ import {
   X,
   ChevronDown,
   User,
+  History,
+  TrendingUp,
+  Info,
+  HelpCircle,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -43,6 +47,7 @@ const navItems: NavItem[] = [
     children: [
       { href: "/dashboard", icon: LayoutDashboard, label: "Vue d'ensemble" },
       { href: "/dashboard/map", icon: Map, label: "Carte Infra" },
+      { href: "/dashboard/stats", icon: TrendingUp, label: "Statistiques" },
     ],
   },
   {
@@ -53,7 +58,10 @@ const navItems: NavItem[] = [
   {
     label: "Déploiement",
     icon: Server,
-    children: [{ href: "/deploy", icon: Server, label: "Déployer" }],
+    children: [
+      { href: "/deploy", icon: Server, label: "Déployer" },
+      { href: "/deploy/history", icon: History, label: "Historique des VM" },
+    ],
   },
   {
     label: "Scripts & Templates",
@@ -93,6 +101,9 @@ const navItems: NavItem[] = [
       { href: "/settings/templates", icon: FileText, label: "Templates de Provisionnement" },
     ],
   },
+  { label: "À propos", icon: Info, href: "/about" },
+  { label: "Politique de confidentialité", icon: Shield, href: "/privacy" },
+  { label: "Aide", icon: HelpCircle, href: "/help" },
 ]
 export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
   const pathname = usePathname()

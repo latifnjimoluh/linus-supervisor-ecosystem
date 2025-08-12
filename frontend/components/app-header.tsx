@@ -37,6 +37,12 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
         <span className="sr-only">Toggle sidebar</span>
       </Button>
       <div className="flex-1" />
+      <Link href="/help#search">
+        <Button variant="ghost" size="icon" className="rounded-full">
+          <HelpCircle className="h-5 w-5" />
+          <span className="sr-only">Besoin d'aide ?</span>
+        </Button>
+      </Link>
       <Button variant="ghost" size="icon" className="rounded-full">
         <Bell className="h-5 w-5" />
         <span className="sr-only">Notifications</span>

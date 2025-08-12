@@ -24,6 +24,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "
 import { Checkbox } from "@/components/ui/checkbox"
 import { runDeployment } from "@/services/terraform"
 import { getGeneratedScripts, getServiceTypes, ScriptGroup } from "@/services/scripts"
+import { listProxmoxTemplates, ProxmoxVM } from "@/services/vms"
+import { analyzeDeploymentConfig, checkDeploymentSpace } from "@/services/deployments"
 
 // -------------------- Helpers noms VM --------------------
 const VM_NAME_REGEX = /^[a-z0-9.-]+$/
@@ -91,6 +93,13 @@ export default function DeployPage() {
   const [copied, setCopied] = React.useState(false)
   const [serviceTypes, setServiceTypes] = React.useState<string[]>([])
   const [scriptGroups, setScriptGroups] = React.useState<ScriptGroup[]>([])
+  const [templates, setTemplates] = React.useState<ProxmoxVM[]>([])
+  const [spaceInfo, setSpaceInfo] = React.useState<{
+    available: number
+    requested: number
+    fits: boolean
+    suggested: number
+  } | null>(null)
 
   const {
     register,
@@ -129,13 +138,20 @@ export default function DeployPage() {
   }, [scriptGroups])
 
   React.useEffect(() => {
-    Promise.all([getServiceTypes(), getGeneratedScripts()]).then(
-      ([types, scripts]) => {
+    Promise.all([getServiceTypes(), getGeneratedScripts(), listProxmoxTemplates()]).then(
+      ([types, scripts, tmpl]) => {
         setServiceTypes(types)
         setScriptGroups(scripts)
+        setTemplates(tmpl)
       }
     )
   }, [])
+
+  React.useEffect(() => {
+    checkDeploymentSpace(formData.disk_size)
+      .then(setSpaceInfo)
+      .catch(() => setSpaceInfo(null))
+  }, [formData.disk_size])
 
   // Sanitize à la sortie du champ
   const applySanitizeOnBlur = () => {
@@ -232,7 +248,7 @@ export default function DeployPage() {
     formData.template_name
   }, RAM: ${formData.memory_mb}MB, CPU: ${
     formData.vcpu_cores
-  } coeurs. Service Type: ${formData.service_type}. Scripts: ${
+  } coeurs, Disque: ${formData.disk_size}Go. Service Type: ${formData.service_type}. Scripts: ${
     formData.script_refs?.map((s: any) => scriptMap.get(s.id)?.name).join(", ") ||
     "None"
   }.`
@@ -284,10 +300,23 @@ export default function DeployPage() {
 
               <div className="space-y-2">
                 <Label>Template de base</Label>
-                <Input
-                  id="template_name"
-                  placeholder="ubuntu-template"
-                  {...register("template_name")}
+                <Controller
+                  name="template_name"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un template" />
+                      </SelectTrigger>
+                      <SelectContent className="min-w-[12rem] max-h-60">
+                        {templates.map((t) => (
+                          <SelectItem key={t.vmid} value={t.name}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 />
                 {errors.template_name && (
                   <p className="text-sm text-destructive">
@@ -498,6 +527,24 @@ export default function DeployPage() {
                         <div className="text-sm text-muted-foreground text-center">
                           {field.value} Go
                         </div>
+                        {spaceInfo && (
+                          <p className="text-xs text-muted-foreground text-center mt-1">
+                            Espace disponible : {spaceInfo.available} Go – Taille demandée : {spaceInfo.requested} Go
+                          </p>
+                        )}
+                        {spaceInfo && !spaceInfo.fits && (
+                          <div className="text-xs text-center text-destructive mt-1">
+                            Espace insuffisant.
+                            <Button
+                              variant="link"
+                              type="button"
+                              onClick={() => setValue('disk_size', spaceInfo.suggested)}
+                              className="px-1"
+                            >
+                              Utiliser {spaceInfo.suggested} Go
+                            </Button>
+                          </div>
+                        )}
                       </>
                     )}
                   />
@@ -625,7 +672,7 @@ export default function DeployPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={!isValid || isSubmitting}
+                disabled={!isValid || isSubmitting || (spaceInfo && !spaceInfo.fits)}
               >
                 {isSubmitting ? "Déploiement en cours..." : "Lancer le déploiement"}
               </Button>
@@ -635,46 +682,19 @@ export default function DeployPage() {
                   title="Suggestion IA"
                   context={aiContext}
                   onAnalyze={async () => {
-                    // simulate
-                    await new Promise((r) => setTimeout(r, 500))
-
-                    const form = document.querySelector("form")
-                    const fields = form
-                      ? form.querySelectorAll("input, select, textarea")
-                      : []
-                    const filled = Array.from(fields).filter((el) => {
-                      if (
-                        el instanceof HTMLInputElement ||
-                        el instanceof HTMLSelectElement ||
-                        el instanceof HTMLTextAreaElement
-                      ) {
-                        return !!el.value
-                      }
-                      return false
-                    })
-
-                    const suggestions: string[] = []
-                    if (formData.memory_mb < 4096) {
-                      suggestions.push(
-                        "Envisagez au moins 4096Mo de RAM pour de meilleures performances."
-                      )
+                    const config = {
+                      vm_names: sanitizeVmNames(formData.vm_names || ""),
+                      template_name: formData.template_name,
+                      service_type: formData.service_type,
+                      memory_mb: formData.memory_mb,
+                      vcpu_cores: formData.vcpu_cores,
+                      vcpu_sockets: formData.vcpu_sockets,
+                      disk_size: formData.disk_size,
+                      scripts:
+                        formData.script_refs?.map((s: any) => scriptMap.get(s.id)?.name) || [],
                     }
-                    if (formData.vcpu_cores < 4) {
-                      suggestions.push(
-                        "4 coeurs CPU sont recommandés pour ce type de service."
-                      )
-                    }
-                    if (!formData.service_type) {
-                      suggestions.push("Le type de service n'est pas défini.")
-                    }
-
-                    return (
-                      `Le formulaire contient ${fields.length} champ(s), dont ${filled.length} rempli(s). ` +
-                      `Configuration actuelle : ${formData.memory_mb}Mo de RAM, ${formData.vcpu_cores} coeur(s) CPU, disque ${formData.disk_size}Go.` +
-                      (suggestions.length
-                        ? "\n\n" + suggestions.join(" ")
-                        : "\n\nLa configuration semble adéquate.")
-                    )
+                    const { analysis } = await analyzeDeploymentConfig(config)
+                    return analysis
                   }}
                 />
               </div>

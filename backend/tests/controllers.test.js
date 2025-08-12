@@ -25,8 +25,18 @@ const cases = [
   { method: 'get', path: '/dashboard/servers', status: 401 },
   { method: 'post', path: '/dashboard/servers', status: 401 },
   { method: 'delete', path: '/dashboard/servers/1', status: 401 },
+  { method: 'get', path: '/dashboard/stats', status: 401 },
+  { method: 'get', path: '/dashboard/insights', status: 401 },
   { method: 'get', path: '/alerts', status: 401 },
   { method: 'get', path: '/ai-cache', status: 401 },
+  { method: 'get', path: '/deployments/history', status: 401 },
+  { method: 'get', path: '/deployments/1/summary', status: 401 },
+  { method: 'get', path: '/deployments/check-space', status: 401 },
+  { method: 'post', path: '/deployments/analyze', status: 401 },
+  { method: 'post', path: '/templates/1/restore', status: 401 },
+  { method: 'post', path: '/scripts/1/analyze', status: 401 },
+  { method: 'delete', path: '/scripts/1', status: 401 },
+  { method: 'post', path: '/scripts/1/restore', status: 401 },
 ];
 
 afterEach(() => {

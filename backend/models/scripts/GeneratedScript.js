@@ -28,6 +28,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    status: {
+      type: DataTypes.ENUM('actif', 'supprime'),
+      defaultValue: 'actif',
+    },
   }, {
     tableName: 'generated_scripts',
     underscored: true,

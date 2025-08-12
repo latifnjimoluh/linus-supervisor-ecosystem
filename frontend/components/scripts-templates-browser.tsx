@@ -27,38 +27,25 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { fetchTemplatesAndScripts, type Template } from "@/lib/templates"
-import type { Script } from "@/lib/scripts"
-import { getScriptContent } from "@/lib/scripts"
+import {
+  fetchTemplatesAndScripts,
+  deleteTemplate,
+  restoreTemplate,
+  analyzeTemplate,
+  type Template,
+} from "@/lib/templates"
+import {
+  getScriptContent,
+  deleteScript,
+  restoreScript,
+  analyzeScript,
+  type Script,
+} from "@/lib/scripts"
 import dynamic from "next/dynamic"
 import { useTheme } from "next-themes"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
-
-const simulateScriptsTemplatesAIAnalysis = async (context: string): Promise<string> => {
-  await new Promise(resolve => setTimeout(resolve, 2000))
-
-  const prompt = `Tu es un assistant qui évalue l'inventaire de scripts. D'après les données suivantes, résume la répartition et donne deux recommandations : ${context}`
-  const match = context.match(/Scripts: (\d+), Templates: (\d+)/)
-  const scripts = match ? parseInt(match[1]) : 0
-  const templates = match ? parseInt(match[2]) : 0
-  const total = scripts + templates
-
-  return `🤖 **Analyse IA des scripts et templates**\\n\\n${total} éléments : ${scripts} scripts et ${templates} templates.\\n\\n**Recommandations :**\\n- Optimisez l'organisation par catégorie\\n- Créez des scripts pour compléter les templates manquants\\n\\n*Prompt utilisé :* ${prompt}`
-}
-
-const simulateItemAIAnalysis = async (context: string): Promise<string> => {
-  await new Promise(resolve => setTimeout(resolve, 2000))
-
-  const prompt = `Analyse l'élément suivant et explique son utilité en une phrase puis propose une amélioration : ${context}`
-  const [nameLine = "", typeLine = "", descLine = ""] = context.split("\n")
-  const name = nameLine.replace("Nom: ", "")
-  const type = typeLine.replace("Type: ", "")
-  const desc = descLine.replace("Description: ", "")
-
-  return `🤖 **Analyse IA du ${type} "${name}"**\\n\\nRésumé : ${desc}\\n\\n**Suggestion :** envisagez de documenter davantage ou de factoriser ce ${type}.\\n\\n*Prompt utilisé :* ${prompt}`
-}
 
 export type ScriptOrTemplate = Template | Script
 
@@ -80,14 +67,19 @@ export default function ScriptsTemplatesBrowser({
   const [copied, setCopied] = React.useState(false)
   const [items, setItems] = React.useState<ScriptOrTemplate[]>([])
   const [categoryFilter, setCategoryFilter] = React.useState<CategoryFilter>("ALL")
+  const [statusFilter, setStatusFilter] = React.useState<'actif' | 'supprime' | 'all'>('actif')
   const { toast } = useToast()
   const { theme } = useTheme()
 
-  React.useEffect(() => {
-    fetchTemplatesAndScripts()
+  const refreshItems = React.useCallback(() => {
+    fetchTemplatesAndScripts(statusFilter)
       .then(({ templates, scripts }) => setItems([...(scripts ?? []), ...(templates ?? [])]))
       .catch(() => setItems([]))
-  }, [])
+  }, [statusFilter])
+
+  React.useEffect(() => {
+    refreshItems()
+  }, [refreshItems])
 
   const categories = React.useMemo(
     () =>
@@ -112,7 +104,6 @@ export default function ScriptsTemplatesBrowser({
 
   const filteredScripts = filteredBase.filter((t) => t.type === "script")
   const filteredTemplates = filteredBase.filter((t) => t.type === "template")
-  const aiContext = `Scripts: ${filteredScripts.length}, Templates: ${filteredTemplates.length}`
 
   const copyContent = (content: string) => {
     navigator.clipboard.writeText(content)
@@ -135,6 +126,38 @@ export default function ScriptsTemplatesBrowser({
         .finally(() => setLoading(false))
     } else {
       setItemContent(item.template_content)
+    }
+  }
+
+  const analyzeItem = async (item: ScriptOrTemplate): Promise<string> => {
+    const content =
+      item.type === 'template' ? item.template_content : await getScriptContent(item.id)
+    const res =
+      item.type === 'template'
+        ? await analyzeTemplate(content, item.id)
+        : await analyzeScript(content, item.id)
+    return res.analysis
+  }
+
+  const handleDelete = async (item: ScriptOrTemplate) => {
+    try {
+      if (item.type === 'template') await deleteTemplate(item.id)
+      else await deleteScript(item.id)
+      toast({ title: 'Élément supprimé', variant: 'success' })
+      refreshItems()
+    } catch {
+      toast({ title: 'Erreur', description: 'Suppression impossible', variant: 'destructive' })
+    }
+  }
+
+  const handleRestore = async (item: ScriptOrTemplate) => {
+    try {
+      if (item.type === 'template') await restoreTemplate(item.id)
+      else await restoreScript(item.id)
+      toast({ title: 'Élément réactivé', variant: 'success' })
+      refreshItems()
+    } catch {
+      toast({ title: 'Erreur', description: 'Réactivation impossible', variant: 'destructive' })
     }
   }
 
@@ -239,12 +262,21 @@ export default function ScriptsTemplatesBrowser({
                   <DialogContent className="max-w-md">
                     <AssistantAIBlock
                       title={`Analyse IA de ${item.name}`}
-                      context={`Nom: ${item.name}\nType: ${item.type}\nDescription: ${item.description || 'Aucune description'}`}
-                      onAnalyze={simulateItemAIAnalysis}
+                      context={`${item.type}:${item.id}`}
+                      onAnalyze={() => analyzeItem(item)}
                       className="w-full"
                     />
                   </DialogContent>
                 </Dialog>
+                {item.status === 'actif' ? (
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(item)}>
+                    Supprimer
+                  </Button>
+                ) : (
+                  <Button variant="secondary" size="sm" onClick={() => handleRestore(item)}>
+                    Réactiver
+                  </Button>
+                )}
               </div>
             </Card>
           </motion.div>
@@ -285,6 +317,19 @@ export default function ScriptsTemplatesBrowser({
             ))}
           </SelectContent>
         </Select>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+          <SelectTrigger className="w-full md:w-[180px]">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              <SelectValue placeholder="Statut" />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="actif">Actif</SelectItem>
+            <SelectItem value="supprime">Supprimé</SelectItem>
+            <SelectItem value="all">Tous</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {renderGrid(itemsToShow)}
@@ -322,12 +367,6 @@ export default function ScriptsTemplatesBrowser({
         <TabsContent value="scripts">{renderSection(filteredScripts)}</TabsContent>
         <TabsContent value="templates">{renderSection(filteredTemplates)}</TabsContent>
       </Tabs>
-      <AssistantAIBlock
-        title="Assistant IA des scripts & templates"
-        context={aiContext}
-        onAnalyze={simulateScriptsTemplatesAIAnalysis}
-        className="w-full"
-      />
     </div>
   )
 }
