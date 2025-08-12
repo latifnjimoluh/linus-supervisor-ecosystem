@@ -71,6 +71,28 @@ exports.updateUserSettings = async (req, res) => {
   }
 };
 
+// 🎛️ Mettre à jour les préférences de stockage (nœud + stockage)
+exports.updateStorageSettings = async (req, res) => {
+  console.log('📥 updateStorageSettings called for user', req.user?.id, req.body);
+  const userId = req.user?.id;
+  const { proxmox_node, vm_storage } = req.body;
+
+  try {
+    let settings = await UserSetting.findOne({ where: { user_id: userId } });
+    if (!settings) {
+      return res.status(404).json({ message: 'Paramètres non trouvés. Veuillez d\'abord les créer.' });
+    }
+
+    await settings.update({ proxmox_node, vm_storage });
+
+    console.log('✅ Préférences de stockage mises à jour');
+    return res.status(200).json({ message: 'Préférences de stockage mises à jour', settings });
+  } catch (err) {
+    console.error('❌ Erreur updateStorageSettings:', err);
+    return res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
 exports.createUserSettings = async (req, res) => {
   console.log('📥 createUserSettings called for user', req.user?.id, req.body);
   const userId = req.user?.id;

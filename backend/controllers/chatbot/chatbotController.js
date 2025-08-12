@@ -20,6 +20,9 @@ const MODEL_FALLBACK_ID = process.env.MODEL_FALLBACK_ID || '';
 const modelPrimary = genAI ? genAI.getGenerativeModel({ model: MODEL_ID }) : null;
 const modelFallback = genAI && MODEL_FALLBACK_ID ? genAI.getGenerativeModel({ model: MODEL_FALLBACK_ID }) : null;
 
+exports.SYSTEM_PROMPT = SYSTEM_PROMPT;
+exports.modelPrimary = modelPrimary;
+
 async function generateContent(prompt) {
   if (!modelPrimary) throw new Error('LLM_not_configured');
   try {

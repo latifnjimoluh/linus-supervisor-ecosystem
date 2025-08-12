@@ -127,7 +127,7 @@ export function AssistantAIBlock({ title, context, onAnalyze, initialOpen = fals
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
-                  className="mt-4 p-4 border rounded-xl bg-muted/50 dark:bg-background/50 text-sm whitespace-pre-wrap"
+                  className="mt-4 p-4 border rounded-xl bg-muted/50 dark:bg-background/50 text-sm whitespace-pre-wrap max-h-[60vh] overflow-auto"
                 >
                   {aiResponse}
                   <div className="flex justify-end gap-2 mt-4">

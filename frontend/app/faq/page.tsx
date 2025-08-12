@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import { Input } from "@/components/ui/input"
 
@@ -91,6 +93,7 @@ const topQuestions = [
 
 export default function FAQPage() {
   const [query, setQuery] = useState("")
+  const router = useRouter()
 
   const filtered = useMemo(() =>
     sections.map(section => ({
@@ -101,6 +104,7 @@ export default function FAQPage() {
 
   return (
     <div className="space-y-6">
+      <Button variant="outline" onClick={() => router.back()}>Retour</Button>
       <h1 className="text-4xl font-semibold">Foire Aux Questions</h1>
       <p>Cette section répond aux questions les plus fréquentes concernant l’utilisation de la plateforme de supervision Linux du BUNEC.</p>
 

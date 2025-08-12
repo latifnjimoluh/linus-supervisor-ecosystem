@@ -52,6 +52,14 @@ export const updateMySettings = async (data: Partial<UserSettings>): Promise<Use
   return res.data;
 };
 
+export const updateStoragePreferences = async (data: {
+  proxmox_node: string;
+  vm_storage: string;
+}): Promise<UserSettings> => {
+  const res = await api.put("/settings/storage", data);
+  return res.data;
+};
+
 export const listAllSettings = async (): Promise<UserSettings[]> => {
   const res = await api.get("/settings");
   return res.data;

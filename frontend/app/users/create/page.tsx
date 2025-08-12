@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { createUser } from "@/services/users"
 import { listRoles, Role } from "@/services/roles"
+import { ErrorMessage } from "@/components/ui/error-message"
 
 interface CreateUserForm {
   first_name: string
@@ -148,7 +149,7 @@ export default function CreateUserPage() {
                     placeholder="Jean"
                   />
                   {errors.first_name && (
-                    <p className="text-sm text-destructive">{errors.first_name}</p>
+                    <ErrorMessage>{errors.first_name}</ErrorMessage>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -161,7 +162,7 @@ export default function CreateUserPage() {
                     placeholder="Dupont"
                   />
                   {errors.last_name && (
-                    <p className="text-sm text-destructive">{errors.last_name}</p>
+                    <ErrorMessage>{errors.last_name}</ErrorMessage>
                   )}
                 </div>
               </div>
@@ -179,9 +180,9 @@ export default function CreateUserPage() {
                     placeholder="jean.dupont@example.com"
                   />
                 </div>
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
+                  {errors.email && (
+                    <ErrorMessage>{errors.email}</ErrorMessage>
+                  )}
               </div>
 
               <div className="space-y-2">
@@ -197,9 +198,9 @@ export default function CreateUserPage() {
                     placeholder="Mot de passe sécurisé"
                   />
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
+                  {errors.password && (
+                    <ErrorMessage>{errors.password}</ErrorMessage>
+                  )}
                 <p className="text-xs text-muted-foreground">
                   Le mot de passe doit contenir au moins 8 caractères
                 </p>
@@ -220,9 +221,9 @@ export default function CreateUserPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.role_id && (
-                  <p className="text-sm text-destructive">{errors.role_id}</p>
-                )}
+                  {errors.role_id && (
+                    <ErrorMessage>{errors.role_id}</ErrorMessage>
+                  )}
               </div>
 
               <div className="flex gap-4 pt-6 border-t">

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Eye, EyeOff } from "lucide-react"
 import useAuth from "@/hooks/useAuth"
 import { useToast } from "@/hooks/use-toast"
@@ -15,6 +16,7 @@ import {
   getMySettings,
   updateMySettings,
 } from "@/services/settings"
+import { listProxmoxStorages, ProxmoxStorage } from "@/services/vms"
 
 export default function ProxmoxSettingsPage() {
   useAuth("/settings/proxmox")
@@ -29,6 +31,8 @@ export default function ProxmoxSettingsPage() {
   const [proxmoxNode, setProxmoxNode] = useState("")
   const [proxmoxHost, setProxmoxHost] = useState("")
   const [proxmoxSshUser, setProxmoxSshUser] = useState("")
+  const [vmStorage, setVmStorage] = useState("")
+  const [storageOptions, setStorageOptions] = useState<ProxmoxStorage[]>([])
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -45,6 +49,13 @@ export default function ProxmoxSettingsPage() {
         setProxmoxNode(data.proxmox_node || "")
         setProxmoxHost(data.proxmox_host || "")
         setProxmoxSshUser(data.proxmox_ssh_user || "")
+        setVmStorage(data.vm_storage || "")
+        try {
+          const list = await listProxmoxStorages()
+          setStorageOptions(list)
+        } catch (err) {
+          console.error('listProxmoxStorages error', err)
+        }
       } else {
         setHasSettings(false)
       }
@@ -64,6 +75,7 @@ export default function ProxmoxSettingsPage() {
       proxmox_node: proxmoxNode,
       proxmox_host: proxmoxHost,
       proxmox_ssh_user: proxmoxSshUser,
+      vm_storage: vmStorage,
     }
     try {
       if (hasSettings) {
@@ -151,6 +163,25 @@ export default function ProxmoxSettingsPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="vm-storage">Stockage par défaut</Label>
+              <Select
+                value={vmStorage}
+                onValueChange={setVmStorage}
+                disabled={loading || storageOptions.length === 0}
+              >
+                <SelectTrigger id="vm-storage">
+                  <SelectValue placeholder="Sélectionnez un stockage" />
+                </SelectTrigger>
+                <SelectContent>
+                  {storageOptions.map((s) => (
+                    <SelectItem key={s.storage} value={s.storage}>
+                      {s.storage}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="proxmox-host">Hôte Proxmox</Label>
               <Input
                 id="proxmox-host"
@@ -185,6 +216,7 @@ export default function ProxmoxSettingsPage() {
                 setProxmoxNode("")
                 setProxmoxHost("")
                 setProxmoxSshUser("")
+                setVmStorage("")
               }}
             >
               Annuler

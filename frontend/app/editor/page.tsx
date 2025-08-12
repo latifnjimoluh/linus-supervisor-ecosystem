@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { ErrorMessage } from "@/components/ui/error-message"
 import {
   fetchTemplatesAndScripts,
   updateTemplate,
@@ -585,16 +586,18 @@ export default function CodeEditorPage() {
               </div>
 
               {syntaxErrors.length > 0 && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                    <span className="font-medium text-destructive">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <span className="font-medium text-red-600">
                       Erreurs de syntaxe
                     </span>
                   </div>
-                  <ul className="text-sm text-destructive space-y-1">
+                  <ul className="space-y-1">
                     {syntaxErrors.map((error, index) => (
-                      <li key={index}>• {error}</li>
+                      <li key={index}>
+                        <ErrorMessage>{error}</ErrorMessage>
+                      </li>
                     ))}
                   </ul>
                 </div>

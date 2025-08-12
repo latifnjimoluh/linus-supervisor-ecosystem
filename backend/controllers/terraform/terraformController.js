@@ -92,24 +92,56 @@ exports.deploy = async (req, res) => {
       return res.status(400).json({ message: `❌ Le nom de VM '${vmName}' existe déjà.` });
     }
 
-    // Vérification de l'espace disque disponible sur le stockage cible
+    // Vérification des capacités du nœud (disque, RAM, CPU)
     try {
-      const url = `${payload.proxmox_api_url}/nodes/${payload.proxmox_node}/storage/${payload.vm_storage}/status`;
       const headers = {
         Authorization: `PVEAPIToken=${payload.proxmox_api_token_id}!${payload.proxmox_api_token_name}=${payload.proxmox_api_token_secret}`,
       };
       const httpsAgent = new https.Agent({ rejectUnauthorized: false });
-      const resp = await axios.get(url, { httpsAgent, headers });
-      const available = Math.floor((resp.data?.data?.avail || 0) / (1024 ** 3));
-      const requested = parseInt(String(payload.disk_size).replace(/\D/g, ''), 10);
-      if (Number.isFinite(requested) && requested > available) {
+
+      // Disque
+      const storageUrl = `${payload.proxmox_api_url}/nodes/${payload.proxmox_node}/storage/${payload.vm_storage}/status`;
+      const storageResp = await axios.get(storageUrl, { httpsAgent, headers });
+      const diskAvail = Math.floor((storageResp.data?.data?.avail || 0) / (1024 ** 3));
+      const diskRequested = parseInt(String(payload.disk_size).replace(/\D/g, ''), 10);
+      if (Number.isFinite(diskRequested) && diskRequested > diskAvail) {
         return res.status(400).json({
-          message: `Espace disponible : ${available} Go – Taille VM demandée : ${requested} Go`,
-          suggested_size: available,
+          message: `Espace disponible : ${diskAvail} Go – Taille VM demandée : ${diskRequested} Go`,
+          suggested_size: diskAvail,
+        });
+      }
+
+      // RAM
+      const statusUrl = `${payload.proxmox_api_url}/nodes/${payload.proxmox_node}/status`;
+      const statusResp = await axios.get(statusUrl, { httpsAgent, headers });
+      const memTotal = statusResp.data?.data?.memory?.total || 0;
+      const memUsed = statusResp.data?.data?.memory?.used || 0;
+      const memFreeMb = Math.floor((memTotal - memUsed) / (1024 ** 2));
+      const memRequested = payload.memory_mb;
+      if (Number.isFinite(memRequested) && memRequested > memFreeMb) {
+        return res.status(400).json({
+          message: `RAM disponible : ${memFreeMb} Mo – RAM demandée : ${memRequested} Mo`,
+          suggested_ram: memFreeMb,
+        });
+      }
+
+      // CPU
+      const totalCores = statusResp.data?.data?.cpuinfo?.cores || 0;
+      const vmsUrl = `${payload.proxmox_api_url}/nodes/${payload.proxmox_node}/qemu`;
+      const vmsResp = await axios.get(vmsUrl, { httpsAgent, headers });
+      const usedCores = Array.isArray(vmsResp.data?.data)
+        ? vmsResp.data.data.reduce((sum, vm) => sum + (vm.cores || 0) * (vm.sockets || 1), 0)
+        : 0;
+      const coresFree = totalCores - usedCores;
+      const coresRequested = (payload.vcpu_cores || 0) * (payload.vcpu_sockets || 1);
+      if (Number.isFinite(coresRequested) && coresRequested > coresFree) {
+        return res.status(400).json({
+          message: `CPU disponible : ${coresFree} coeurs – CPU demandée : ${coresRequested} coeurs`,
+          suggested_cores: coresFree,
         });
       }
     } catch (e) {
-      console.warn('⚠️ Impossible de vérifier l\'espace de stockage :', e.message);
+      console.warn('⚠️ Impossible de vérifier les capacités du nœud :', e.message);
     }
 
     // Résolution des scripts (accepte 'template' ou 'config' pour ServiceTemplate)

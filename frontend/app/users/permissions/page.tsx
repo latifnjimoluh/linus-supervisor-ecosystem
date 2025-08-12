@@ -84,6 +84,7 @@ export default function PermissionsPage() {
   const [moduleFilter, setModuleFilter] = React.useState<string>("all")
   const [selectedRole, setSelectedRole] = React.useState<string>("all")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
+  const [selectedModule, setSelectedModule] = React.useState("general")
   const [formData, setFormData] = React.useState({ name: "", description: "", module: "" })
   const [formLoading, setFormLoading] = React.useState(false)
   const [assignLoading, setAssignLoading] = React.useState(false)
@@ -142,7 +143,8 @@ export default function PermissionsPage() {
   const modules = Array.from(new Set(allPermissions.map(p => p.module)))
 
   const handleCreatePermission = async () => {
-    if (!formData.name.trim() || !formData.description.trim() || !formData.module.trim()) {
+    const moduleName = selectedModule === "new" ? formData.module : selectedModule
+    if (!formData.name.trim() || !formData.description.trim() || !moduleName.trim()) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs",
@@ -177,7 +179,7 @@ export default function PermissionsPage() {
       const created = await createPermission({ name: formData.name, description: formData.description })
       const newPermission: Permission = {
         ...created,
-        module: formData.module,
+        module: moduleName,
         is_active: true,
       }
       setAllPermissions(prev => {
@@ -190,6 +192,7 @@ export default function PermissionsPage() {
         return updated
       })
       setFormData({ name: "", description: "", module: "" })
+      setSelectedModule("general")
       setIsCreateDialogOpen(false)
 
       toast({
@@ -341,7 +344,15 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
               </div>
               <div className="space-y-2">
                 <Label htmlFor="module">Module</Label>
-                <Select value={formData.module} onValueChange={(value) => setFormData(prev => ({ ...prev, module: value }))}>
+                <Select
+                  value={selectedModule}
+                  onValueChange={(value) => {
+                    setSelectedModule(value)
+                    if (value !== "new") {
+                      setFormData(prev => ({ ...prev, module: "" }))
+                    }
+                  }}
+                >
                   <SelectTrigger className="rounded-xl">
                     <SelectValue placeholder="Sélectionner un module" />
                   </SelectTrigger>
@@ -352,9 +363,10 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
                     <SelectItem value="new">Nouveau module...</SelectItem>
                   </SelectContent>
                 </Select>
-                {formData.module === "new" && (
+                {selectedModule === "new" && (
                   <Input
                     placeholder="Nom du nouveau module"
+                    value={formData.module}
                     onChange={(e) => setFormData(prev => ({ ...prev, module: e.target.value }))}
                     className="rounded-xl mt-2"
                   />
@@ -366,6 +378,7 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
                   onClick={() => {
                     setIsCreateDialogOpen(false)
                     setFormData({ name: "", description: "", module: "" })
+                    setSelectedModule("general")
                   }}
                   className="rounded-xl"
                 >

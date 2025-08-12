@@ -6,12 +6,12 @@ const {
   summarizeLogs,
   history,
   analyzeConfig,
-  checkSpace,
+  checkCapacity,
 } = require('../../controllers/deployments/deploymentController');
 const { stream } = require("../../controllers/deployments/stream");
 
 router.get('/history', verifyToken, checkPermission('deployment.run'), history);
-router.get('/check-space', verifyToken, checkPermission('deployment.run'), checkSpace);
+router.get('/check-capacity', verifyToken, checkPermission('deployment.run'), checkCapacity);
 router.post('/analyze', verifyToken, checkPermission('deployment.run'), analyzeConfig);
 router.get('/:id/stream', stream);
 router.get('/:id', verifyToken, checkPermission('deployment.run'), getById);

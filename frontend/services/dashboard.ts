@@ -46,7 +46,9 @@ export const getInfrastructureMap = async (): Promise<InfrastructureServer[]> =>
   return res.data;
 };
 
-export const getDashboardInsights = async (): Promise<string> => {
-  const res = await api.get("/dashboard/insights");
+export const getDashboardInsights = async (
+  period: "day" | "week" | "month" = "day"
+): Promise<string> => {
+  const res = await api.get(`/dashboard/insights?period=${period}`);
   return res.data.analysis;
 };

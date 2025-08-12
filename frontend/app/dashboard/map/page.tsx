@@ -47,7 +47,7 @@ export default function InfrastructureMapPage() {
   }, [fetchServers])
 
   const filteredServers = servers.filter(server =>
-    filterZone === "all" || server.zone === filterZone
+    !server.isTemplate && (filterZone === "all" || server.zone === filterZone)
   )
 
   const zoneSummary = { LAN: 0, WAN: 0, DMZ: 0 }

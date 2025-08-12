@@ -27,6 +27,7 @@ export interface HistoryFilters {
   user?: string;
   startDate?: string;
   endDate?: string;
+  template?: string;
 }
 
 export async function fetchDeploymentHistory(filters: HistoryFilters = {}) {
@@ -44,12 +45,19 @@ export async function analyzeDeploymentConfig(config: any): Promise<{ analysis: 
   return res.data;
 }
 
-export async function checkDeploymentSpace(diskSize: number): Promise<{
-  available: number;
-  requested: number;
-  fits: boolean;
-  suggested: number;
-}> {
-  const res = await api.get('/deployments/check-space', { params: { disk_size: diskSize } });
+export interface CapacityInfo {
+  disk: { available: number; requested: number; fits: boolean; suggested: number };
+  memory: { available: number; requested: number; fits: boolean; suggested: number };
+  cpu: { available: number; requested: number; fits: boolean; suggested: number };
+}
+
+export async function checkDeploymentCapacity(
+  diskSize: number,
+  memoryMb: number,
+  cores: number
+): Promise<CapacityInfo> {
+  const res = await api.get('/deployments/check-capacity', {
+    params: { disk_size: diskSize, memory_mb: memoryMb, cores },
+  });
   return res.data;
 }
