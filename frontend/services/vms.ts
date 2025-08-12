@@ -77,6 +77,46 @@ export async function listProxmoxVMs(): Promise<ProxmoxVMList> {
   return res.data as ProxmoxVMList;
 }
 
+export interface ProxmoxStorage {
+  storage: string;
+  content: string;
+  maxdisk: number;
+  disk: number;
+  plugintype: string;
+}
+
+export interface ProxmoxNode {
+  node: string;
+  status: string;
+}
+
+export interface NodeSystemInfo {
+  node: string;
+  memory: { total: number; used: number; free: number };
+  cpu: { cores: number; sockets: number };
+  disk: { total: number; used: number; free: number };
+}
+
+export async function listProxmoxStorages(): Promise<ProxmoxStorage[]> {
+  const res = await api.get('/vms/storages');
+  return res.data as ProxmoxStorage[];
+}
+
+export async function listProxmoxStoragesByNode(node: string): Promise<ProxmoxStorage[]> {
+  const res = await api.get('/vms/storages', { params: { node } });
+  return res.data as ProxmoxStorage[];
+}
+
+export async function listProxmoxNodes(): Promise<ProxmoxNode[]> {
+  const res = await api.get('/vms/nodes');
+  return res.data as ProxmoxNode[];
+}
+
+export async function getNodeSystemInfo(node?: string): Promise<NodeSystemInfo> {
+  const res = await api.get('/vms/system', { params: { node } });
+  return res.data as NodeSystemInfo;
+}
+
 export async function listProxmoxTemplates(): Promise<ProxmoxVM[]> {
   const res = await listProxmoxVMs();
   return res.templates;

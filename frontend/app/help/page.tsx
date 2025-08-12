@@ -2,6 +2,8 @@
 
 import Link from "next/link"
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -174,6 +176,7 @@ export default function HelpPage() {
   )
 
   const [query, setQuery] = useState("")
+  const router = useRouter()
 
   const filtered = sections.filter(
     (s) =>
@@ -183,6 +186,7 @@ export default function HelpPage() {
 
   return (
     <div className="space-y-6" id="search">
+      <Button variant="outline" onClick={() => router.back()}>Retour</Button>
       <h1 className="text-3xl font-semibold">Aide</h1>
       <Input
         placeholder="Rechercher dans l'aide..."

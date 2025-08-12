@@ -19,7 +19,7 @@ export async function askChatbotStream(
   messages: ChatMessage[],
   onToken: (token: string) => void
 ): Promise<void> {
-  const res = await fetch(`${api.defaults.baseURL}/chatbot/ask?stream=1`, {
+  const res = await fetch(`${api.defaults.baseURL}/chatbot/ask/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages }),
@@ -40,10 +40,18 @@ export async function askChatbotStream(
     const lines = buffer.split("\n");
     buffer = lines.pop() || "";
     for (const line of lines) {
-      if (line.startsWith("data:")) {
-        const token = line.slice(5).trim();
-        if (token === "[DONE]") return;
-        onToken(token);
+      const trimmed = line.trim();
+      if (trimmed.startsWith("data:")) {
+        const data = trimmed.slice(5).trim();
+        if (!data) continue;
+        try {
+          const obj = JSON.parse(data);
+          if (obj.delta) onToken(obj.delta);
+          if (obj.done) return;
+          if (obj.error) throw new Error(obj.error);
+        } catch (err) {
+          // ignore malformed JSON
+        }
       }
     }
   }

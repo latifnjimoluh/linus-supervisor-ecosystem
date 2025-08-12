@@ -193,7 +193,7 @@ export default function ScriptsTemplatesBrowser({
                     </Button>
                   </DialogTrigger>
                   {selectedItem?.id === item.id && (
-                    <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-3xl max-h-[70vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>{selectedItem.name}</DialogTitle>
                         <DialogDescription>
@@ -217,7 +217,7 @@ export default function ScriptsTemplatesBrowser({
                             value={loading ? "Chargement..." : itemContent}
                             language={selectedItem.type === "template" ? "json" : "bash"}
                             theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                            height="400px"
+                            height="60vh"
                             options={{
                               readOnly: true,
                               minimap: { enabled: true },
@@ -259,7 +259,13 @@ export default function ScriptsTemplatesBrowser({
                       <Sparkles className="mr-2 h-4 w-4" /> Analyse IA
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-md">
+                  <DialogContent className="max-w-md max-h-[70vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="sr-only">Analyse IA</DialogTitle>
+                      <DialogDescription className="sr-only">
+                        Résultat de l'analyse IA pour {item.name}
+                      </DialogDescription>
+                    </DialogHeader>
                     <AssistantAIBlock
                       title={`Analyse IA de ${item.name}`}
                       context={`${item.type}:${item.id}`}

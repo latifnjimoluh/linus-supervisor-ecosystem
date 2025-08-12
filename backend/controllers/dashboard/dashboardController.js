@@ -290,9 +290,10 @@ exports.getInfrastructureMap = async (req, res) => {
     const headers = {
       Authorization: `PVEAPIToken=${settings.proxmox_api_token_id}!${settings.proxmox_api_token_name}=${settings.proxmox_api_token_secret}`,
     };
-    const proxmoxUrl = `${settings.proxmox_api_url}/cluster/resources?type=vm`;
+    const proxmoxUrl = `${settings.proxmox_api_url}/cluster/resources?type=qemu`;
     const proxmoxResp = await axios.get(proxmoxUrl, { httpsAgent, headers });
-    const proxmoxVms = proxmoxResp.data?.data || [];
+    const proxmoxVms = (proxmoxResp.data?.data || [])
+      .filter((vm) => vm.type === 'qemu' && vm.template !== 1);
 
     // Latest "deployed" records indexed by VM ID (vm_id not unique)
     const deployments = await Deployment.findAll({

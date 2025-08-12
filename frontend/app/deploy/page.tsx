@@ -25,7 +25,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { runDeployment } from "@/services/terraform"
 import { getGeneratedScripts, getServiceTypes, ScriptGroup } from "@/services/scripts"
 import { listProxmoxTemplates, ProxmoxVM } from "@/services/vms"
-import { analyzeDeploymentConfig, checkDeploymentSpace } from "@/services/deployments"
+import { analyzeDeploymentConfig, checkDeploymentCapacity } from "@/services/deployments"
+import { ErrorMessage } from "@/components/ui/error-message"
 
 // -------------------- Helpers noms VM --------------------
 const VM_NAME_REGEX = /^[a-z0-9.-]+$/
@@ -94,12 +95,14 @@ export default function DeployPage() {
   const [serviceTypes, setServiceTypes] = React.useState<string[]>([])
   const [scriptGroups, setScriptGroups] = React.useState<ScriptGroup[]>([])
   const [templates, setTemplates] = React.useState<ProxmoxVM[]>([])
-  const [spaceInfo, setSpaceInfo] = React.useState<{
-    available: number
-    requested: number
-    fits: boolean
-    suggested: number
-  } | null>(null)
+  const [capacityInfo, setCapacityInfo] = React.useState<
+    | {
+        disk: { available: number; requested: number; fits: boolean; suggested: number }
+        memory: { available: number; requested: number; fits: boolean; suggested: number }
+        cpu: { available: number; requested: number; fits: boolean; suggested: number }
+      }
+    | null
+  >(null)
 
   const {
     register,
@@ -148,10 +151,46 @@ export default function DeployPage() {
   }, [])
 
   React.useEffect(() => {
-    checkDeploymentSpace(formData.disk_size)
-      .then(setSpaceInfo)
-      .catch(() => setSpaceInfo(null))
-  }, [formData.disk_size])
+    checkDeploymentCapacity(
+      formData.disk_size,
+      formData.memory_mb,
+      formData.vcpu_cores * formData.vcpu_sockets
+    )
+      .then((info) => {
+        setCapacityInfo(info)
+        if (!info.disk.fits) {
+          setValue("disk_size", info.disk.suggested, { shouldValidate: true })
+          toast({
+            title: "Espace insuffisant",
+            description: `Taille ajustée à ${info.disk.suggested} Go (disponible ${info.disk.available} Go)` ,
+            variant: "destructive",
+          })
+        }
+        if (!info.memory.fits) {
+          setValue("memory_mb", info.memory.suggested, { shouldValidate: true })
+          toast({
+            title: "RAM insuffisante",
+            description: `RAM ajustée à ${info.memory.suggested} Mo (disponible ${info.memory.available} Mo)`,
+            variant: "destructive",
+          })
+        }
+        if (!info.cpu.fits) {
+          setValue("vcpu_cores", info.cpu.suggested, { shouldValidate: true })
+          setValue("vcpu_sockets", 1, { shouldValidate: true })
+          toast({
+            title: "CPU insuffisant",
+            description: `CPU ajusté à ${info.cpu.suggested} coeurs disponibles`,
+            variant: "destructive",
+          })
+        }
+      })
+      .catch(() => setCapacityInfo(null))
+  }, [
+    formData.disk_size,
+    formData.memory_mb,
+    formData.vcpu_cores,
+    formData.vcpu_sockets,
+  ])
 
   // Sanitize à la sortie du champ
   const applySanitizeOnBlur = () => {
@@ -167,6 +206,20 @@ export default function DeployPage() {
   }
 
   const onSubmit = async (data: DeploymentFormData) => {
+    if (
+      !capacityInfo ||
+      !capacityInfo.disk.fits ||
+      !capacityInfo.memory.fits ||
+      !capacityInfo.cpu.fits
+    ) {
+      toast({
+        title: "Capacité insuffisante",
+        description: "Veuillez ajuster les ressources avant de déployer.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSubmitting(true)
     toast({
       title: "Déploiement en cours...",
@@ -254,8 +307,8 @@ export default function DeployPage() {
   }.`
 
   return (
-    <div className="space-y-6">
-      <header>
+    <div className="flex h-full flex-col overflow-hidden">
+      <header className="sticky top-0 z-10 bg-background pb-4">
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
           Créer une Machine Virtuelle
         </h1>
@@ -264,11 +317,12 @@ export default function DeployPage() {
         </p>
       </header>
 
-      {/* Grille responsive renforcée */}
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start"
-      >
+      <div className="flex-1 overflow-auto mt-6">
+        {/* Grille responsive renforcée */}
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start"
+        >
         {/* Colonne principale du formulaire */}
         <div className="lg:col-span-2 space-y-8 min-w-0">
           <Card className="rounded-2xl shadow-sm overflow-hidden">
@@ -292,9 +346,7 @@ export default function DeployPage() {
                   caractères spéciaux seront remplacés automatiquement.
                 </p>
                 {errors.vm_names && (
-                  <p className="text-sm text-destructive">
-                    {errors.vm_names.message}
-                  </p>
+                  <ErrorMessage>{errors.vm_names.message}</ErrorMessage>
                 )}
               </div>
 
@@ -319,9 +371,7 @@ export default function DeployPage() {
                   )}
                 />
                 {errors.template_name && (
-                  <p className="text-sm text-destructive">
-                    {errors.template_name.message}
-                  </p>
+                  <ErrorMessage>{errors.template_name.message}</ErrorMessage>
                 )}
               </div>
 
@@ -349,9 +399,7 @@ export default function DeployPage() {
                   )}
                 />
                 {errors.service_type && (
-                  <p className="text-sm text-destructive">
-                    {errors.service_type.message}
-                  </p>
+                  <ErrorMessage>{errors.service_type.message}</ErrorMessage>
                 )}
               </div>
 
@@ -379,9 +427,7 @@ export default function DeployPage() {
                   )}
                 />
                 {errors.zone && (
-                  <p className="text-sm text-destructive">
-                    {errors.zone.message}
-                  </p>
+                  <ErrorMessage>{errors.zone.message}</ErrorMessage>
                 )}
               </div>
 
@@ -472,9 +518,7 @@ export default function DeployPage() {
                   )}
                 />
                 {errors.script_refs && (
-                  <p className="text-sm text-destructive">
-                    {errors.script_refs.message}
-                  </p>
+                  <ErrorMessage>{errors.script_refs.message}</ErrorMessage>
                 )}
               </div>
             </CardContent>
@@ -527,23 +571,23 @@ export default function DeployPage() {
                         <div className="text-sm text-muted-foreground text-center">
                           {field.value} Go
                         </div>
-                        {spaceInfo && (
+                        {capacityInfo && (
                           <p className="text-xs text-muted-foreground text-center mt-1">
-                            Espace disponible : {spaceInfo.available} Go – Taille demandée : {spaceInfo.requested} Go
+                            Espace disponible : {capacityInfo.disk.available} Go – Taille demandée : {capacityInfo.disk.requested} Go
                           </p>
                         )}
-                        {spaceInfo && !spaceInfo.fits && (
-                          <div className="text-xs text-center text-destructive mt-1">
-                            Espace insuffisant.
+                        {capacityInfo && !capacityInfo.disk.fits && (
+                          <ErrorMessage className="flex-wrap justify-center mt-1">
+                            <span>Espace insuffisant.</span>
                             <Button
                               variant="link"
                               type="button"
-                              onClick={() => setValue('disk_size', spaceInfo.suggested)}
+                              onClick={() => setValue('disk_size', capacityInfo.disk.suggested)}
                               className="px-1"
                             >
-                              Utiliser {spaceInfo.suggested} Go
+                              Utiliser {capacityInfo.disk.suggested} Go
                             </Button>
-                          </div>
+                          </ErrorMessage>
                         )}
                       </>
                     )}
@@ -642,9 +686,7 @@ export default function DeployPage() {
                         {...register("static_ip")}
                       />
                       {errors.static_ip && (
-                        <p className="text-sm text-destructive">
-                          {errors.static_ip.message}
-                        </p>
+                        <ErrorMessage>{errors.static_ip.message}</ErrorMessage>
                       )}
                     </div>
                     <div className="space-y-2">
@@ -663,7 +705,7 @@ export default function DeployPage() {
         </div>
 
         {/* Colonne latérale */}
-        <div className="lg:col-span-1 space-y-6 min-w-0">
+        <div className="lg:col-span-1 space-y-6 min-w-0 lg:sticky lg:top-0">
           <Card className="rounded-2xl shadow-sm overflow-hidden">
             <CardHeader>
               <CardTitle>Actions</CardTitle>
@@ -672,7 +714,14 @@ export default function DeployPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={!isValid || isSubmitting || (spaceInfo && !spaceInfo.fits)}
+                disabled={
+                  !isValid ||
+                  isSubmitting ||
+                  (capacityInfo &&
+                    (!capacityInfo.disk.fits ||
+                      !capacityInfo.memory.fits ||
+                      !capacityInfo.cpu.fits))
+                }
               >
                 {isSubmitting ? "Déploiement en cours..." : "Lancer le déploiement"}
               </Button>
@@ -747,5 +796,6 @@ export default function DeployPage() {
         </div>
       </form>
     </div>
+  </div>
   )
 }

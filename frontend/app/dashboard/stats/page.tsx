@@ -3,7 +3,8 @@
 import * as React from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getDeploymentStats, type DeploymentStatsResponse } from "@/services/dashboard"
+import { getDeploymentStats, getDashboardInsights, type DeploymentStatsResponse } from "@/services/dashboard"
+import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import {
   LineChart,
   Line,
@@ -16,6 +17,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  BarChart,
+  Bar,
 } from "recharts"
 
 export default function DashboardStatsPage() {
@@ -25,6 +28,9 @@ export default function DashboardStatsPage() {
   React.useEffect(() => {
     getDeploymentStats(period).then(setStats)
   }, [period])
+
+  const analyzeStatsAI = React.useCallback((_ctx: string) => getDashboardInsights(period), [period])
+  const aiContext = stats ? JSON.stringify(stats) : "Statistiques indisponibles"
 
   return (
     <div className="space-y-6">
@@ -63,6 +69,25 @@ export default function DashboardStatsPage() {
 
       <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
         <CardHeader>
+          <CardTitle>Succès vs échecs</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={stats?.timeline || []}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="period" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="success" name="Succès" stackId="a" fill="#16a34a" />
+              <Bar dataKey="failed" name="Échecs" stackId="a" fill="#dc2626" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+        <CardHeader>
           <CardTitle>Répartition succès / échec</CardTitle>
         </CardHeader>
         <CardContent className="flex justify-center">
@@ -86,6 +111,13 @@ export default function DashboardStatsPage() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      <AssistantAIBlock
+        title="Assistant IA des statistiques"
+        context={aiContext}
+        onAnalyze={analyzeStatsAI}
+        className="w-full"
+      />
     </div>
   )
 }

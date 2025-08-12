@@ -33,9 +33,9 @@ const settingsCards = [
     title: "Gestion du Stockage",
     description: "Visualisez et gérez les stockages disponibles sur vos hyperviseurs.",
     icon: <HardDrive className="h-8 w-8 text-primary" />,
-    href: "#",
-    cta: "Bientôt disponible",
-    disabled: true,
+    href: "/settings/storage",
+    cta: "Configurer",
+    disabled: false,
   },
 ]
 

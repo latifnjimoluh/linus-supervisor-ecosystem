@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { XCircle, Loader2, Clock, Server, FileText, ChevronLeft, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ErrorMessage } from "@/components/ui/error-message"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
@@ -224,11 +225,7 @@ export default function DeploymentDetailsPage() {
       </Card>
 
       {/* Bandeau d'alerte si erreur "friendly" */}
-      {friendlyError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
-          {friendlyError}
-        </div>
-      )}
+      {friendlyError && <ErrorMessage className="px-1">{friendlyError}</ErrorMessage>}
 
       <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
         <CardHeader className="flex flex-row items-center justify-between">

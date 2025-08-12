@@ -1,19 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
-const https = require('https');
 const ping = require('ping');
 const { Op } = require('sequelize');
 const { UserSetting, ConvertedVm, User, Deployment, Delete } = require('../../models');
 const { logAction } = require('../../middlewares/log');
 const { execSSHCommand } = require('../../utils/sshClient');
-
-const httpsAgent = new https.Agent({ rejectUnauthorized: false });
-
-// util to build auth headers
-function getHeaders(tokenId, tokenName, tokenSecret) {
-  return { Authorization: `PVEAPIToken=${tokenId}!${tokenName}=${tokenSecret}` };
-}
+const { ProxmoxService } = require('../../services/proxmoxService');
 
 // 🖥️ Lister toutes les VM depuis Proxmox
 exports.listVMs = async (req, res) => {
@@ -25,10 +17,9 @@ exports.listVMs = async (req, res) => {
       return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
     }
 
-    const url = `${settings.proxmox_api_url}/cluster/resources?type=vm`;
-    const headers = getHeaders(settings.proxmox_api_token_id, settings.proxmox_api_token_name, settings.proxmox_api_token_secret);
-    const response = await axios.get(url, { httpsAgent, headers });
-    const all = response.data?.data || [];
+    const client = new ProxmoxService(settings);
+    const response = await client.get('/cluster/resources?type=vm');
+    const all = response.data || [];
 
     const vms = all.filter((r) => r.type === 'qemu' && r.template === 0);
     const templates = all.filter((r) => r.type === 'qemu' && r.template === 1);
@@ -37,26 +28,97 @@ exports.listVMs = async (req, res) => {
     await logAction(req, 'list_vms');
     res.json({ vms, templates });
   } catch (err) {
-    console.error('❌ Erreur listVMs:', err);
+    console.error('❌ Erreur listVMs:', err.message);
     res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
 
-async function startVMRequest({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret }) {
-  const url = `${apiUrl}/nodes/${node}/qemu/${vmId}/status/start`;
-  const headers = getHeaders(tokenId, tokenName, tokenSecret);
-  const res = await axios.post(url, null, { httpsAgent, headers });
-  console.log('▶️ startVMRequest response:', res.data);
-  return res.data;
-}
+// 🧩 Lister les nœuds disponibles
+exports.listNodes = async (req, res) => {
+  try {
+    const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
+    if (!settings) {
+      return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
+    }
 
-async function stopVMRequest({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret }) {
-  const url = `${apiUrl}/nodes/${node}/qemu/${vmId}/status/stop`;
-  const headers = getHeaders(tokenId, tokenName, tokenSecret);
-  const res = await axios.post(url, null, { httpsAgent, headers });
-  console.log('🛑 stopVMRequest response:', res.data);
-  return res.data;
-}
+    const client = new ProxmoxService(settings);
+    const response = await client.get('/nodes');
+    const nodes = Array.isArray(response.data)
+      ? response.data.map((n) => ({ node: n.node, status: n.status }))
+      : [];
+    res.json(nodes);
+  } catch (err) {
+    console.error('❌ Erreur listNodes:', err.message);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+// 📦 Lister les stockages disponibles
+exports.listStorages = async (req, res) => {
+  try {
+    const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
+    if (!settings) {
+      return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
+    }
+
+    const targetNode = req.query.node || settings.proxmox_node;
+    const client = new ProxmoxService({ ...settings, proxmox_node: targetNode });
+    const response = await client.get('/cluster/resources?type=storage');
+    const all = response.data || [];
+    const storages = all
+      .filter((s) => s.type === 'storage' && (!s.node || s.node === client.node))
+      .map((s) => ({
+        storage: s.storage,
+        content: s.content,
+        maxdisk: s.maxdisk,
+        disk: s.disk,
+        plugintype: s.plugintype,
+      }));
+
+    res.json(storages);
+  } catch (err) {
+    console.error('❌ Erreur listStorages:', err.message);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+// ℹ️ Informations système d'un nœud
+exports.getSystemInfo = async (req, res) => {
+  try {
+    const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
+    if (!settings) {
+      return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
+    }
+
+    const targetNode = req.query.node || settings.proxmox_node;
+    const client = new ProxmoxService({ ...settings, proxmox_node: targetNode });
+    const status = await client.get(`/nodes/${client.node}/status`);
+    const mem = status.data?.memory || {};
+    const rootfs = status.data?.rootfs || {};
+    const cpu = status.data?.cpuinfo || {};
+
+    res.json({
+      node: client.node,
+      memory: {
+        total: mem.total || 0,
+        used: mem.used || 0,
+        free: mem.total && mem.used ? mem.total - mem.used : 0,
+      },
+      cpu: {
+        cores: cpu.cores || 0,
+        sockets: cpu.sockets || 0,
+      },
+      disk: {
+        total: rootfs.total || 0,
+        used: rootfs.used || 0,
+        free: rootfs.total && rootfs.used ? rootfs.total - rootfs.used : 0,
+      },
+    });
+  } catch (err) {
+    console.error('❌ Erreur getSystemInfo:', err.message);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
 
 // ▶️ Démarrer une VM
 exports.startVM = async (req, res) => {
@@ -66,19 +128,13 @@ exports.startVM = async (req, res) => {
     const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
     if (!settings) return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
 
-    await startVMRequest({
-      vmId,
-      node: settings.proxmox_node,
-      apiUrl: settings.proxmox_api_url,
-      tokenId: settings.proxmox_api_token_id,
-      tokenName: settings.proxmox_api_token_name,
-      tokenSecret: settings.proxmox_api_token_secret,
-    });
+    const client = new ProxmoxService(settings);
+    await client.post(`/nodes/${client.node}/qemu/${vmId}/status/start`);
 
     await logAction(req, `start_vm:${vmId}`);
     res.json({ message: `VM ${vmId} démarrée.` });
   } catch (err) {
-    console.error('❌ Erreur startVM:', err);
+    console.error('❌ Erreur startVM:', err.message);
     res.status(500).json({ message: 'Erreur démarrage VM.' });
   }
 };
@@ -91,56 +147,40 @@ exports.stopVM = async (req, res) => {
     const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
     if (!settings) return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
 
-    await stopVMRequest({
-      vmId,
-      node: settings.proxmox_node,
-      apiUrl: settings.proxmox_api_url,
-      tokenId: settings.proxmox_api_token_id,
-      tokenName: settings.proxmox_api_token_name,
-      tokenSecret: settings.proxmox_api_token_secret,
-    });
+    const client = new ProxmoxService(settings);
+    await client.post(`/nodes/${client.node}/qemu/${vmId}/status/stop`);
 
     await logAction(req, `stop_vm:${vmId}`);
     res.json({ message: `VM ${vmId} arrêtée.` });
   } catch (err) {
-    console.error('❌ Erreur stopVM:', err);
+    console.error('❌ Erreur stopVM:', err.message);
     res.status(500).json({ message: 'Erreur arrêt VM.' });
   }
 };
 
-async function getVMStatus({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret }) {
-  const url = `${apiUrl}/nodes/${node}/qemu/${vmId}/status/current`;
-  const headers = getHeaders(tokenId, tokenName, tokenSecret);
-
+async function getVMStatus(client, vmId) {
   try {
-    const res = await axios.get(url, { httpsAgent, headers });
-    return res.data?.data?.status;
+    const res = await client.get(`/nodes/${client.node}/qemu/${vmId}/status/current`);
+    return res.data?.status;
   } catch (err) {
     console.error('❌ Erreur getVMStatus :', err.message);
     throw err;
   }
 }
 
-async function deleteVM({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret }) {
-  const url = `${apiUrl}/nodes/${node}/qemu/${vmId}`;
-  const headers = getHeaders(tokenId, tokenName, tokenSecret);
-  const res = await axios.delete(url, { httpsAgent, headers });
+async function deleteVM(client, vmId) {
+  return client.delete(`/nodes/${client.node}/qemu/${vmId}`);
+}
+
+async function getVMInfo(client, vmId) {
+  const res = await client.get(`/nodes/${client.node}/qemu/${vmId}/config`);
   return res.data;
 }
 
-async function getVMInfo({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret }) {
-  const url = `${apiUrl}/nodes/${node}/qemu/${vmId}/config`;
-  const headers = getHeaders(tokenId, tokenName, tokenSecret);
-  const res = await axios.get(url, { httpsAgent, headers });
-  return res.data?.data;
-}
-
-async function getVMIP({ vmId, node, apiUrl, tokenId, tokenName, tokenSecret }) {
-  const url = `${apiUrl}/nodes/${node}/qemu/${vmId}/agent/network-get-interfaces`;
-  const headers = getHeaders(tokenId, tokenName, tokenSecret);
+async function getVMIP(client, vmId) {
   try {
-    const res = await axios.get(url, { httpsAgent, headers });
-    const interfaces = res.data?.data?.result || res.data?.data || [];
+    const res = await client.get(`/nodes/${client.node}/qemu/${vmId}/agent/network-get-interfaces`);
+    const interfaces = res.data?.result || res.data || [];
     for (const iface of interfaces) {
       const addresses = iface["ip-addresses"] || iface["ip_addresses"] || [];
       for (const addr of addresses) {
@@ -204,14 +244,15 @@ exports.checkVMStatus = async (req, res) => {
       return res.status(400).json({ message: '❌ Paramètres API ou IP manquants même après fallback.' });
     }
 
-    const vmStatus = await getVMStatus({
-      vmId: vm_id,
-      node,
-      apiUrl,
-      tokenId,
-      tokenName,
-      tokenSecret,
+    const client = new ProxmoxService({
+      proxmox_api_url: apiUrl,
+      proxmox_api_token_id: tokenId,
+      proxmox_api_token_name: tokenName,
+      proxmox_api_token_secret: tokenSecret,
+      proxmox_node: node,
     });
+
+    const vmStatus = await getVMStatus(client, vm_id);
 
     const pingResult = await isPingable(ip_address);
 
@@ -403,15 +444,6 @@ exports.deleteVMDirect = async (req, res) => {
   console.log("- tokenName      :", tokenName);
   console.log("- tokenSecret... :", tokenSecret?.slice(0, 8) + "...");
 
-  const commonArgs = {
-    vmId: vm_id,
-    node,
-    apiUrl,
-    tokenId,
-    tokenName,
-    tokenSecret,
-  };
-
   const startTime = new Date();
   let success = false;
   let logOutput = "";
@@ -420,7 +452,15 @@ exports.deleteVMDirect = async (req, res) => {
   let vm_ip = null;
 
   try {
-    const vmInfo = await getVMInfo(commonArgs);
+    const client = new ProxmoxService({
+      proxmox_api_url: apiUrl,
+      proxmox_api_token_id: tokenId,
+      proxmox_api_token_name: tokenName,
+      proxmox_api_token_secret: tokenSecret,
+      proxmox_node: node,
+    });
+
+    const vmInfo = await getVMInfo(client, vm_id);
     if (!vmInfo || !vmInfo.name) {
       return res.status(404).json({
         message: `❌ La VM ${vm_id} n'existe pas sur ${node}.`,
@@ -428,26 +468,26 @@ exports.deleteVMDirect = async (req, res) => {
     }
 
     vm_name = vmInfo.name;
-    vm_ip = await getVMIP(commonArgs);
+    vm_ip = await getVMIP(client, vm_id);
 
-    const status = await getVMStatus(commonArgs);
+    const status = await getVMStatus(client, vm_id);
     logOutput += `Statut initial: ${status}\n`;
 
     if (status === "running") {
-      await stopVMRequest(commonArgs);
+      await client.post(`/nodes/${client.node}/qemu/${vm_id}/status/stop`);
       logOutput += `🛑 Arrêt demandé...\n`;
 
       let attempts = 0;
       const maxAttempts = 5;
       while (attempts < maxAttempts) {
         await new Promise((r) => setTimeout(r, 2000));
-        const currentStatus = await getVMStatus(commonArgs);
+        const currentStatus = await getVMStatus(client, vm_id);
         logOutput += `⏳ Tentative ${attempts + 1}: statut = ${currentStatus}\n`;
         if (currentStatus !== "running") break;
         attempts++;
       }
 
-      const finalStatus = await getVMStatus(commonArgs);
+      const finalStatus = await getVMStatus(client, vm_id);
       if (finalStatus === "running") {
         return res.status(500).json({
           message: "❌ La VM est toujours active après plusieurs tentatives d'arrêt.",
@@ -456,8 +496,7 @@ exports.deleteVMDirect = async (req, res) => {
     }
 
     logOutput += `✅ VM arrêtée. Suppression en cours...\n`;
-
-    const result = await deleteVM(commonArgs);
+    const result = await deleteVM(client, vm_id);
     success = true;
 
     const endTime = new Date();
@@ -519,28 +558,15 @@ exports.deleteVMDirect = async (req, res) => {
 };
 
 
-exports.checkIfVMNameExists = async ({ apiUrl, tokenId, tokenName, tokenSecret }, vmNameToCheck) => {
-  const headers = getHeaders(tokenId, tokenName, tokenSecret);
-  const url = `${apiUrl}/cluster/resources`;
-
-  console.log("🌐 [checkIfVMNameExists] URL Proxmox :", url);
-  console.log("🔐 [checkIfVMNameExists] Headers :", headers);
-
+exports.checkIfVMNameExists = async (settings, vmNameToCheck) => {
+  const client = new ProxmoxService(settings);
   try {
-    const res = await axios.get(url, { httpsAgent, headers });
-    const allVMs = res.data?.data?.filter(r => r.type === "qemu") || [];
-
-    const found = allVMs.find(vm => vm.name === vmNameToCheck);
-    console.log("📋 [checkIfVMNameExists] Liste des VM :", allVMs.map(v => v.name));
-    console.log("🔍 [checkIfVMNameExists] Nom trouvé :", found?.name || "non trouvé");
-
+    const res = await client.get('/cluster/resources?type=vm');
+    const allVMs = res.data?.filter((r) => r.type === 'qemu') || [];
+    const found = allVMs.find((vm) => vm.name === vmNameToCheck);
     return !!found;
   } catch (error) {
-    console.error("❌ [checkIfVMNameExists] Erreur Axios :", {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
+    console.error('❌ [checkIfVMNameExists] Erreur :', error.message);
     return false;
   }
 };

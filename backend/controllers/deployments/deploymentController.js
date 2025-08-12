@@ -114,31 +114,62 @@ exports.analyzeConfig = async (req, res) => {
   }
 };
 
-// 📦 Vérifier l'espace disque disponible pour le stockage cible
-exports.checkSpace = async (req, res) => {
+// 📦 Vérifier les capacités (disque, RAM, CPU) du nœud cible
+exports.checkCapacity = async (req, res) => {
   try {
-    const { disk_size } = req.query; // en Go
-    const requested = Number(disk_size);
+    const { disk_size, memory_mb, cores } = req.query;
+    const requestedDisk = Number(disk_size);
+    const requestedMem = Number(memory_mb);
+    const requestedCores = Number(cores);
 
     const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
     if (!settings) {
       return res.status(404).json({ message: "Paramètres Proxmox introuvables." });
     }
 
-    const url = `${settings.proxmox_api_url}/nodes/${settings.proxmox_node}/storage/${settings.vm_storage}/status`;
     const headers = {
       Authorization: `PVEAPIToken=${settings.proxmox_api_token_id}!${settings.proxmox_api_token_name}=${settings.proxmox_api_token_secret}`,
     };
     const httpsAgent = new https.Agent({ rejectUnauthorized: false });
-    const response = await axios.get(url, { httpsAgent, headers });
-    const availBytes = response.data?.data?.avail || 0;
-    const available = Math.floor(availBytes / (1024 ** 3));
-    const fits = Number.isFinite(requested) ? requested <= available : true;
-    const suggested = available > 0 ? Math.max(available, 10) : 10;
-    return res.json({ available, requested, fits, suggested });
+
+    // 📀 Stockage
+    const storageUrl = `${settings.proxmox_api_url}/nodes/${settings.proxmox_node}/storage/${settings.vm_storage}/status`;
+    const storageResp = await axios.get(storageUrl, { httpsAgent, headers });
+    const availBytes = storageResp.data?.data?.avail || 0;
+    const diskAvail = Math.floor(availBytes / (1024 ** 3));
+    const diskFits = Number.isFinite(requestedDisk) ? requestedDisk <= diskAvail : true;
+    const diskSuggested = diskAvail > 0 ? Math.max(diskAvail, 10) : 10;
+
+    // 🧠 RAM et CPU
+    const statusUrl = `${settings.proxmox_api_url}/nodes/${settings.proxmox_node}/status`;
+    const statusResp = await axios.get(statusUrl, { httpsAgent, headers });
+    const memTotal = statusResp.data?.data?.memory?.total || 0;
+    const memUsed = statusResp.data?.data?.memory?.used || 0;
+    const memFreeMb = Math.floor((memTotal - memUsed) / (1024 ** 2));
+    const memFits = Number.isFinite(requestedMem) ? requestedMem <= memFreeMb : true;
+    const memSuggested = memFreeMb > 0 ? memFreeMb : 512;
+
+    const totalCores = statusResp.data?.data?.cpuinfo?.cores || 0;
+    const vmsUrl = `${settings.proxmox_api_url}/nodes/${settings.proxmox_node}/qemu`;
+    const vmsResp = await axios.get(vmsUrl, { httpsAgent, headers });
+    const usedCores = Array.isArray(vmsResp.data?.data)
+      ? vmsResp.data.data.reduce((sum, vm) => sum + (vm.cores || 0) * (vm.sockets || 1), 0)
+      : 0;
+    const coresFree = totalCores - usedCores;
+    const cpuFits = Number.isFinite(requestedCores) ? requestedCores <= coresFree : true;
+    const cpuSuggested = coresFree > 0 ? coresFree : 1;
+
+    return res.json({
+      disk: { available: diskAvail, requested: requestedDisk, fits: diskFits, suggested: diskSuggested },
+      memory: { available: memFreeMb, requested: requestedMem, fits: memFits, suggested: memSuggested },
+      cpu: { available: coresFree, requested: requestedCores, fits: cpuFits, suggested: cpuSuggested },
+    });
   } catch (err) {
-    console.error("checkSpace error:", err);
-    return res.status(500).json({ message: "Erreur lors de la vérification d'espace disque", error: err.message });
+    console.error("checkCapacity error:", err);
+    return res.status(500).json({
+      message: "Erreur lors de la vérification des capacités",
+      error: err.message,
+    });
   }
 };
 
@@ -152,6 +183,7 @@ exports.history = async (req, res) => {
       user: userEmail,
       startDate,
       endDate,
+      template,
     } = req.query;
 
     const offset = (Number(page) - 1) * Number(limit);
@@ -175,6 +207,17 @@ exports.history = async (req, res) => {
       deleteWhere.deleted_at = range;
     }
 
+    if (template) {
+      deployWhere.service_name = template;
+      const ids = await Deployment.findAll({
+        where: { service_name: template },
+        attributes: ["vm_id"],
+        raw: true,
+      });
+      const vmIds = ids.map((i) => i.vm_id).filter(Boolean);
+      deleteWhere.vm_id = vmIds.length ? vmIds : null;
+    }
+
     const [deployments, deletions] = await Promise.all([
       Deployment.findAndCountAll({
         where: deployWhere,
@@ -194,7 +237,9 @@ exports.history = async (req, res) => {
       deployments: deployments.rows.map((d) => ({
         id: d.id,
         vm_name: d.vm_name,
+        template: d.service_name,
         started_at: d.started_at,
+        duration: d.duration,
         status: d.success ? "success" : "failed",
         user_email: d.user_email,
       })),
