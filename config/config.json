@@ -5,6 +5,16 @@
     "database": "linsup",
     "host": "localhost",
     "port": 5432,
-    "dialect": "postgres"
+    "dialect": "postgres",
+    "logging": false
+  },
+  "production": {
+    "username": "linsup_user",
+    "password": "WOMDbnBNg1s8mMbKinuSwDnPIoUiweSu",
+    "database": "linsup",
+    "host": "dpg-d2dm1995pdvs73f1sc60-a",
+    "port": 5432,
+    "dialect": "postgres",
+    "logging": false
   }
 }

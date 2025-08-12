@@ -13,24 +13,32 @@ const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3001')
   .split(',')
   .map((o) => o.trim());
 
-// ✅ CORS doit venir AVANT les routes
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-  })
-);
+const corsOptions = {
+  origin: (origin, callback) => {
+    // autorise aussi les requêtes sans Origin (monitoring, curl…)
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+  // Tu n’utilises pas de cookies cross-site → false est plus simple
+  credentials: false,
+  maxAge: 86400, // cache du préflight 24h
+};
+
+// ⚠️ CORS AVANT tout
+app.use(cors(corsOptions));
+// Répondre aux préflights
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
+
+// Optionnel : /health pour tester rapidement depuis le front
+app.get('/health', (req, res) => res.status(200).send('ok'));
+
 app.use(routes);
 
 const PORT = process.env.PORT || 3000;
-
 app.use(errorHandler);
 
 async function start() {
@@ -45,8 +53,5 @@ async function start() {
   });
 }
 
-if (require.main === module) {
-  start();
-}
-
+if (require.main === module) start();
 module.exports = app;
