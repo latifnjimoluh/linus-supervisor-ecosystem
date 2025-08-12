@@ -1,57 +1,45 @@
 "use client"
 
 import * as React from "react"
-import { Server, Globe, HardDrive, Network, AlertTriangle, CheckCircle, XCircle, Info, RefreshCw, Plus, Activity, Shield } from 'lucide-react'
+import { Server, Globe, HardDrive, Network, AlertTriangle, CheckCircle, Info, RefreshCw, Plus, Activity, Shield } from 'lucide-react'
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { cn } from "@/lib/utils" // Ensure cn is imported
+import { getInfrastructureMap, type InfrastructureServer } from "@/services/dashboard"
+import { useRouter } from "next/navigation"
 
-interface ServerNode {
-  id: string
-  name: string
-  ip: string
-  zone: "LAN" | "WAN" | "DMZ"
-  role: string
-  status: "ok" | "alert" | "unsupervised"
-  uptime: string
-  position: { x: number; y: number } // Relative position for layout
-}
+const simulateMapAIAnalysis = async (context: string): Promise<string> => {
+  await new Promise(resolve => setTimeout(resolve, 2000))
 
-const generateMockServers = (): ServerNode[] => {
-  const servers: ServerNode[] = [
-    { id: "srv-001", name: "Web-Prod-01", ip: "192.168.1.10", zone: "DMZ", role: "Web Server", status: "ok", uptime: "99 days", position: { x: 0.2, y: 0.3 } },
-    { id: "srv-002", name: "DB-Main-01", ip: "10.0.0.5", zone: "LAN", role: "Database", status: "ok", uptime: "120 days", position: { x: 0.7, y: 0.2 } },
-    { id: "srv-003", name: "API-Gateway", ip: "192.168.1.11", zone: "DMZ", role: "API Gateway", status: "alert", uptime: "2 days", position: { x: 0.3, y: 0.6 } },
-    { id: "srv-004", name: "Monitoring-Srv", ip: "10.0.0.6", zone: "LAN", role: "Monitoring", status: "ok", uptime: "50 days", position: { x: 0.8, y: 0.7 } },
-    { id: "srv-005", name: "VPN-Access", ip: "172.16.0.1", zone: "WAN", role: "VPN Server", status: "unsupervised", uptime: "N/A", position: { x: 0.1, y: 0.8 } },
-    { id: "srv-006", name: "Proxy-Cache", ip: "192.168.1.12", zone: "WAN", role: "Proxy Server", status: "ok", uptime: "30 days", position: { x: 0.5, y: 0.9 } },
-    { id: "srv-007", name: "DNS-Primary", ip: "10.0.0.7", zone: "LAN", role: "DNS Server", status: "ok", uptime: "80 days", position: { x: 0.6, y: 0.4 } },
-  ]
+  const prompt = `Tu es un assistant réseau. À partir des statistiques suivantes, résume l'état des zones et signale les priorités : ${context}`
+  const match = context.match(/Serveurs affichés: (\d+), LAN: (\d+), WAN: (\d+), DMZ: (\d+), OK: (\d+), Alerte: (\d+), Hors supervision: (\d+)/)
+  const total = match ? parseInt(match[1]) : 0
+  const lan = match ? parseInt(match[2]) : 0
+  const wan = match ? parseInt(match[3]) : 0
+  const dmz = match ? parseInt(match[4]) : 0
+  const ok = match ? parseInt(match[5]) : 0
+  const alert = match ? parseInt(match[6]) : 0
+  const unsupervised = match ? parseInt(match[7]) : 0
 
-  // Simulate some alerts
-  if (Math.random() > 0.5) {
-    const alertIndex = Math.floor(Math.random() * servers.length);
-    servers[alertIndex].status = "alert";
-    servers[alertIndex].uptime = "1 hour (issue)";
-  }
-
-  return servers
+  return `🤖 **Analyse IA de la carte d'infrastructure**\n\n${total} serveurs : LAN ${lan}, WAN ${wan}, DMZ ${dmz}. Statuts — OK ${ok}, Alerte ${alert}, Hors supervision ${unsupervised}.\n\n**Actions recommandées :**\n- Inspecter les ${alert} serveur(s) en alerte\n- Vérifier la supervision de ${unsupervised} hôte(s)\n\n*Prompt utilisé :* ${prompt}`
 }
 
 export default function InfrastructureMapPage() {
-  const [servers, setServers] = React.useState<ServerNode[]>([])
+  const [servers, setServers] = React.useState<InfrastructureServer[]>([])
   const [loading, setLoading] = React.useState(true)
   const [filterZone, setFilterZone] = React.useState<"all" | "LAN" | "WAN" | "DMZ">("all")
+  const router = useRouter()
 
   const fetchServers = React.useCallback(() => {
     setLoading(true)
-    setTimeout(() => {
-      setServers(generateMockServers())
-      setLoading(false)
-    }, 1500)
+    getInfrastructureMap()
+      .then(setServers)
+      .catch(() => setServers([]))
+      .finally(() => setLoading(false))
   }, [])
 
   React.useEffect(() => {
@@ -59,10 +47,18 @@ export default function InfrastructureMapPage() {
   }, [fetchServers])
 
   const filteredServers = servers.filter(server =>
-    filterZone === "all" || server.zone === filterZone
+    !server.isTemplate && (filterZone === "all" || server.zone === filterZone)
   )
 
-  const getStatusIcon = (status: ServerNode['status']) => {
+  const zoneSummary = { LAN: 0, WAN: 0, DMZ: 0 }
+  const statusSummary = { ok: 0, alert: 0, unsupervised: 0 }
+  filteredServers.forEach(s => {
+    zoneSummary[s.zone]++
+    statusSummary[s.status]++
+  })
+  const aiContext = `Serveurs affichés: ${filteredServers.length}, LAN: ${zoneSummary.LAN}, WAN: ${zoneSummary.WAN}, DMZ: ${zoneSummary.DMZ}, OK: ${statusSummary.ok}, Alerte: ${statusSummary.alert}, Hors supervision: ${statusSummary.unsupervised}`
+
+  const getStatusIcon = (status: InfrastructureServer['status']) => {
     switch (status) {
       case "ok": return <CheckCircle className="h-4 w-4 text-green-500" />
       case "alert": return <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse" />
@@ -71,7 +67,7 @@ export default function InfrastructureMapPage() {
     }
   }
 
-  const getZoneColor = (zone: ServerNode['zone']) => {
+  const getZoneColor = (zone: InfrastructureServer['zone']) => {
     switch (zone) {
       case "LAN": return "border-blue-500/50 bg-blue-500/10"
       case "WAN": return "border-purple-500/50 bg-purple-500/10"
@@ -187,10 +183,21 @@ export default function InfrastructureMapPage() {
                 )}
               </div>
 
+              {/* Inter-zone connections */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+                <line x1="25%" y1="50%" x2="75%" y2="30%" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeDasharray="4 4" />
+                <line x1="25%" y1="50%" x2="75%" y2="72%" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeDasharray="4 4" />
+                <line x1="75%" y1="30%" x2="75%" y2="72%" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeDasharray="4 4" />
+              </svg>
+              <Network className="absolute h-6 w-6 text-muted-foreground z-10" style={{ left: '75%', top: '52%', transform: 'translate(-50%, -50%)' }} />
+
               <TooltipProvider>
                 {filteredServers.map((server) => (
                   <motion.div
                     key={server.id}
+                    data-map-server
+                    data-zone={server.zone}
+                    data-status={server.status}
                     className={cn(
                       "absolute flex flex-col items-center justify-center p-2 rounded-lg shadow-md cursor-pointer transition-all duration-200",
                       "bg-card border",
@@ -200,17 +207,20 @@ export default function InfrastructureMapPage() {
                       left: `${server.position.x * 100}%`,
                       top: `${server.position.y * 100}%`,
                       transform: 'translate(-50%, -50%)',
-                      zIndex: 10,
+                      zIndex: 20,
                     }}
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3 }}
                     whileHover={{ scale: 1.05, zIndex: 11 }}
-                    onClick={() => alert(`Détails de ${server.name}`)} // Replace with actual navigation
+                    onClick={() => router.push(`/monitoring/${server.id}`)}
                   >
                     <div className="flex items-center gap-1 mb-1">
                       {getRoleIcon(server.role)}
                       <span className="font-medium text-sm">{server.name}</span>
+                      {server.isTemplate && (
+                        <Badge variant="outline" className="text-[10px]">Template</Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       {getStatusIcon(server.status)}
@@ -225,6 +235,7 @@ export default function InfrastructureMapPage() {
                         <p className="font-semibold">{server.name}</p>
                         <p>IP: {server.ip}</p>
                         <p>Rôle: {server.role}</p>
+                        <p>Type: {server.isTemplate ? "Template" : "VM"}</p>
                         <p>Statut: {server.status === "ok" ? "OK" : server.status === "alert" ? "Alerte" : "Hors supervision"}</p>
                         <p>Uptime: {server.uptime}</p>
                       </TooltipContent>
@@ -274,6 +285,13 @@ export default function InfrastructureMapPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AssistantAIBlock
+        title="Assistant IA de la carte"
+        context={aiContext}
+        onAnalyze={simulateMapAIAnalysis}
+        className="w-full"
+      />
     </div>
   )
 }

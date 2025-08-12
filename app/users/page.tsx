@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Plus, Search, Filter, RefreshCw, User, Edit, Trash2, Lock, CheckCircle, XCircle, Mail, Shield, Loader2 } from 'lucide-react'
+import { Plus, Search, Filter, RefreshCw, User, Edit, Trash2, Lock, CheckCircle, XCircle, Mail, Shield, Loader2, Eye } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -11,66 +11,58 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { useToast } from "@/hooks/use-toast"
-
-interface UserAccount {
-  id: number
-  first_name: string
-  last_name: string
-  email: string
-  role_id: number
-  status: "active" | "inactive"
-  created_at: string
-  last_login?: string
-  avatar?: string
-}
-
-// Mock data for roles to map role_id to name
-const mockRoles = [
-  { id: 1, name: "admin", label: "Administrateur", badgeVariant: "destructive" },
-  { id: 2, name: "technicien", label: "Technicien", badgeVariant: "warning" },
-  { id: 3, name: "auditeur", label: "Auditeur", badgeVariant: "info" },
-];
-
-// Mock data generator for users
-const generateMockUsers = (): UserAccount[] => {
-  const users = [
-    { first_name: "Jean", last_name: "Dupont", email: "admin@example.com", role_id: 1 },
-    { first_name: "Marie", last_name: "Martin", email: "tech@example.com", role_id: 2 },
-    { first_name: "Pierre", last_name: "Durand", email: "auditor@example.com", role_id: 3 },
-    { first_name: "Sophie", last_name: "Bernard", email: "sophie.bernard@example.com", role_id: 2 },
-    { first_name: "Lucas", last_name: "Moreau", email: "lucas.moreau@example.com", role_id: 3 },
-    { first_name: "Emma", last_name: "Leroy", email: "emma.leroy@example.com", role_id: 2 },
-    { first_name: "Thomas", last_name: "Roux", email: "thomas.roux@example.com", role_id: 1 },
-    { first_name: "Camille", last_name: "Fournier", email: "camille.fournier@example.com", role_id: 3 },
-  ]
-
-  return users.map((user, index) => ({
-    id: index + 1,
-    ...user,
-    status: Math.random() > 0.1 ? "active" as const : "inactive" as const,
-    created_at: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-    last_login: Math.random() > 0.2 ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
-    avatar: `/placeholder.svg?height=40&width=40&text=${user.first_name[0]}${user.last_name[0]}`,
-  }))
-}
+import { listUsers, patchUser, deleteUser, getUser, User as UserAccount } from "@/services/users"
+import { listRoles, Role } from "@/services/roles"
 
 export default function UsersPage() {
   const [users, setUsers] = React.useState<UserAccount[]>([])
+  const [roles, setRoles] = React.useState<Role[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState<string>("all")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [actionLoading, setActionLoading] = React.useState<string | null>(null)
+  const [detailOpen, setDetailOpen] = React.useState(false)
+  const [detailUser, setDetailUser] = React.useState<UserAccount | null>(null)
   const { toast } = useToast()
 
-  const fetchUsers = React.useCallback(() => {
+  // juste sous les imports
+  type ApiUser = UserAccount & {
+    createdAt?: string | null
+    updatedAt?: string | null
+    created_at?: string | null
+    updated_at?: string | null
+    last_login?: string | null
+  }
+
+  const normalizeUser = (u: ApiUser): UserAccount & {
+    created_at?: string | null
+    updated_at?: string | null
+  } => ({
+    ...u,
+    // uniformiser le statut
+    status: u.status === 'actif' ? 'active' : u.status === 'inactif' ? 'inactive' : u.status,
+    // uniformiser les dates en snake_case (utilisées par ton JSX)
+    created_at: u.created_at ?? u.createdAt ?? null,
+    updated_at: u.updated_at ?? u.updatedAt ?? null,
+  })
+
+  const fetchUsers = React.useCallback(async () => {
     setLoading(true)
-    setTimeout(() => {
-      setUsers(generateMockUsers())
+    try {
+      const [usersData, rolesData] = await Promise.all([listUsers(), listRoles()])
+      const mappedUsers = usersData.map((u: ApiUser) => normalizeUser(u))
+      setUsers(mappedUsers)
+      setRoles(rolesData)
+    } catch (err) {
+      console.error('fetchUsers error', err)
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }, [])
+
 
   React.useEffect(() => {
     fetchUsers()
@@ -87,51 +79,69 @@ export default function UsersPage() {
 
   const handleUserAction = async (action: string, userId: number, userEmail: string) => {
     setActionLoading(`${action}-${userId}`)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
+
     let message = ""
     let variant: "success" | "destructive" | "info" = "success"
-    
-    switch (action) {
-      case "deactivate":
-        message = `Utilisateur ${userEmail} désactivé avec succès`
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "inactive" as const } : u))
-        break
-      case "activate":
-        message = `Utilisateur ${userEmail} activé avec succès`
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "active" as const } : u))
-        break
-      case "reset-password":
-        message = `Lien de réinitialisation envoyé à ${userEmail}`
-        variant = "info"
-        break
-      case "delete":
-        message = `Utilisateur ${userEmail} supprimé avec succès`
-        setUsers(prev => prev.filter(u => u.id !== userId))
-        break
-      default:
-        message = "Action effectuée avec succès"
+    try {
+      switch (action) {
+        case "deactivate":
+          await patchUser(userId, { status: "inactif" })
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "inactive" as const } : u))
+          message = `Utilisateur ${userEmail} désactivé avec succès`
+          break
+        case "activate":
+          await patchUser(userId, { status: "actif" })
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: "active" as const } : u))
+          message = `Utilisateur ${userEmail} activé avec succès`
+          break
+        case "reset-password":
+          message = `Lien de réinitialisation envoyé à ${userEmail}`
+          variant = "info"
+          break
+        case "delete":
+          await deleteUser(userId)
+          setUsers(prev => prev.filter(u => u.id !== userId))
+          message = `Utilisateur ${userEmail} supprimé avec succès`
+          break
+        default:
+          message = "Action effectuée avec succès"
+      }
+
+      toast({
+        title: "Action réussie",
+        description: message,
+        variant,
+      })
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
     }
-    
-    toast({
-      title: "Action réussie",
-      description: message,
-      variant,
-    })
-    
-    setActionLoading(null)
   }
 
+  const handleViewUser = async (userId: number) => {
+    try {
+      const data: ApiUser = await getUser(userId)
+      const mapped = normalizeUser(data)
+      setDetailUser(mapped)
+      setDetailOpen(true)
+    } catch (err) {
+      console.error('handleViewUser error', err)
+    }
+  }
+
+
   const getRoleBadgeVariant = (roleId: number) => {
-    const role = mockRoles.find(r => r.id === roleId);
-    return role ? role.badgeVariant : "default";
+    return "default"
   }
 
   const getRoleLabel = (roleId: number) => {
-    const role = mockRoles.find(r => r.id === roleId);
-    return role ? role.label : "Inconnu";
+    const role = roles.find(r => r.id === roleId)
+    return role ? role.name : "Inconnu"
   }
 
   const stats = {
@@ -225,8 +235,8 @@ export default function UsersPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les rôles</SelectItem>
-            {mockRoles.map(role => (
-              <SelectItem key={role.id} value={String(role.id)}>{role.label}</SelectItem>
+            {roles.map(role => (
+              <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -272,7 +282,7 @@ export default function UsersPage() {
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                       <span className="text-sm font-medium">
-                        {user.first_name[0]}{user.last_name[0]}
+                        {(user.first_name?.[0] ?? '').toUpperCase()}{(user.last_name?.[0] ?? '').toUpperCase()}
                       </span>
                     </div>
                     <div>
@@ -292,7 +302,9 @@ export default function UsersPage() {
                         </Badge>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Créé le {new Date(user.created_at).toLocaleDateString("fr-FR")}
+                        {user.created_at
+                          ? `Créé le ${new Date(user.created_at).toLocaleDateString("fr-FR")}`
+                          : "Date de création inconnue"}
                         {user.last_login && (
                           <span className="ml-4">
                             Dernière connexion: {new Date(user.last_login).toLocaleDateString("fr-FR")}
@@ -302,6 +314,14 @@ export default function UsersPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl"
+                      onClick={() => handleViewUser(user.id)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                     <Button asChild variant="outline" size="sm" className="rounded-xl">
                       <Link href={`/users/${user.id}/edit`}>
                         <Edit className="h-4 w-4" />
@@ -384,6 +404,35 @@ export default function UsersPage() {
           </Button>
         </div>
       )}
+
+      <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>
+              {detailUser ? `${detailUser.first_name} ${detailUser.last_name}` : "Utilisateur"}
+            </SheetTitle>
+            {detailUser && (
+              <SheetDescription>{detailUser.email}</SheetDescription>
+            )}
+          </SheetHeader>
+          {detailUser && (
+            <div className="space-y-2 mt-4 text-sm">
+              <p><strong>Rôle :</strong> {getRoleLabel(detailUser.role_id)}</p>
+              <p><strong>Statut :</strong> {detailUser.status === "active" ? "Actif" : "Inactif"}</p>
+              <p><strong>Téléphone :</strong> {detailUser.phone || "—"}</p>
+              <p>
+                <strong>Créé le :</strong>{' '}
+                {detailUser.created_at
+                  ? new Date(detailUser.created_at).toLocaleDateString("fr-FR")
+                  : '—'}
+              </p>
+              {detailUser.last_login && (
+                <p><strong>Dernière connexion :</strong> {new Date(detailUser.last_login).toLocaleDateString("fr-FR")}</p>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

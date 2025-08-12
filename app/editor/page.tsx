@@ -3,7 +3,19 @@
 import * as React from "react"
 import dynamic from "next/dynamic"
 import { useTheme } from "next-themes"
-import { Code, Save, Play, Download, Upload, FileText, Copy, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react'
+import { useSearchParams } from "next/navigation"
+import {
+  Code,
+  Save,
+  Play,
+  Download,
+  Upload,
+  FileText,
+  Copy,
+  RefreshCw,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,193 +23,182 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
-import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { cn } from "@/lib/utils"
+import { ErrorMessage } from "@/components/ui/error-message"
+import {
+  fetchTemplatesAndScripts,
+  updateTemplate,
+  createTemplate,
+  simulateScript,
+  type Template,
+} from "@/lib/templates"
+import { getScriptContent } from "@/lib/scripts"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
-interface Script {
-  id: string
-  name: string
-  content: string
-  language: "bash" | "python" | "javascript"
-  lastModified: Date
-  isTemplate: boolean
-}
+const defaultBashScript = `#!/bin/bash\n\n# Nouveau script`
+const defaultTemplateJson = '{\n  "key": "value"\n}'
 
-const defaultBashScript = `#!/bin/bash
-# Script de monitoring VM
-# Auteur: LinuSupervisor
-# Date: $(date)
-
-VM_NAME="$1"
-LOG_FILE="/var/log/vm-monitoring.log"
-
-# Fonction de logging
-log_message() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
-}
-
-# Vérification des paramètres
-if [ -z "$VM_NAME" ]; then
-    log_message "ERREUR: Nom de VM requis"
-    echo "Usage: $0 <vm_name>"
-    exit 1
-fi
-
-# Vérification du statut de la VM
-log_message "Vérification du statut de $VM_NAME"
-STATUS=$(qm status "$VM_NAME" 2>/dev/null)
-
-if [ $? -eq 0 ]; then
-    log_message "Status de $VM_NAME: $STATUS"
-    
-    # Collecte des métriques si la VM est en cours d'exécution
-    if echo "$STATUS" | grep -q "running"; then
-        log_message "Collecte des métriques pour $VM_NAME"
-        
-        # CPU et mémoire
-        CPU_USAGE=$(qm monitor "$VM_NAME" info cpus 2>/dev/null || echo "N/A")
-        MEMORY_INFO=$(qm monitor "$VM_NAME" info memory 2>/dev/null || echo "N/A")
-        
-        log_message "CPU: $CPU_USAGE"
-        log_message "Mémoire: $MEMORY_INFO"
-        
-        echo "✅ Monitoring terminé avec succès"
-    else
-        log_message "ATTENTION: VM $VM_NAME n'est pas en cours d'exécution"
-        echo "⚠️  VM arrêtée"
-    fi
-else
-    log_message "ERREUR: VM $VM_NAME introuvable"
-    echo "❌ VM non trouvée"
-    exit 1
-fi`
-
-const mockScripts: Script[] = [
-  {
-    id: "script-1",
-    name: "vm-monitoring.sh",
-    content: defaultBashScript,
-    language: "bash",
-    lastModified: new Date(),
-    isTemplate: true
-  },
-  {
-    id: "script-2",
-    name: "backup-vm.sh",
-    content: `#!/bin/bash
-# Script de sauvegarde VM
-VM_ID="$1"
-BACKUP_DIR="/var/backups/vms"
-
-if [ -z "$VM_ID" ]; then
-    echo "Usage: $0 <vm_id>"
-    exit 1
-fi
-
-echo "Démarrage de la sauvegarde de la VM $VM_ID..."
-vzdump "$VM_ID" --storage local --compress gzip --mode snapshot
-echo "Sauvegarde terminée"`,
-    language: "bash",
-    lastModified: new Date(Date.now() - 86400000),
-    isTemplate: false
-  }
-]
-
-// Simulate AI analysis for scripts
-const simulateScriptAIAnalysis = async (context: string): Promise<string> => {
-  await new Promise(resolve => setTimeout(resolve, 2000))
-  
-  const hasErrorHandling = context.includes("if [") && context.includes("exit")
-  const hasLogging = context.includes("log") || context.includes("echo")
-  const hasVariables = context.includes("$")
-  const lineCount = context.split('\n').length
-  
-  return `🤖 **Analyse IA du script**
-
-**📊 Analyse structurelle :**
-• **Lignes de code :** ${lineCount}
-• **Gestion d'erreurs :** ${hasErrorHandling ? "✅ Présente" : "❌ Manquante"}
-• **Logging :** ${hasLogging ? "✅ Implémenté" : "❌ Absent"}
-• **Variables :** ${hasVariables ? "✅ Utilisées" : "❌ Aucune"}
-
-**🔍 Recommandations d'amélioration :**
-
-${!hasErrorHandling ? "⚠️ **Gestion d'erreurs manquante**\n```bash\nif [ $? -ne 0 ]; then\n    echo \"Erreur détectée\"\n    exit 1\nfi\n```\n" : ""}
-
-${!hasLogging ? "📝 **Ajouter du logging**\n```bash\nLOG_FILE=\"/var/log/script.log\"\necho \"$(date): Message\" >> \"$LOG_FILE\"\n```\n" : ""}
-
-**🛡️ Sécurité :**
-• Validez toujours les paramètres d'entrée
-• Utilisez des guillemets pour les variables : \`"$VAR"\`
-• Vérifiez les permissions avant l'exécution
-
-**⚡ Performance :**
-• Évitez les boucles infinies
-• Utilisez \`set -e\` pour arrêter sur erreur
-• Optimisez les appels système répétitifs
-
-**🎯 Score qualité :** ${hasErrorHandling && hasLogging ? "8/10" : hasErrorHandling || hasLogging ? "6/10" : "4/10"}
-
-*Analyse générée le ${new Date().toLocaleString('fr-FR')}*`
-}
 
 export default function CodeEditorPage() {
   const { theme } = useTheme()
-  const [selectedScript, setSelectedScript] = React.useState<Script | null>(mockScripts[0])
-  const [scriptContent, setScriptContent] = React.useState(mockScripts[0].content)
-  const [scriptName, setScriptName] = React.useState(mockScripts[0].name)
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+
+  const [scripts, setScripts] = React.useState<Template[]>([])
+  const [templates, setTemplates] = React.useState<Template[]>([])
+  const [selectedScript, setSelectedScript] = React.useState<Template | null>(null)
+  const [selectedTemplate, setSelectedTemplate] = React.useState<Template | null>(null)
+  const [scriptContent, setScriptContent] = React.useState("")
+  const [scriptName, setScriptName] = React.useState("")
   const [isModified, setIsModified] = React.useState(false)
   const [isSaving, setIsSaving] = React.useState(false)
   const [syntaxErrors, setSyntaxErrors] = React.useState<string[]>([])
-  const { toast } = useToast()
+  const [scriptStatus, setScriptStatus] = React.useState<"idle" | "ok" | "error">("idle")
+  const tabParam = searchParams.get("tab") || "scripts"
+  const [activeTab, setActiveTab] = React.useState(tabParam)
+
+  const [scriptView, setScriptView] = React.useState<"code" | "json">("code")
+
+  const [templateName, setTemplateName] = React.useState("")
+  const [templateCategory, setTemplateCategory] = React.useState("")
+  const [templateService, setTemplateService] = React.useState("")
+  const [templateContent, setTemplateContent] = React.useState("")
+  const [templateStatus, setTemplateStatus] = React.useState<"idle" | "ok" | "error">("idle")
+
+  const [templateView, setTemplateView] = React.useState<"code" | "json">("code")
+
+  const itemId = searchParams.get("id")
+
+  const scriptJson = React.useMemo(
+    () => JSON.stringify({ name: scriptName, content: scriptContent }, null, 2),
+    [scriptName, scriptContent]
+  )
+
+  const templateJson = React.useMemo(() => {
+    let parsedContent: unknown
+    try {
+      parsedContent = JSON.parse(templateContent || "{}")
+    } catch {
+      parsedContent = templateContent
+    }
+
+    return JSON.stringify(
+      {
+        name: templateName,
+        category: templateCategory || "general",
+        service_type: templateService || "custom",
+        template_content: parsedContent,
+      },
+      null,
+      2
+    )
+  }, [templateName, templateCategory, templateService, templateContent])
+
+  React.useEffect(() => {
+    fetchTemplatesAndScripts()
+      .then(({ templates: tpls, scripts: scr }) => {
+        setTemplates(tpls)
+        setScripts(scr as Template[])
+        if (itemId) {
+          const id = Number(itemId)
+          const foundScript = scr.find((s) => s.id === id)
+          const foundTemplate = tpls.find((t) => t.id === id)
+          if (foundScript) {
+            setSelectedScript(foundScript)
+            setActiveTab("scripts")
+          } else if (foundTemplate) {
+            setSelectedTemplate(foundTemplate)
+            setActiveTab("templates")
+          } else {
+            setSelectedScript(scr[0] || null)
+          }
+        } else {
+          setSelectedScript(scr[0] || null)
+        }
+      })
+      .catch(() => {
+        setTemplates([])
+        setScripts([])
+      })
+  }, [itemId])
 
   React.useEffect(() => {
     if (selectedScript) {
-      setScriptContent(selectedScript.content)
       setScriptName(selectedScript.name)
       setIsModified(false)
+      setScriptStatus("idle")
+      if (selectedScript.template_content && selectedScript.template_content.trim()) {
+        setScriptContent(selectedScript.template_content)
+      } else {
+        getScriptContent(selectedScript.id)
+          .then((content) => setScriptContent(content))
+          .catch(() => setScriptContent(""))
+      }
+      setScriptView("code")
     }
   }, [selectedScript])
+
+  React.useEffect(() => {
+    if (selectedTemplate) {
+      setTemplateName(selectedTemplate.name)
+      setTemplateCategory(selectedTemplate.category)
+      setTemplateService(selectedTemplate.service_type)
+      try {
+        setTemplateContent(
+          JSON.stringify(
+            JSON.parse(selectedTemplate.template_content),
+            null,
+            2
+          )
+        )
+      } catch {
+        setTemplateContent(selectedTemplate.template_content)
+      }
+      setTemplateStatus("idle")
+      setTemplateView("code")
+    }
+  }, [selectedTemplate])
 
   const handleContentChange = (value: string) => {
     setScriptContent(value)
     setIsModified(true)
-    
-    // Simple syntax validation for bash
+    setScriptStatus("idle")
+
     const errors: string[] = []
-    const lines = value.split('\n')
-    
+    const lines = value.split("\n")
     lines.forEach((line, index) => {
       const trimmed = line.trim()
-      if (trimmed.startsWith('if [') && !trimmed.includes('];')) {
-        if (!lines[index + 1]?.trim().startsWith('then')) {
+      if (trimmed.startsWith("if [") && !trimmed.includes("];")) {
+        if (!lines[index + 1]?.trim().startsWith("then")) {
           errors.push(`Ligne ${index + 1}: 'if' sans 'then'`)
         }
       }
-      if (trimmed === 'fi' && !lines.slice(0, index).some(l => l.trim().startsWith('if'))) {
+      if (trimmed === "fi" && !lines.slice(0, index).some((l) => l.trim().startsWith("if"))) {
         errors.push(`Ligne ${index + 1}: 'fi' sans 'if' correspondant`)
       }
     })
-    
     setSyntaxErrors(errors)
   }
 
   const saveScript = async () => {
+    if (!selectedScript) return
     setIsSaving(true)
-    
     try {
-      // Simulate save operation
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      if (selectedScript) {
-        selectedScript.content = scriptContent
-        selectedScript.name = scriptName
-        selectedScript.lastModified = new Date()
-      }
-      
+      const updated = await updateTemplate(selectedScript.id, {
+        name: scriptName,
+        template_content: scriptContent,
+      })
+      setScripts((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+      setSelectedScript(updated)
       setIsModified(false)
       toast({
         title: "Script sauvegardé",
@@ -215,38 +216,69 @@ export default function CodeEditorPage() {
     }
   }
 
-  const testScript = async () => {
-    if (syntaxErrors.length > 0) {
+  const createNewScript = async () => {
+    try {
+      const name = `script_${Date.now()}.sh`
+      const tpl = await createTemplate({
+        name,
+        service_type: "custom",
+        category: "general",
+        description: "",
+        template_content: defaultBashScript,
+        fields_schema: { fields: [] },
+      })
+      setScripts((prev) => [...prev, tpl])
+      setSelectedScript(tpl)
+    } catch (error) {
       toast({
-        title: "Erreurs de syntaxe",
-        description: "Corrigez les erreurs avant de tester",
+        title: "Erreur",
+        description: "Impossible de créer le script",
         variant: "destructive",
       })
-      return
     }
-
-    toast({
-      title: "Test en cours",
-      description: "Validation de la syntaxe du script...",
-      variant: "info",
-    })
-
-    // Simulate script testing
-    await new Promise(resolve => setTimeout(resolve, 2000))
-
-    toast({
-      title: "Test réussi",
-      description: "Le script est syntaxiquement correct",
-      variant: "success",
-    })
   }
 
-  const exportScript = () => {
-    const blob = new Blob([scriptContent], { type: 'text/plain' })
+  const testScript = async () => {
+    try {
+      await simulateScript(scriptContent)
+      setScriptStatus("ok")
+      toast({
+        title: "Test réussi",
+        description: "Le script est valide",
+        variant: "success",
+      })
+    } catch (error) {
+      setScriptStatus("error")
+      toast({
+        title: "Erreur de test",
+        description: "Le script contient des erreurs",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const exportScript = (format: "sh" | "txt" | "json") => {
+    let content = scriptContent
+    let filename = scriptName || "script"
+    let type = "text/plain"
+
+    if (format === "json") {
+      content = JSON.stringify({ name: filename, content: scriptContent }, null, 2)
+      type = "application/json"
+      filename = filename.endsWith(".json") ? filename : `${filename}.json`
+    } else if (format === "txt") {
+      type = "text/plain"
+      filename = filename.endsWith(".txt") ? filename : `${filename}.txt`
+    } else {
+      type = "text/x-sh"
+      filename = filename.endsWith(".sh") ? filename : `${filename}.sh`
+    }
+
+    const blob = new Blob([content], { type })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
+    const a = document.createElement("a")
     a.href = url
-    a.download = scriptName
+    a.download = filename
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -254,7 +286,7 @@ export default function CodeEditorPage() {
 
     toast({
       title: "Script exporté",
-      description: `${scriptName} a été téléchargé`,
+      description: `${filename} a été téléchargé`,
       variant: "success",
     })
   }
@@ -282,11 +314,122 @@ export default function CodeEditorPage() {
     })
   }
 
-  const aiContext = `Script: ${scriptName}, Lignes: ${scriptContent.split('\n').length}, Langage: ${selectedScript?.language || 'bash'}, Erreurs: ${syntaxErrors.length}`
+  const copyTemplateToClipboard = () => {
+    navigator.clipboard.writeText(templateContent)
+    toast({
+      title: "Copié !",
+      description: "Template copié dans le presse-papiers",
+      variant: "success",
+    })
+  }
+
+  const simulateTemplate = async () => {
+    try {
+      await simulateScript(JSON.stringify(JSON.parse(templateContent)))
+      setTemplateStatus("ok")
+      toast({
+        title: "Simulation réussie",
+        description: "Le template semble valide",
+        variant: "success",
+      })
+    } catch (error) {
+      setTemplateStatus("error")
+      toast({
+        title: "Erreur",
+        description: "Le template est invalide",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const saveTemplate = async () => {
+    let parsed
+    try {
+      parsed = JSON.parse(templateContent)
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Template JSON invalide",
+        variant: "destructive",
+      })
+      return
+    }
+    try {
+      if (selectedTemplate) {
+        const updated = await updateTemplate(selectedTemplate.id, {
+          name: templateName,
+          category: templateCategory || "general",
+          service_type: templateService || "custom",
+          description: "",
+          template_content: JSON.stringify(parsed),
+          fields_schema: { fields: [] },
+        })
+        setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+        setSelectedTemplate(updated)
+        toast({
+          title: "Template sauvegardé",
+          description: `${templateName} a été enregistré`,
+          variant: "success",
+        })
+      } else {
+        const created = await createTemplate({
+          name: templateName,
+          category: templateCategory || "general",
+          service_type: templateService || "custom",
+          description: "",
+          template_content: JSON.stringify(parsed),
+          fields_schema: { fields: [] },
+        })
+        setTemplates((prev) => [...prev, created])
+        setSelectedTemplate(created)
+        toast({
+          title: "Template créé",
+          description: `${templateName} a été enregistré`,
+          variant: "success",
+        })
+      }
+      setTemplateStatus("idle")
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder le template",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const createNewTemplate = async () => {
+    try {
+      const name = `template_${Date.now()}.json`
+      const tpl = await createTemplate({
+        name,
+        service_type: "custom",
+        category: "general",
+        description: "",
+        template_content: defaultTemplateJson,
+        fields_schema: { fields: [] },
+      })
+      setTemplates((prev) => [...prev, tpl])
+      setSelectedTemplate(tpl)
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le template",
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="w-full md:w-auto">
+          <TabsTrigger value="scripts">Scripts</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+        </TabsList>
+        <TabsContent value="scripts">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-semibold">Éditeur de code interactif</h1>
           <p className="text-muted-foreground mt-1">
@@ -307,10 +450,19 @@ export default function CodeEditorPage() {
               Importer
             </label>
           </Button>
-          <Button onClick={exportScript} variant="outline" className="rounded-xl">
-            <Download className="mr-2 h-4 w-4" />
-            Exporter
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="rounded-xl">
+                <Download className="mr-2 h-4 w-4" />
+                Exporter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => exportScript("sh")}>Format .sh</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportScript("txt")}>Format .txt</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportScript("json")}>Format .json</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={testScript} variant="outline" className="rounded-xl">
             <Play className="mr-2 h-4 w-4" />
             Tester
@@ -325,9 +477,8 @@ export default function CodeEditorPage() {
           </Button>
         </div>
       </div>
-
+      
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Script Selection Sidebar */}
         <div className="lg:col-span-1">
           <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
             <CardHeader>
@@ -336,29 +487,33 @@ export default function CodeEditorPage() {
                 Scripts
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {mockScripts.map((script) => (
+            <CardContent className="space-y-3 max-h-96 overflow-y-auto">
+              {scripts.map((tpl) => (
                 <div
-                  key={script.id}
-                  onClick={() => setSelectedScript(script)}
+                  key={tpl.id}
+                  onClick={() => setSelectedScript(tpl)}
                   className={cn(
                     "p-3 rounded-xl border cursor-pointer transition-colors hover:bg-muted/50",
-                    selectedScript?.id === script.id && "bg-primary/10 border-primary"
+                    selectedScript?.id === tpl.id && "bg-primary/10 border-primary"
                   )}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-sm">{script.name}</span>
-                    {script.isTemplate && (
-                      <Badge variant="secondary" className="text-xs">Template</Badge>
-                    )}
+                    <span className="font-medium text-sm">{tpl.name}</span>
+                    <Badge variant="secondary" className="text-xs">
+                      Script
+                    </Badge>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {script.language} • {script.lastModified.toLocaleDateString("fr-FR")}
+                    bash
                   </div>
                 </div>
               ))}
-              
-              <Button variant="outline" className="w-full rounded-xl">
+
+              <Button
+                variant="outline"
+                className="w-full rounded-xl"
+                onClick={createNewScript}
+              >
                 <Code className="mr-2 h-4 w-4" />
                 Nouveau script
               </Button>
@@ -366,30 +521,38 @@ export default function CodeEditorPage() {
           </Card>
         </div>
 
-        {/* Main Editor */}
         <div className="lg:col-span-3 space-y-6">
-          {/* Script Info */}
           <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Code className="h-5 w-5" />
                   {scriptName}
-                  {isModified && <Badge variant="warning" className="text-xs">Non sauvegardé</Badge>}
+                  {isModified && (
+                    <Badge variant="warning" className="text-xs">
+                      Non sauvegardé
+                    </Badge>
+                  )}
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={copyToClipboard} className="rounded-xl">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={copyToClipboard}
+                    className="rounded-xl"
+                  >
                     <Copy className="h-4 w-4" />
                   </Button>
-                  {syntaxErrors.length === 0 ? (
+                  {scriptStatus === "ok" && (
                     <Badge variant="success" className="text-xs">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Syntaxe OK
                     </Badge>
-                  ) : (
+                  )}
+                  {scriptStatus === "error" && (
                     <Badge variant="destructive" className="text-xs">
                       <AlertTriangle className="h-3 w-3 mr-1" />
-                      {syntaxErrors.length} erreur(s)
+                      Erreur
                     </Badge>
                   )}
                 </div>
@@ -411,29 +574,30 @@ export default function CodeEditorPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="script-language">Langage</Label>
-                  <Select value={selectedScript?.language || "bash"}>
+                  <Select value="bash">
                     <SelectTrigger className="rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="bash">Bash</SelectItem>
-                      <SelectItem value="python">Python</SelectItem>
-                      <SelectItem value="javascript">JavaScript</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              {/* Syntax Errors */}
               {syntaxErrors.length > 0 && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                    <span className="font-medium text-destructive">Erreurs de syntaxe</span>
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <span className="font-medium text-red-600">
+                      Erreurs de syntaxe
+                    </span>
                   </div>
-                  <ul className="text-sm text-destructive space-y-1">
+                  <ul className="space-y-1">
                     {syntaxErrors.map((error, index) => (
-                      <li key={index}>• {error}</li>
+                      <li key={index}>
+                        <ErrorMessage>{error}</ErrorMessage>
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -441,40 +605,249 @@ export default function CodeEditorPage() {
             </CardContent>
           </Card>
 
-          {/* Code Editor */}
           <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
             <CardHeader>
               <CardTitle className="text-lg">Éditeur</CardTitle>
               <CardDescription>
-                Éditez votre script avec coloration syntaxique et validation en temps réel
+                Éditez votre script avec coloration syntaxique et validation en temps
+                réel
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="relative rounded-xl overflow-hidden">
-                <MonacoEditor
-                  value={scriptContent}
-                  language={selectedScript?.language || "bash"}
-                  onChange={(value) => handleContentChange(value || "")}
-                  height="400px"
-                  theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                  options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true }}
-                />
-                <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-                  {scriptContent.split('\n').length} lignes
-                </div>
-              </div>
+              <Tabs value={scriptView} onValueChange={setScriptView} className="space-y-2">
+                <TabsList className="w-full md:w-auto">
+                  <TabsTrigger value="code">Code</TabsTrigger>
+                  <TabsTrigger value="json">JSON</TabsTrigger>
+                </TabsList>
+                <TabsContent value="code">
+                  <div className="relative rounded-xl overflow-hidden">
+                    <MonacoEditor
+                      value={scriptContent}
+                      language="bash"
+                      onChange={(value) => handleContentChange(value || "")}
+                      height="500px"
+                      theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        automaticLayout: true,
+                        wordWrap: "on",
+                        scrollBeyondLastLine: false,
+                      }}
+                    />
+                    <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                      {scriptContent.split("\n").length} lignes
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="json">
+                  <div className="relative rounded-xl overflow-hidden">
+                    <MonacoEditor
+                      value={scriptJson}
+                      language="json"
+                      height="500px"
+                      theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                      options={{
+                        readOnly: true,
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        automaticLayout: true,
+                        wordWrap: "on",
+                        scrollBeyondLastLine: false,
+                      }}
+                    />
+                    <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                      {scriptJson.split("\n").length} lignes
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
-
-          {/* AI Assistant */}
-          <AssistantAIBlock
-            title="Assistant IA pour l'édition de code"
-            context={aiContext}
-            onAnalyze={simulateScriptAIAnalysis}
-            className="w-full"
-          />
         </div>
       </div>
+      </div>
+        </TabsContent>
+        <TabsContent value="templates">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-4xl font-semibold">Templates</h1>
+                <p className="text-muted-foreground mt-1">
+                  Gérez vos templates paramétrables
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button onClick={simulateTemplate} variant="outline" className="rounded-xl">
+                  <Play className="mr-2 h-4 w-4" /> Simuler
+                </Button>
+                <Button onClick={saveTemplate} className="rounded-xl">
+                  <Save className="mr-2 h-4 w-4" /> Sauvegarder
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-1">
+                <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5" /> Templates
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 max-h-96 overflow-y-auto">
+                    {templates.map((tpl) => (
+                      <div
+                        key={tpl.id}
+                        onClick={() => setSelectedTemplate(tpl)}
+                        className={cn(
+                          "p-3 rounded-xl border cursor-pointer transition-colors hover:bg-muted/50",
+                          selectedTemplate?.id === tpl.id && "bg-primary/10 border-primary"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm">{tpl.name}</span>
+                          <Badge variant="secondary" className="text-xs">
+                            Template
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {tpl.category}
+                        </div>
+                      </div>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-xl"
+                      onClick={createNewTemplate}
+                    >
+                      <Code className="mr-2 h-4 w-4" />
+                      Nouveau template
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="lg:col-span-3 space-y-6">
+                <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Informations</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="template-name">Nom</Label>
+                      <Input
+                        id="template-name"
+                        value={templateName}
+                        onChange={(e) => setTemplateName(e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="template-category">Catégorie</Label>
+                      <Input
+                        id="template-category"
+                        value={templateCategory}
+                        onChange={(e) => setTemplateCategory(e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="template-service">Service</Label>
+                      <Input
+                        id="template-service"
+                        value={templateService}
+                        onChange={(e) => setTemplateService(e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Code className="h-5 w-5" /> Contenu
+                        {templateStatus === "ok" && (
+                          <Badge variant="success" className="text-xs">
+                            <CheckCircle className="h-3 w-3 mr-1" /> Valide
+                          </Badge>
+                        )}
+                        {templateStatus === "error" && (
+                          <Badge variant="destructive" className="text-xs">
+                            <AlertTriangle className="h-3 w-3 mr-1" /> Erreur
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyTemplateToClipboard()}
+                        className="rounded-xl"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Tabs value={templateView} onValueChange={setTemplateView} className="space-y-2">
+                      <TabsList className="w-full md:w-auto">
+                        <TabsTrigger value="code">Code</TabsTrigger>
+                        <TabsTrigger value="json">JSON</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="code">
+                        <div className="relative rounded-xl overflow-hidden">
+                          <MonacoEditor
+                            value={templateContent}
+                            language="json"
+                            onChange={(value) => setTemplateContent(value || "")}
+                            height="500px"
+                            theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                            options={{
+                              minimap: { enabled: true },
+                              fontSize: 14,
+                              automaticLayout: true,
+                              wordWrap: "on",
+                              scrollBeyondLastLine: false,
+                            }}
+                          />
+                          <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                            {templateContent.split("\n").length} lignes
+                          </div>
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="json">
+                        <div className="relative rounded-xl overflow-hidden">
+                          <MonacoEditor
+                            value={templateJson}
+                            language="json"
+                            height="500px"
+                            theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                            options={{
+                              readOnly: true,
+                              minimap: { enabled: true },
+                              fontSize: 14,
+                              automaticLayout: true,
+                              wordWrap: "on",
+                              scrollBeyondLastLine: false,
+                            }}
+                          />
+                          <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                            {templateJson.split("\n").length} lignes
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
+

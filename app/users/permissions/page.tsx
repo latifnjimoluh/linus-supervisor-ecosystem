@@ -15,49 +15,24 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { useToast } from "@/hooks/use-toast"
+import {
+  listAllPermissions,
+  createPermission,
+  deletePermission,
+  assignPermissions,
+  unassignPermissions,
+  getPermissionsByRole,
+  Permission as PermissionBase,
+} from "@/services/permissions"
+import { listRoles, Role as RoleBase } from "@/services/roles"
 
-interface Permission {
-  id: number
-  name: string
-  description: string
+interface Permission extends PermissionBase {
   module: string
   is_active: boolean
-  created_at: string
 }
 
-interface Role {
-  id: number // Changed to number
-  name: string
-  permissions: number[] // Changed to number[]
-}
-
-// Mock data for permissions
-const generateMockPermissions = (): Permission[] => {
-  return [
-    { id: 1, name: "vm.create", description: "Créer des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 2, name: "vm.delete", description: "Supprimer des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 3, name: "vm.start", description: "Démarrer des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 4, name: "vm.stop", description: "Arrêter des machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 5, name: "vm.monitor", description: "Superviser les machines virtuelles", module: "VM Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 6, name: "template.create", description: "Créer des templates", module: "Templates", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 7, name: "template.delete", description: "Supprimer des templates", module: "Templates", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 8, name: "template.analyze", description: "Analyser des templates avec l'IA", module: "Templates", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 9, name: "logs.read", description: "Consulter les logs système", module: "Logs", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 10, name: "logs.export", description: "Exporter les logs", module: "Logs", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 11, name: "users.create", description: "Créer des utilisateurs", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 12, name: "users.delete", description: "Supprimer des utilisateurs", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 13, name: "roles.manage", description: "Gérer les rôles", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 14, name: "permissions.manage", description: "Gérer les permissions", module: "User Management", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-    { id: 15, name: "system.config", description: "Configurer le système", module: "System", is_active: true, created_at: "2024-01-01T00:00:00Z" },
-  ]
-}
-
-const generateMockRoles = (): Role[] => {
-  return [
-    { id: 1, name: "admin", permissions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] },
-    { id: 2, name: "technicien", permissions: [1, 3, 4, 5, 6, 8, 9] },
-    { id: 3, name: "auditeur", permissions: [5, 9, 10] },
-  ]
+interface Role extends RoleBase {
+  permissions: number[]
 }
 
 // Simulate AI analysis for permissions
@@ -102,41 +77,74 @@ Votre système compte ${totalPermissions} permissions dont ${activePermissions} 
 
 export default function PermissionsPage() {
   const [permissions, setPermissions] = React.useState<Permission[]>([])
+  const [allPermissions, setAllPermissions] = React.useState<Permission[]>([])
   const [roles, setRoles] = React.useState<Role[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [moduleFilter, setModuleFilter] = React.useState<string>("all")
   const [selectedRole, setSelectedRole] = React.useState<string>("all")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
+  const [selectedModule, setSelectedModule] = React.useState("general")
   const [formData, setFormData] = React.useState({ name: "", description: "", module: "" })
   const [formLoading, setFormLoading] = React.useState(false)
   const [assignLoading, setAssignLoading] = React.useState(false)
+  const [pagination, setPagination] = React.useState({ page: 1, pages: 1, total: 0, limit: 10 })
   const { toast } = useToast()
 
-  const fetchData = React.useCallback(() => {
+  const fetchData = React.useCallback(async () => {
     setLoading(true)
-    setTimeout(() => {
-      setPermissions(generateMockPermissions())
-      setRoles(generateMockRoles())
+    try {
+      const permRes = await listAllPermissions()
+      const roleData = await listRoles()
+      const mappedPerms = permRes.map(p => ({
+        ...p,
+        module: 'general',
+        is_active: p.status !== 'inactif',
+      }))
+      setAllPermissions(mappedPerms)
+      const rolesWithPerms = await Promise.all(
+        roleData.map(async r => {
+          const perms = await getPermissionsByRole(r.id)
+          return { ...r, permissions: perms.map((p: Permission) => p.id) }
+        })
+      )
+      setRoles(rolesWithPerms)
+      setPagination(prev => ({
+        ...prev,
+        total: mappedPerms.length,
+        pages: Math.ceil(mappedPerms.length / prev.limit),
+        page: 1,
+      }))
+    } catch (err) {
+      console.error('fetchData error', err)
+    } finally {
       setLoading(false)
-    }, 1000)
-  }, [])
+    }
+  }, [pagination.limit])
 
   React.useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  const filteredPermissions = permissions.filter(permission => {
+  React.useEffect(() => {
+    const start = (pagination.page - 1) * pagination.limit
+    const end = start + pagination.limit
+    setPermissions(allPermissions.slice(start, end))
+  }, [allPermissions, pagination.page, pagination.limit])
+
+  const basePermissions = searchTerm ? allPermissions : permissions
+  const filteredPermissions = basePermissions.filter(permission => {
     const matchesSearch = permission.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          permission.description.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesModule = moduleFilter === "all" || permission.module === moduleFilter
     return matchesSearch && matchesModule
   })
 
-  const modules = Array.from(new Set(permissions.map(p => p.module)))
+  const modules = Array.from(new Set(allPermissions.map(p => p.module)))
 
   const handleCreatePermission = async () => {
-    if (!formData.name.trim() || !formData.description.trim() || !formData.module.trim()) {
+    const moduleName = selectedModule === "new" ? formData.module : selectedModule
+    if (!formData.name.trim() || !formData.description.trim() || !moduleName.trim()) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs",
@@ -156,7 +164,7 @@ export default function PermissionsPage() {
     }
 
     // Check if permission already exists
-    if (permissions.some(p => p.name === formData.name)) {
+    if (allPermissions.some(p => p.name === formData.name)) {
       toast({
         title: "Erreur",
         description: "Cette permission existe déjà",
@@ -168,19 +176,23 @@ export default function PermissionsPage() {
     setFormLoading(true)
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
+      const created = await createPermission({ name: formData.name, description: formData.description })
       const newPermission: Permission = {
-        id: permissions.length > 0 ? Math.max(...permissions.map(p => p.id)) + 1 : 1,
-        name: formData.name,
-        description: formData.description,
-        module: formData.module,
+        ...created,
+        module: moduleName,
         is_active: true,
-        created_at: new Date().toISOString(),
       }
-
-      setPermissions(prev => [...prev, newPermission])
+      setAllPermissions(prev => {
+        const updated = [...prev, newPermission]
+        setPagination(p => ({
+          ...p,
+          total: updated.length,
+          pages: Math.ceil(updated.length / p.limit),
+        }))
+        return updated
+      })
       setFormData({ name: "", description: "", module: "" })
+      setSelectedModule("general")
       setIsCreateDialogOpen(false)
 
       toast({
@@ -213,9 +225,17 @@ export default function PermissionsPage() {
     }
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      setPermissions(prev => prev.filter(p => p.id !== permissionId))
+      await deletePermission(permissionId)
+      setAllPermissions(prev => {
+        const updated = prev.filter(p => p.id !== permissionId)
+        setPagination(p => ({
+          ...p,
+          total: updated.length,
+          pages: Math.ceil(updated.length / p.limit),
+          page: Math.min(p.page, Math.ceil(updated.length / p.limit) || 1),
+        }))
+        return updated
+      })
 
       toast({
         title: "Permission supprimée",
@@ -235,7 +255,11 @@ export default function PermissionsPage() {
     setAssignLoading(true)
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 800))
+      if (isAssigned) {
+        await unassignPermissions(roleId, [permissionId])
+      } else {
+        await assignPermissions(roleId, [permissionId])
+      }
 
       setRoles(prev => prev.map(role => {
         if (role.id === roleId) {
@@ -247,7 +271,7 @@ export default function PermissionsPage() {
         return role
       }))
 
-      const permission = permissions.find(p => p.id === permissionId)
+      const permission = allPermissions.find(p => p.id === permissionId)
       const role = roles.find(r => r.id === roleId)
 
       toast({
@@ -268,12 +292,12 @@ export default function PermissionsPage() {
 
   const selectedRoleData = roles.find(r => String(r.id) === selectedRole) // Compare with string value from select
   const stats = {
-    total: permissions.length,
-    active: permissions.filter(p => p.is_active).length,
+    total: allPermissions.length,
+    active: allPermissions.filter(p => p.is_active).length,
     modules: modules.length,
   }
 
-  const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, Modules: ${stats.modules}. Répartition par rôle: Admin (${roles.find(r => r.name === 'admin')?.permissions.length || 0}), Technicien (${roles.find(r => r.name === 'technicien')?.permissions.length || 0}), Auditeur (${roles.find(r => r.name === 'auditeur')?.permissions.length || 0}).`
+const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, Modules: ${stats.modules}. Répartition par rôle: Admin (${roles.find(r => r.name === 'admin')?.permissions.length || 0}), Technicien (${roles.find(r => r.name === 'technicien')?.permissions.length || 0}), Auditeur (${roles.find(r => r.name === 'auditeur')?.permissions.length || 0}).`;
 
   return (
     <div className="space-y-6">
@@ -320,7 +344,15 @@ export default function PermissionsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="module">Module</Label>
-                <Select value={formData.module} onValueChange={(value) => setFormData(prev => ({ ...prev, module: value }))}>
+                <Select
+                  value={selectedModule}
+                  onValueChange={(value) => {
+                    setSelectedModule(value)
+                    if (value !== "new") {
+                      setFormData(prev => ({ ...prev, module: "" }))
+                    }
+                  }}
+                >
                   <SelectTrigger className="rounded-xl">
                     <SelectValue placeholder="Sélectionner un module" />
                   </SelectTrigger>
@@ -331,9 +363,10 @@ export default function PermissionsPage() {
                     <SelectItem value="new">Nouveau module...</SelectItem>
                   </SelectContent>
                 </Select>
-                {formData.module === "new" && (
+                {selectedModule === "new" && (
                   <Input
                     placeholder="Nom du nouveau module"
+                    value={formData.module}
                     onChange={(e) => setFormData(prev => ({ ...prev, module: e.target.value }))}
                     className="rounded-xl mt-2"
                   />
@@ -345,6 +378,7 @@ export default function PermissionsPage() {
                   onClick={() => {
                     setIsCreateDialogOpen(false)
                     setFormData({ name: "", description: "", module: "" })
+                    setSelectedModule("general")
                   }}
                   className="rounded-xl"
                 >
@@ -450,7 +484,7 @@ export default function PermissionsPage() {
             {selectedRole === "all" ? "Toutes les permissions" : `Permissions du rôle "${selectedRoleData?.name}"`}
           </CardTitle>
           <CardDescription>
-            {filteredPermissions.length} permission(s) trouvée(s) sur {permissions.length} au total
+            {filteredPermissions.length} permission(s) trouvée(s) sur {pagination.total} au total
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -460,6 +494,7 @@ export default function PermissionsPage() {
               <span className="ml-2">Chargement des permissions...</span>
             </div>
           ) : (
+            <>  
             <div className="space-y-4">
               {filteredPermissions.map((permission, index) => {
                 const isAssigned = selectedRoleData?.permissions.includes(permission.id) || false
@@ -497,7 +532,12 @@ export default function PermissionsPage() {
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">{permission.description}</p>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                          <span>Créé le {new Date(permission.created_at).toLocaleDateString("fr-FR")}</span>
+                          <span>
+                            Créé le{' '}
+                            {permission.createdAt
+                              ? new Date(permission.createdAt).toLocaleDateString("fr-FR")
+                              : '—'}
+                          </span>
                           {isUsedByRoles.length > 0 && (
                             <span>Utilisé par: {isUsedByRoles.map(r => r.name).join(", ")}</span>
                           )}
@@ -542,6 +582,36 @@ export default function PermissionsPage() {
                 )
               })}
             </div>
+            {!searchTerm && (
+              <div className="flex items-center justify-between pt-4">
+                <span className="text-sm text-muted-foreground">
+                  Page {pagination.page} sur {pagination.pages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pagination.page <= 1}
+                    onClick={() =>
+                      setPagination(p => ({ ...p, page: p.page - 1 }))
+                    }
+                  >
+                    Précédent
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pagination.page >= pagination.pages}
+                    onClick={() =>
+                      setPagination(p => ({ ...p, page: p.page + 1 }))
+                    }
+                  >
+                    Suivant
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>

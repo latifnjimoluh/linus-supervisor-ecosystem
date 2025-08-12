@@ -13,50 +13,6 @@ interface UserRecord {
   last_name: string
   avatar: string
 }
-
-const users: UserRecord[] = [
-  {
-    id: 1,
-    email: "admin@example.com",
-    password: "password123",
-    role_id: 1,
-    status: "actif",
-    first_name: "Jean",
-    last_name: "Dupont",
-    avatar: "/placeholder-user.jpg"
-  },
-  {
-    id: 2,
-    email: "tech@example.com",
-    password: "password123",
-    role_id: 2,
-    status: "actif",
-    first_name: "Marie",
-    last_name: "Martin",
-    avatar: "/placeholder-user.jpg"
-  },
-  {
-    id: 3,
-    email: "auditor@example.com",
-    password: "password123",
-    role_id: 3,
-    status: "actif",
-    first_name: "Pierre",
-    last_name: "Durand",
-    avatar: "/placeholder-user.jpg"
-  },
-  {
-    id: 4,
-    email: "inactive@example.com",
-    password: "password123",
-    role_id: 2,
-    status: "inactif",
-    first_name: "Sophie",
-    last_name: "Inactive",
-    avatar: "/placeholder-user.jpg"
-  },
-]
-
 // Simulate a password reset requests database
 const resetTokens: { email: string; token: string; expiresAt: number; used: boolean }[] = []
 

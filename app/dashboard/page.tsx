@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { LayoutDashboard, Server, AlertTriangle, Plus, Eye, Code, RefreshCw, Info, XCircle, TrendingUp, TrendingDown, Activity } from 'lucide-react'
+import { LayoutDashboard, Server, AlertTriangle, Plus, Eye, Code, RefreshCw, Info, XCircle, TrendingUp, TrendingDown, Activity, UserPlus, CheckCircle, Trash2, Rocket } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -12,142 +12,49 @@ import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
+import { getDashboard, getDashboardInsights, type DashboardData } from "@/services/dashboard"
+import { listProxmoxVMs, type ProxmoxVM } from "@/services/vms"
 
-interface DashboardData {
-  totalVms: number
-  activeServices: number
-  alerts: {
-    critical: number
-    major: number
-    minor: number
-  }
-  systemHealth: number
-  networkTraffic: {
-    incoming: number
-    outgoing: number
-  }
-  recentActivity: Array<{
-    id: string
-    type: "vm_created" | "vm_stopped" | "alert_resolved" | "script_executed"
-    message: string
-    timestamp: string
-  }>
-  lastUpdated: string
-  apiError: boolean
+const emptyData: DashboardData = {
+  totalVms: 0,
+  activeServices: 0,
+  alerts: { critical: 0, major: 0, minor: 0 },
+  systemHealth: 0,
+  networkTraffic: { incoming: 0, outgoing: 0 },
+  recentActivity: [],
+  lastUpdated: new Date().toISOString(),
+  apiError: false,
+  deploymentStats: { total: 0, success: 0, failed: 0, deleted: 0 },
 }
 
-const mockDashboardData = (): DashboardData => {
-  const now = new Date()
-  const randomVms = Math.floor(Math.random() * 20) + 15
-  const randomServices = Math.floor(Math.random() * 50) + 80
-  const randomCritical = Math.floor(Math.random() * 3)
-  const randomMajor = Math.floor(Math.random() * 5) + 1
-  const randomMinor = Math.floor(Math.random() * 8) + 2
-
-  return {
-    totalVms: randomVms,
-    activeServices: randomServices,
-    alerts: {
-      critical: randomCritical,
-      major: randomMajor,
-      minor: randomMinor,
-    },
-    systemHealth: Math.floor(Math.random() * 30) + 70, // 70-100%
-    networkTraffic: {
-      incoming: Math.floor(Math.random() * 1000) + 500, // MB/s
-      outgoing: Math.floor(Math.random() * 800) + 300,
-    },
-    recentActivity: [
-      {
-        id: "1",
-        type: "vm_created",
-        message: "VM 'web-server-03' créée avec succès",
-        timestamp: "Il y a 5 minutes"
-      },
-      {
-        id: "2", 
-        type: "alert_resolved",
-        message: "Alerte CPU résolue sur 'db-server-01'",
-        timestamp: "Il y a 12 minutes"
-      },
-      {
-        id: "3",
-        type: "script_executed",
-        message: "Script de monitoring exécuté sur 5 VMs",
-        timestamp: "Il y a 18 minutes"
-      },
-      {
-        id: "4",
-        type: "vm_stopped",
-        message: "VM 'test-env-02' arrêtée pour maintenance",
-        timestamp: "Il y a 25 minutes"
-      }
-    ],
-    lastUpdated: now.toLocaleTimeString("fr-FR"),
-    apiError: Math.random() < 0.05, // 5% chance of error
-  }
-}
-
-// Simulate AI analysis for dashboard
-const simulateDashboardAIAnalysis = async (context: string): Promise<string> => {
-  await new Promise(resolve => setTimeout(resolve, 2000))
-  
-  const criticalCount = parseInt(context.match(/critiques: (\d+)/)?.[1] || "0")
-  const majorCount = parseInt(context.match(/majeures: (\d+)/)?.[1] || "0")
-  const vmCount = parseInt(context.match(/VMs: (\d+)/)?.[1] || "0")
-  
-  return `🤖 **Analyse IA du tableau de bord**
-
-**📊 Résumé:**
-Votre infrastructure supervise actuellement ${vmCount} machines virtuelles avec un niveau d'alerte ${criticalCount > 0 ? 'critique' : majorCount > 2 ? 'modéré' : 'faible'}.
-
-**🔍 Analyse technique:**
-${criticalCount > 0 ? 
-  `⚠️ ATTENTION: ${criticalCount} alerte(s) critique(s) détectée(s). Ces alertes nécessitent une intervention immédiate car elles peuvent affecter la disponibilité des services.` : 
-  '✅ Aucune alerte critique détectée. Le système fonctionne dans les paramètres normaux.'
-}
-
-${majorCount > 3 ? 
-  `🟡 ${majorCount} alertes majeures sont présentes. Bien qu'elles ne soient pas critiques, elles méritent votre attention pour éviter une escalade.` : 
-  `🟢 Nombre d'alertes majeures acceptable (${majorCount}).`
-}
-
-**💡 Conseils et recommandations:**
-${criticalCount > 0 ? 
-  '1. Consultez immédiatement les détails des alertes critiques via le bouton "Superviser"\n2. Vérifiez les logs des VMs concernées\n3. Envisagez une collecte manuelle des métriques' :
-  '1. Continuez la surveillance régulière\n2. Planifiez une maintenance préventive\n3. Optimisez les ressources sous-utilisées'
-}
-
-**🎯 Actions recommandées:**
-- Supervision en temps réel des VMs critiques
-- Analyse des tendances de performance
-- Mise à jour des scripts de monitoring si nécessaire
-
-*Analyse générée le ${new Date().toLocaleString('fr-FR')}*`
+const analyzeDashboardAI = async (): Promise<string> => {
+  return await getDashboardInsights()
 }
 
 export default function DashboardPage() {
   const [data, setData] = React.useState<DashboardData | null>(null)
   const [loading, setLoading] = React.useState(true)
+  const [vms, setVms] = React.useState<ProxmoxVM[]>([])
+  const [templates, setTemplates] = React.useState<ProxmoxVM[]>([])
 
   const fetchData = React.useCallback(() => {
     setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      const newData = mockDashboardData()
-      setData(newData)
-      setLoading(false)
-    }, 800)
+    Promise.all([getDashboard(), listProxmoxVMs()])
+      .then(([newData, proxmox]) => {
+        setData({ ...newData, apiError: false })
+        setVms(proxmox.vms)
+        setTemplates(proxmox.templates)
+      })
+      .catch(() => {
+        setData({ ...emptyData, apiError: true })
+        setVms([])
+        setTemplates([])
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   React.useEffect(() => {
-    fetchData() // Initial fetch
-
-    const interval = setInterval(() => {
-      fetchData()
-    }, 10000) // Refresh every 10 seconds as per UC04
-
-    return () => clearInterval(interval)
+    fetchData() // Initial fetch only
   }, [fetchData])
 
   const getAlertVariant = (count: number, type: 'critical' | 'major' | 'minor') => {
@@ -159,16 +66,28 @@ export default function DashboardPage() {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case "vm_created": return <Plus className="h-4 w-4 text-success" />
-      case "vm_stopped": return <XCircle className="h-4 w-4 text-warning" />
-      case "alert_resolved": return <RefreshCw className="h-4 w-4 text-info" />
-      case "script_executed": return <Code className="h-4 w-4 text-primary" />
-      default: return <Activity className="h-4 w-4" />
+      case "deployment":
+      case "vm_created":
+        return <Plus className="h-4 w-4 text-success" />
+      case "deletion":
+      case "vm_stopped":
+        return <XCircle className="h-4 w-4 text-warning" />
+      case "restart":
+      case "alert_resolved":
+        return <RefreshCw className="h-4 w-4 text-info" />
+      case "script_executed":
+        return <Code className="h-4 w-4 text-primary" />
+      case "user_creation":
+        return <UserPlus className="h-4 w-4 text-primary" />
+      case "role_change":
+        return <Info className="h-4 w-4 text-warning" />
+      default:
+        return <Activity className="h-4 w-4" />
     }
   }
 
-  const aiContext = data ? 
-    `Nombre de VMs: ${data.totalVms}, Services actifs: ${data.activeServices}, Alertes critiques: ${data.alerts.critical}, majeures: ${data.alerts.major}, mineures: ${data.alerts.minor}, Santé système: ${data.systemHealth}%.` : 
+  const aiContext = data ?
+    `VMs: ${data.totalVms}, Services actifs: ${data.activeServices}, Alertes critiques: ${data.alerts.critical}, majeures: ${data.alerts.major}, mineures: ${data.alerts.minor}, Santé système: ${data.systemHealth}%, Déploiements: ${data.deploymentStats.total}, Succès: ${data.deploymentStats.success}, Échecs: ${data.deploymentStats.failed}, Suppressions: ${data.deploymentStats.deleted}.` :
     "Données du tableau de bord non disponibles."
 
   return (
@@ -323,6 +242,140 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      {/* Deployment Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-semibold">Déploiements</CardTitle>
+            <Rocket className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-8 w-1/2 bg-muted animate-pulse rounded-md" />
+            ) : (
+              <motion.div
+                key={`deploy-total-${data?.deploymentStats.total}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-4xl font-bold"
+              >
+                {data?.deploymentStats.total}
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-semibold">Succès</CardTitle>
+            <CheckCircle className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-8 w-1/2 bg-muted animate-pulse rounded-md" />
+            ) : (
+              <motion.div
+                key={`deploy-success-${data?.deploymentStats.success}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-4xl font-bold text-success"
+              >
+                {data?.deploymentStats.success}
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-semibold">Échecs</CardTitle>
+            <XCircle className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-8 w-1/2 bg-muted animate-pulse rounded-md" />
+            ) : (
+              <motion.div
+                key={`deploy-failed-${data?.deploymentStats.failed}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-4xl font-bold text-destructive"
+              >
+                {data?.deploymentStats.failed}
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-semibold">Supprimées</CardTitle>
+            <Trash2 className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-8 w-1/2 bg-muted animate-pulse rounded-md" />
+            ) : (
+              <motion.div
+                key={`deploy-deleted-${data?.deploymentStats.deleted}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-4xl font-bold"
+              >
+                {data?.deploymentStats.deleted}
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader>
+            <CardTitle>Machines virtuelles</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Chargement...</p>
+            ) : vms.length ? (
+              <ul className="space-y-2">
+                {vms.map((vm) => (
+                  <li key={vm.vmid} className="p-2 border rounded-lg">
+                    {vm.name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">Aucune VM</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader>
+            <CardTitle>Templates</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Chargement...</p>
+            ) : templates.length ? (
+              <ul className="space-y-2">
+                {templates.map((tpl) => (
+                  <li key={tpl.vmid} className="p-2 border rounded-lg">
+                    {tpl.name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">Aucun template</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Actions and AI Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quick Actions */}
@@ -363,7 +416,7 @@ export default function DashboardPage() {
                   {getActivityIcon(activity.type)}
                   <div className="flex-1">
                     <p className="font-medium">{activity.message}</p>
-                    <p className="text-xs text-muted-foreground">{activity.timestamp}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleString('fr-FR')}</p>
                   </div>
                 </div>
               ))}
@@ -376,7 +429,7 @@ export default function DashboardPage() {
       <AssistantAIBlock
         title="Assistant IA du tableau de bord"
         context={aiContext}
-        onAnalyze={simulateDashboardAIAnalysis}
+        onAnalyze={() => analyzeDashboardAI()}
         className="w-full"
       />
 

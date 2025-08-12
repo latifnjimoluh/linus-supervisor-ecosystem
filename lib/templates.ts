@@ -1,73 +1,52 @@
-export type FieldSchemaField = {
-  name: string
-  label: string
-  type: "text" | "number" | "boolean" | "select"
-  required?: boolean
-  default?: string | number | boolean
+import { api } from "@/services/api"
+import type { Script } from "./scripts"
+import {
+  listTemplates as listTemplatesService,
+  createTemplate as createTemplateService,
+  getTemplate as getTemplateService,
+  updateTemplate as updateTemplateService,
+  deleteTemplate as deleteTemplateService,
+  restoreTemplate as restoreTemplateService,
+  analyzeTemplate as analyzeTemplateService,
+  generateScript as generateScriptService,
+  simulateScript as simulateScriptService,
+  type Template,
+  type FieldSchema,
+  type FieldSchemaField,
+} from "@/services/templates"
+
+export type { Template, FieldSchema, FieldSchemaField }
+
+export async function fetchTemplatesAndScripts(status: string = 'actif'): Promise<{
+  templates: Template[]
+  scripts: Script[]
+}> {
+  const res = await api.get("/templates", { params: { status } })
+  const data = res.data.data || {}
+  const templates = Array.isArray(data.templates)
+    ? data.templates.map((t: any) => ({ ...t, type: "template", status: t.status }))
+    : []
+  const scripts = Array.isArray(data.scripts)
+    ? data.scripts.map((s: any) => ({
+        id: s.id,
+        name: s.service_type || s.script_path,
+        category: s.category || "",
+        description: s.description,
+        script_path: s.script_path,
+        template_content: s.template_content || "",
+        status: s.status,
+        type: "script",
+      }))
+    : []
+  return { templates, scripts }
 }
 
-export type FieldSchema = {
-  fields: FieldSchemaField[]
-}
-
-export type Template = {
-  id: number
-  name: string
-  service_type?: string
-  category: string
-  description: string
-  type: "template" | "script"
-  template_content: string
-  script_path?: string
-  fields_schema?: FieldSchema
-}
-
-const BASE = "/api/templates"
-
-export async function listTemplates(): Promise<Template[]> {
-  const res = await fetch(BASE, { cache: "no-store" })
-  if (!res.ok) throw new Error("Failed to list templates")
-  return res.json()
-}
-
-export async function createTemplate(payload: Omit<Template, "id">): Promise<Template> {
-  const res = await fetch(BASE, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  })
-  if (!res.ok) throw new Error("Failed to create template")
-  return res.json()
-}
-
-export async function getTemplate(id: number): Promise<Template> {
-  const res = await fetch(`${BASE}/${id}`, { cache: "no-store" })
-  if (!res.ok) throw new Error("Template not found")
-  return res.json()
-}
-
-export async function updateTemplate(id: number, payload: Partial<Omit<Template, "id">>): Promise<Template> {
-  const res = await fetch(`${BASE}/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  })
-  if (!res.ok) throw new Error("Failed to update template")
-  return res.json()
-}
-
-export async function deleteTemplate(id: number): Promise<{ success: boolean }> {
-  const res = await fetch(`${BASE}/${id}`, { method: "DELETE" })
-  if (!res.ok) throw new Error("Failed to delete template")
-  return res.json()
-}
-
-export async function generateScript(template_id: number, config_data: Record<string, string | number>) {
-  const res = await fetch(`${BASE}/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ template_id, config_data }),
-  })
-  if (!res.ok) throw new Error("Failed to generate script")
-  return res.json() as Promise<{ script: string; template_id: number }>
-}
+export const listTemplates = listTemplatesService
+export const createTemplate = createTemplateService
+export const getTemplate = getTemplateService
+export const updateTemplate = updateTemplateService
+export const deleteTemplate = deleteTemplateService
+export const restoreTemplate = restoreTemplateService
+export const analyzeTemplate = analyzeTemplateService
+export const generateScript = generateScriptService
+export const simulateScript = simulateScriptService

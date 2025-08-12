@@ -10,6 +10,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
+// Global cache shared across all AssistantAIBlock instances
+const aiResponseCache = new Map<string, string>()
+
 interface AssistantAIBlockProps {
   title: string
   context: string // The data/text to be analyzed by AI
@@ -25,10 +28,21 @@ export function AssistantAIBlock({ title, context, onAnalyze, initialOpen = fals
   const { toast } = useToast()
 
   const handleAnalyze = async () => {
-    setIsLoading(true)
     setIsOpen(true) // Open the collapsible when analysis starts
+    const cached = aiResponseCache.get(context)
+    if (cached) {
+      setAiResponse(cached)
+      toast({
+        title: "Réponse IA en cache",
+        description: "Résultat fourni sans nouvelle requête.",
+        variant: "info",
+      })
+      return
+    }
+    setIsLoading(true)
     try {
       const response = await onAnalyze(context)
+      aiResponseCache.set(context, response)
       setAiResponse(response)
       toast({
         title: "Analyse IA terminée",
@@ -113,7 +127,7 @@ export function AssistantAIBlock({ title, context, onAnalyze, initialOpen = fals
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
-                  className="mt-4 p-4 border rounded-xl bg-muted/50 dark:bg-background/50 text-sm whitespace-pre-wrap"
+                  className="mt-4 p-4 border rounded-xl bg-muted/50 dark:bg-background/50 text-sm whitespace-pre-wrap max-h-[60vh] overflow-auto"
                 >
                   {aiResponse}
                   <div className="flex justify-end gap-2 mt-4">
