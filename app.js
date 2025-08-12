@@ -66,10 +66,6 @@ const corsOptions = {
 // ✅ CORS avant tout
 app.use(cors(corsOptions));
 
-// ✅ Préflight compatible path-to-regexp v6
-// (tu peux aussi l'omettre, `cors()` gère souvent le préflight tout seul)
-app.options('/:path(*)', cors(corsOptions)); // ⬅️ remplace l'ancien '*'
-
 // Body parser
 app.use(express.json());
 
