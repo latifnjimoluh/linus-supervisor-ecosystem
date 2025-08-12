@@ -13,7 +13,7 @@ import ActionBar from '@/components/ActionBar';
 import Modal from '@/components/Modal';
 import type { ChatMessage, Action, Evidence } from '@/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const API_URL = `${API_BASE}/chatbot/ask`;
 const STREAM_URL = `${API_BASE}/chatbot/ask/stream`;
 const RAG_URL = `${API_BASE}/chatbot/ask/rag`;

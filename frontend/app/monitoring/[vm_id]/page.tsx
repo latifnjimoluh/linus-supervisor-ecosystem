@@ -2,9 +2,11 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Play, Square, Copy, RefreshCw, Activity, HardDrive, Cpu, MemoryStick, Clock, AlertTriangle, CheckCircle, XCircle, Settings, FileText, Loader2, Eye, BarChart3, Trash2 } from 'lucide-react'
-import { motion, AnimatePresence } from "framer-motion"
-
+import {
+  ArrowLeft, Play, Square, Copy, RefreshCw, Activity,
+  Cpu, MemoryStick, AlertTriangle, CheckCircle, XCircle,
+  Settings, FileText, Loader2, Eye, Trash2
+} from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -24,17 +26,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { cn, formatKB, formatPercent, formatDate } from "@/lib/utils"
 import { fetchVmDetails, collectMonitoringData } from "@/services/monitoring"
 import { startProxmoxVM, stopProxmoxVM, deleteProxmoxVM } from "@/services/vms"
+import { InlineBanner } from "@/components/ui/inline-banner"
 
 interface VMDetails {
   id: string
@@ -73,21 +68,18 @@ interface VMDetails {
   last_monitoring: string
 }
 
-// Simulate AI analysis for VM performance
+// --- Analyse IA (inchangé) ---
 const simulateVMAnalysis = async (context: string): Promise<string> => {
   await new Promise(resolve => setTimeout(resolve, 2500))
-  
   const cpuMatch = context.match(/CPU: (\d+)%/)
   const memoryMatch = context.match(/Mémoire: (\d+)\/(\d+) MB/)
   const statusMatch = context.match(/Statut: (\w+)/)
-  
   const cpuUsage = cpuMatch ? parseInt(cpuMatch[1]) : 0
   const memoryUsage = memoryMatch ? parseInt(memoryMatch[1]) : 0
   const memoryTotal = memoryMatch ? parseInt(memoryMatch[2]) : 8192
   const status = statusMatch ? statusMatch[1] : "unknown"
-  
   const memoryPercent = Math.round((memoryUsage / memoryTotal) * 100)
-  
+
   return `🤖 **Analyse IA de la VM**
 
 **📊 État général:**
@@ -96,26 +88,26 @@ ${status === "running" ? "✅ La VM fonctionne normalement" : status === "stoppe
 **🔍 Analyse des performances:**
 
 **CPU (${cpuUsage}%):**
-${cpuUsage > 80 ? 
-  "🔴 **CRITIQUE** - Utilisation CPU très élevée. Causes possibles:\n- Processus gourmand en cours\n- Besoin d'augmenter les vCPUs\n- Optimisation du code nécessaire" :
-  cpuUsage > 60 ? 
-  "🟡 **ATTENTION** - Utilisation CPU modérée à surveiller" :
-  "🟢 **NORMAL** - Utilisation CPU dans les limites acceptables"
-}
+${cpuUsage > 80
+    ? "🔴 **CRITIQUE** - Utilisation CPU très élevée. Causes possibles:\n- Processus gourmand en cours\n- Besoin d'augmenter les vCPUs\n- Optimisation du code nécessaire"
+    : cpuUsage > 60
+      ? "🟡 **ATTENTION** - Utilisation CPU modérée à surveiller"
+      : "🟢 **NORMAL** - Utilisation CPU dans les limites acceptables"
+  }
 
 **Mémoire (${memoryPercent}%):**
-${memoryPercent > 85 ? 
-  "🔴 **CRITIQUE** - Mémoire saturée. Actions recommandées:\n- Redémarrer les services gourmands\n- Augmenter la RAM allouée\n- Vérifier les fuites mémoire" :
-  memoryPercent > 70 ? 
-  "🟡 **ATTENTION** - Consommation mémoire élevée" :
-  "🟢 **NORMAL** - Utilisation mémoire correcte"
-}
+${memoryPercent > 85
+    ? "🔴 **CRITIQUE** - Mémoire saturée. Actions recommandées:\n- Redémarrer les services gourmands\n- Augmenter la RAM allouée\n- Vérifier les fuites mémoire"
+    : memoryPercent > 70
+      ? "🟡 **ATTENTION** - Consommation mémoire élevée"
+      : "🟢 **NORMAL** - Utilisation mémoire correcte"
+  }
 
 **💡 Recommandations:**
-${cpuUsage > 70 || memoryPercent > 70 ? 
-  "1. Surveillez cette VM de près\n2. Envisagez une montée en charge\n3. Analysez les processus actifs\n4. Planifiez une maintenance" :
-  "1. Performances optimales\n2. Continuez la surveillance régulière\n3. Planifiez les mises à jour de sécurité"
-}
+${cpuUsage > 70 || memoryPercent > 70
+    ? "1. Surveillez cette VM de près\n2. Envisagez une montée en charge\n3. Analysez les processus actifs\n4. Planifiez une maintenance"
+    : "1. Performances optimales\n2. Continuez la surveillance régulière\n3. Planifiez les mises à jour de sécurité"
+  }
 
 **🔧 Actions suggérées:**
 - Collecte manuelle des métriques pour analyse approfondie
@@ -130,11 +122,65 @@ export default function VMDetailsPage() {
   const router = useRouter()
   const vmId = params.vm_id as string
   const { toast } = useToast()
-  
+
   const [vmData, setVmData] = React.useState<VMDetails | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [actionLoading, setActionLoading] = React.useState<string | null>(null)
   const [collectUsername, setCollectUsername] = React.useState("")
+
+  // --- Banner state ---
+  const [banner, setBanner] = React.useState<{
+    kind: "info" | "success" | "warning" | "destructive",
+    title: string,
+    description?: string
+  } | null>(null)
+
+  const autoHide = React.useCallback((delay = 6000) => {
+    window.setTimeout(() => setBanner(null), delay)
+  }, [])
+
+  // --- Helper d'explication d'erreurs de collecte ---
+  function explainCollectError(raw?: unknown) {
+    const msg =
+      (raw as any)?.response?.data?.error ||
+      (raw as any)?.response?.data?.message ||
+      (raw as any)?.message ||
+      String(raw ?? "")
+
+    const lower = (msg || "").toLowerCase()
+    if (lower.includes("no such file")) {
+      return {
+        title: "Fichier de métriques introuvable sur la VM",
+        description:
+          "Le chemin indiqué n’existe pas (ex: /opt/monitoring/status.json). Vérifiez l’agent et les chemins configurés.",
+      }
+    }
+    if (lower.includes("permission denied") || lower.includes("publickey")) {
+      return {
+        title: "Authentification SSH refusée",
+        description:
+          "Clé privée/utilisateur incorrects ou droits insuffisants. Vérifiez la clé, l’utilisateur et les permissions (~/.ssh).",
+      }
+    }
+    if (lower.includes("timed out") || lower.includes("timeout")) {
+      return {
+        title: "Délai de connexion SSH dépassé",
+        description:
+          "La VM est peut-être injoignable (réseau/pare-feu). Vérifiez l’IP, le port 22 et la connectivité.",
+      }
+    }
+    if (lower.includes("econnrefused")) {
+      return {
+        title: "Connexion SSH refusée",
+        description:
+          "Le service sshd ne répond pas sur la VM. Assurez-vous qu’il est démarré et écoute.",
+      }
+    }
+    return {
+      title: "Erreur lors de la collecte des données de monitoring",
+      description: msg,
+    }
+  }
 
   const fetchVMData = React.useCallback(async () => {
     setLoading(true)
@@ -150,7 +196,12 @@ export default function VMDetailsPage() {
         id: data.id,
         name: data.name,
         ip: data.ip || '',
-        status: data.proxmox?.status === 'running' ? 'running' : data.proxmox?.status === 'stopped' ? 'stopped' : 'error',
+        status:
+          data.proxmox?.status === 'running'
+            ? 'running'
+            : data.proxmox?.status === 'stopped'
+              ? 'stopped'
+              : 'error',
         created_at: data.created_at ? new Date(data.created_at).toLocaleString('fr-FR') : '',
         uptime: system.uptime || data.status?.uptime || '',
         os: system.os || system.hostname || '',
@@ -214,13 +265,24 @@ export default function VMDetailsPage() {
           await collectMonitoringData(vmData.ip, collectUsername)
           await fetchVMData()
           message = 'Collecte des métriques effectuée avec succès'
+          // Banner succès discret
+          setBanner({ kind: "success", title: message })
+          autoHide(6000)
           break
         default:
           message = 'Action non supportée'
       }
       toast({ title: 'Action', description: message, variant: 'success' })
-    } catch (e) {
-      toast({ title: 'Erreur', description: 'Action échouée', variant: 'destructive' })
+    } catch (e: any) {
+      if (action === "collect") {
+        const exp = explainCollectError(e)
+        setBanner({ kind: "destructive", ...exp })
+        autoHide(8000)
+        // Toast léger pour consistance
+        toast({ title: "Collecte non effectuée", description: exp.title, variant: "warning" })
+      } else {
+        toast({ title: 'Erreur', description: 'Action échouée', variant: 'destructive' })
+      }
     } finally {
       setActionLoading(null)
     }
@@ -228,11 +290,7 @@ export default function VMDetailsPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    toast({
-      title: "Copié !",
-      description: "Adresse IP copiée dans le presse-papiers",
-      variant: "info",
-    })
+    toast({ title: "Copié !", description: "Adresse IP copiée dans le presse-papiers", variant: "info" })
   }
 
   const getStatusColor = (status: string) => {
@@ -290,7 +348,12 @@ export default function VMDetailsPage() {
     )
   }
 
-  const aiContext = `VM: ${vmData.name}, IP: ${vmData.ip}, Statut: ${vmData.status}, CPU: ${Math.round(vmData.metrics.cpu_usage)}%, Mémoire: ${Math.round(vmData.metrics.memory_usage / 1024)}/${Math.round(vmData.metrics.memory_total / 1024)} MB, Disque: ${Math.round(vmData.metrics.disk_usage / (1024 * 1024))}/${Math.round(vmData.metrics.disk_total / (1024 * 1024))} GB, Services actifs: ${vmData.services.filter(s => s.status === 'active').length}/${vmData.services.length}`
+  const aiContext =
+    `VM: ${vmData.name}, IP: ${vmData.ip}, Statut: ${vmData.status}, ` +
+    `CPU: ${Math.round(vmData.metrics.cpu_usage)}%, ` +
+    `Mémoire: ${Math.round(vmData.metrics.memory_usage / 1024)}/${Math.round(vmData.metrics.memory_total / 1024)} MB, ` +
+    `Disque: ${Math.round(vmData.metrics.disk_usage / (1024 * 1024))}/${Math.round(vmData.metrics.disk_total / (1024 * 1024))} GB, ` +
+    `Services actifs: ${vmData.services.filter(s => s.status === 'active').length}/${vmData.services.length}`
 
   return (
     <div className="space-y-6">
@@ -309,7 +372,7 @@ export default function VMDetailsPage() {
                 <Copy className="h-3 w-3" />
               </Button>
               <Badge variant={getStatusColor(vmData.status)}>
-                {vmData.status === "running" ? "En marche" : 
+                {vmData.status === "running" ? "En marche" :
                  vmData.status === "stopped" ? "Arrêtée" : "Erreur"}
               </Badge>
             </div>
@@ -321,11 +384,21 @@ export default function VMDetailsPage() {
         </Button>
       </div>
 
+      {/* Banner d'information / erreurs */}
+      {banner && (
+        <InlineBanner
+          kind={banner.kind}
+          title={banner.title}
+          description={banner.description}
+          onClose={() => setBanner(null)}
+        />
+      )}
+
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3">
         {vmData.status === "stopped" && (
-          <Button 
-            onClick={() => handleVMAction("start")} 
+          <Button
+            onClick={() => handleVMAction("start")}
             disabled={actionLoading !== null}
             className="rounded-xl"
           >
@@ -337,7 +410,7 @@ export default function VMDetailsPage() {
             Démarrer
           </Button>
         )}
-        
+
         {vmData.status === "running" && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -350,7 +423,7 @@ export default function VMDetailsPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Arrêter la VM</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Êtes-vous sûr de vouloir arrêter la VM "{vmData.name}" ? 
+                  Êtes-vous sûr de vouloir arrêter la VM "{vmData.name}" ?
                   Cette action interrompra tous les services en cours.
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -414,8 +487,6 @@ export default function VMDetailsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-
       </div>
 
       {/* VM Info and Metrics */}
@@ -429,34 +500,13 @@ export default function VMDetailsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">OS:</span>
-              <span className="font-medium">{vmData.os}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Template:</span>
-              <span className="font-medium">{vmData.template}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">vCPU:</span>
-              <span className="font-medium">{vmData.vcpu} cores</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">RAM:</span>
-              <span className="font-medium">{vmData.memory}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Disque:</span>
-              <span className="font-medium">{vmData.disk}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Créée le:</span>
-              <span className="font-medium">{vmData.created_at}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Uptime:</span>
-              <span className="font-medium">{vmData.uptime}</span>
-            </div>
+            <div className="flex justify-between"><span className="text-muted-foreground">OS:</span><span className="font-medium">{vmData.os}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Template:</span><span className="font-medium">{vmData.template}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">vCPU:</span><span className="font-medium">{vmData.vcpu} cores</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">RAM:</span><span className="font-medium">{vmData.memory}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Disque:</span><span className="font-medium">{vmData.disk}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Créée le:</span><span className="font-medium">{vmData.created_at}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Uptime:</span><span className="font-medium">{vmData.uptime}</span></div>
           </CardContent>
         </Card>
 
@@ -475,7 +525,7 @@ export default function VMDetailsPage() {
                 <span className="font-medium">{formatPercent(vmData.metrics.cpu_usage)}</span>
               </div>
               <Progress value={vmData.metrics.cpu_usage} className="h-2" />
-              </div>
+            </div>
             <div>
               <div className="flex justify-between mb-2">
                 <span>Load Average</span>
@@ -483,14 +533,8 @@ export default function VMDetailsPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Network In</span>
-                <p className="font-medium">{formatKB(vmData.metrics.network_in)}/s</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Network Out</span>
-                <p className="font-medium">{formatKB(vmData.metrics.network_out)}/s</p>
-              </div>
+              <div><span className="text-muted-foreground">Network In</span><p className="font-medium">{formatKB(vmData.metrics.network_in)}/s</p></div>
+              <div><span className="text-muted-foreground">Network Out</span><p className="font-medium">{formatKB(vmData.metrics.network_out)}/s</p></div>
             </div>
           </CardContent>
         </Card>
@@ -511,9 +555,9 @@ export default function VMDetailsPage() {
                   {formatKB(vmData.metrics.memory_usage)} / {formatKB(vmData.metrics.memory_total)}
                 </span>
               </div>
-              <Progress 
+              <Progress
                 value={vmData.metrics.memory_total ? (vmData.metrics.memory_usage / vmData.metrics.memory_total) * 100 : 0}
-                className="h-2" 
+                className="h-2"
               />
             </div>
             <div>
@@ -523,9 +567,9 @@ export default function VMDetailsPage() {
                   {formatKB(vmData.metrics.disk_usage)} / {formatKB(vmData.metrics.disk_total)}
                 </span>
               </div>
-              <Progress 
+              <Progress
                 value={vmData.metrics.disk_total ? (vmData.metrics.disk_usage / vmData.metrics.disk_total) * 100 : 0}
-                className="h-2" 
+                className="h-2"
               />
             </div>
           </CardContent>
@@ -557,10 +601,17 @@ export default function VMDetailsPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    {service.port && (
-                      <p className="text-sm font-mono">:{service.port}</p>
-                    )}
-                    <Badge variant={service.status === 'active' ? 'success' : service.status === 'inactive' ? 'warning' : 'destructive'} className="text-xs">
+                    {service.port ? <p className="text-sm font-mono">:{service.port}</p> : null}
+                    <Badge
+                      variant={
+                        service.status === 'active'
+                          ? 'success'
+                          : service.status === 'inactive'
+                            ? 'warning'
+                            : 'destructive'
+                      }
+                      className="text-xs"
+                    >
                       {service.status}
                     </Badge>
                   </div>
@@ -577,25 +628,24 @@ export default function VMDetailsPage() {
               <FileText className="h-5 w-5" />
               Logs récents
             </CardTitle>
-            <CardDescription>
-              Dernières entrées du journal système
-            </CardDescription>
+            <CardDescription>Dernières entrées du journal système</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {vmData.recent_logs.map((log, index) => (
                 <div key={index} className="p-3 border rounded-xl">
                   <div className="flex items-start justify-between mb-1">
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {log.timestamp}
-                    </span>
-                    <Badge variant={log.level === 'error' ? 'destructive' : log.level === 'warning' ? 'warning' : 'info'} className="text-xs">
+                    <span className="text-xs text-muted-foreground font-mono">{log.timestamp}</span>
+                    <Badge
+                      variant={
+                        log.level === 'error' ? 'destructive' : log.level === 'warning' ? 'warning' : 'info'
+                      }
+                      className="text-xs"
+                    >
                       {log.level}
                     </Badge>
                   </div>
-                  <p className={cn("text-sm", getLogLevelColor(log.level))}>
-                    {log.message}
-                  </p>
+                  <p className={cn("text-sm", getLogLevelColor(log.level))}>{log.message}</p>
                 </div>
               ))}
             </div>

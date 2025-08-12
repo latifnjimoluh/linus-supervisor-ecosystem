@@ -1,8 +1,8 @@
 import axios from "axios";
 
-// By default point to the backend server running on port 3001
+// By default point to the backend server running on port 3000
 // unless an explicit URL is provided via environment variables.
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export const api = axios.create({
   baseURL: apiUrl,
