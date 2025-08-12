@@ -18,6 +18,21 @@ const preview = (req, res) => {
   res.json({ format, script });
 };
 
+const listServiceTypes = async (req, res) => {
+  try {
+    const types = await GeneratedScript.findAll({
+      attributes: [
+        [Sequelize.fn('DISTINCT', Sequelize.col('service_type')), 'service_type']
+      ],
+      order: [['service_type', 'ASC']],
+    });
+    res.json(types.map(t => t.get('service_type')));
+  } catch (err) {
+    console.error('Erreur listServiceTypes:', err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
 const listGeneratedScripts = async (req, res) => {
   try {
     const { category, service_type, status = 'actif' } = req.query;
@@ -107,19 +122,6 @@ const restoreScript = async (req, res) => {
     res.json({ message: 'Script réactivé' });
   } catch (err) {
     console.error('Erreur restoreScript:', err);
-    res.status(500).json({ message: 'Erreur serveur.' });
-  }
-};
-
-const listServiceTypes = async (req, res) => {
-  try {
-    const types = await GeneratedScript.findAll({
-      attributes: [[Sequelize.fn('DISTINCT', Sequelize.col('service_type')), 'service_type']],
-      order: [['service_type', 'ASC']],
-    });
-    res.json(types.map(t => t.service_type));
-  } catch (err) {
-    console.error('Erreur listServiceTypes:', err);
     res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
