@@ -6,20 +6,33 @@ const errorHandler = require('./middlewares/errorHandler');
 
 // ---------------------------------------------
 // 🔎 DEBUG path-to-regexp : log la route qui casse
-// (doit être AVANT tout require de fichiers de routes)
+// (doit être AVANT tout require de routes)
 // ---------------------------------------------
+const _App = express.application;
+['get','post','put','patch','delete','use','all','options'].forEach((m) => {
+  const orig = _App[m];
+  _App[m] = function (path, ...rest) {
+    try {
+      if (typeof path !== 'string') return orig.call(this, path, ...rest);
+      return orig.call(this, path, ...rest);
+    } catch (e) {
+      console.error(`[APP ROUTE ERROR] method=${m} path="${path}"`);
+      throw e;
+    }
+  };
+});
+
 const _Router = express.Router;
 express.Router = function (...args) {
   const r = _Router.apply(this, args);
-  for (const m of ['get','post','put','patch','delete','use','all']) {
+  for (const m of ['get','post','put','patch','delete','use','all','options']) {
     const orig = r[m];
     r[m] = function (path, ...rest) {
       try {
-        // si le 1er argument n'est pas une string (middleware direct), on passe tel quel
         if (typeof path !== 'string') return orig.call(this, path, ...rest);
         return orig.call(this, path, ...rest);
       } catch (e) {
-        console.error(`[ROUTE ERROR] method=${m} path="${path}"`);
+        console.error(`[ROUTER ERROR] method=${m} path="${path}"`);
         throw e;
       }
     };
@@ -28,14 +41,12 @@ express.Router = function (...args) {
 };
 // ---------------------------------------------
 
-// ⚠️ Import des modèles après le patch (si vos modèles déclarent des routes, rares cas)
+// ⚠️ Import après patch
 const { sequelize } = require('./models');
-
-// ⚠️ Import des routes APRÈS le patch debug
 const routes = require('./routes');
 
 const app = express();
-logger.info('Initialisation de l\'application Express');
+logger.info("Initialisation de l'application Express");
 
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3001')
   .split(',')
@@ -46,26 +57,32 @@ const corsOptions = {
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
   },
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
   credentials: false,
   maxAge: 86400,
 };
 
-// CORS avant tout
+// ✅ CORS avant tout
 app.use(cors(corsOptions));
-// Préflight
-app.options('*', cors(corsOptions));
 
+// ✅ Préflight compatible path-to-regexp v6
+// (tu peux aussi l'omettre, `cors()` gère souvent le préflight tout seul)
+app.options('/:path(*)', cors(corsOptions)); // ⬅️ remplace l'ancien '*'
+
+// Body parser
 app.use(express.json());
 
-// Healthcheck simple (utile pour Render et tests CORS/OPTIONS)
+// Healthcheck
 app.get('/health', (req, res) => res.status(200).send('ok'));
 
-// Regroupe toutes les routes de l'app
+// Routes
 app.use(routes);
 
-// Error handler global (après les routes)
+// 404 catch-all (sans chemin, compatible v6)
+app.use((req, res) => res.status(404).json({ message: 'Not found' }));
+
+// Error handler global
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
@@ -83,5 +100,4 @@ async function start() {
 }
 
 if (require.main === module) start();
-
 module.exports = app;
