@@ -183,6 +183,14 @@ export default function InfrastructureMapPage() {
                 )}
               </div>
 
+              {/* Inter-zone connections */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+                <line x1="25%" y1="50%" x2="75%" y2="30%" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeDasharray="4 4" />
+                <line x1="25%" y1="50%" x2="75%" y2="72%" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeDasharray="4 4" />
+                <line x1="75%" y1="30%" x2="75%" y2="72%" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeDasharray="4 4" />
+              </svg>
+              <Network className="absolute h-6 w-6 text-muted-foreground z-10" style={{ left: '75%', top: '52%', transform: 'translate(-50%, -50%)' }} />
+
               <TooltipProvider>
                 {filteredServers.map((server) => (
                   <motion.div
@@ -199,7 +207,7 @@ export default function InfrastructureMapPage() {
                       left: `${server.position.x * 100}%`,
                       top: `${server.position.y * 100}%`,
                       transform: 'translate(-50%, -50%)',
-                      zIndex: 10,
+                      zIndex: 20,
                     }}
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}

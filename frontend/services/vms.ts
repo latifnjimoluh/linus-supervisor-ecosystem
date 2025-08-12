@@ -77,6 +77,11 @@ export async function listProxmoxVMs(): Promise<ProxmoxVMList> {
   return res.data as ProxmoxVMList;
 }
 
+export async function listProxmoxTemplates(): Promise<ProxmoxVM[]> {
+  const res = await listProxmoxVMs();
+  return res.templates;
+}
+
 export async function startProxmoxVM(vmId: number) {
   const res = await api.post(`/vms/${vmId}/start`);
   return res.data;

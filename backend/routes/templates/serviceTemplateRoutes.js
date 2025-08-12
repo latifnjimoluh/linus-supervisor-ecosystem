@@ -25,5 +25,6 @@ router.post('/simulate', checkPermission('template.simulateExecution'), serviceT
 router.get('/:id', checkPermission('template.read'), serviceTemplateController.getTemplateById);
 router.put('/:id', checkPermission('template.update'), serviceTemplateController.updateTemplate);
 router.delete('/:id', checkPermission('template.delete'), serviceTemplateController.deleteTemplate);
+router.post('/:id/restore', checkPermission('template.restore'), serviceTemplateController.restoreTemplate);
 
 module.exports = router;

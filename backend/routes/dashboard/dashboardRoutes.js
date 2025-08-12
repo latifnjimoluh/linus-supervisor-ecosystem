@@ -6,6 +6,8 @@ const {
   getSummary,
   listServers,
   getDashboardData,
+  getDeploymentStats,
+  getDeploymentInsights,
   getInfrastructureMap,
   createServer,
   deleteServer,
@@ -17,5 +19,7 @@ router.get('/servers', verifyToken, checkPermission('dashboard.view'), logReques
 router.post('/servers', verifyToken, checkPermission('dashboard.view'), logRequest, createServer);
 router.delete('/servers/:id', verifyToken, checkPermission('dashboard.view'), logRequest, deleteServer);
 router.get('/map', verifyToken, checkPermission('dashboard.view'), logRequest, getInfrastructureMap);
+router.get('/stats', verifyToken, checkPermission('dashboard.view'), logRequest, getDeploymentStats);
+router.get('/insights', verifyToken, checkPermission('dashboard.view'), logRequest, getDeploymentInsights);
 
 module.exports = router;

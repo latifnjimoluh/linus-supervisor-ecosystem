@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { LayoutDashboard, Server, AlertTriangle, Plus, Eye, Code, RefreshCw, Info, XCircle, TrendingUp, TrendingDown, Activity, UserPlus } from 'lucide-react'
+import { LayoutDashboard, Server, AlertTriangle, Plus, Eye, Code, RefreshCw, Info, XCircle, TrendingUp, TrendingDown, Activity, UserPlus, CheckCircle, Trash2, Rocket } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,7 @@ import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import { getDashboard, type DashboardData } from "@/services/dashboard"
+import { getDashboard, getDashboardInsights, type DashboardData } from "@/services/dashboard"
 import { listProxmoxVMs, type ProxmoxVM } from "@/services/vms"
 
 const emptyData: DashboardData = {
@@ -24,22 +24,11 @@ const emptyData: DashboardData = {
   recentActivity: [],
   lastUpdated: new Date().toISOString(),
   apiError: false,
+  deploymentStats: { total: 0, success: 0, failed: 0, deleted: 0 },
 }
 
-// Simulate AI analysis for dashboard interface using data context
-const simulateDashboardAIAnalysis = async (context: string): Promise<string> => {
-  await new Promise(resolve => setTimeout(resolve, 2000))
-
-  const prompt = `Tu es un assistant de pilotage. Évalue l'état général à partir de ces indicateurs et suggère deux actions clés : ${context}`
-  const match = context.match(/Nombre de VMs: (\d+), Services actifs: (\d+), Alertes critiques: (\d+), majeures: (\d+), mineures: (\d+), Santé système: (\d+)%/)
-  const vms = match ? parseInt(match[1]) : 0
-  const services = match ? parseInt(match[2]) : 0
-  const crit = match ? parseInt(match[3]) : 0
-  const major = match ? parseInt(match[4]) : 0
-  const minor = match ? parseInt(match[5]) : 0
-  const health = match ? parseInt(match[6]) : 0
-
-  return `🤖 **Analyse IA du tableau de bord**\n\n${vms} VMs, ${services} services actifs. Alertes — critiques ${crit}, majeures ${major}, mineures ${minor}. Santé système : ${health}%.\n\n**Actions proposées :**\n- Traiter en priorité les ${crit} alerte(s) critique(s)\n- Optimiser les services pour augmenter la santé globale\n\n*Prompt utilisé :* ${prompt}`
+const analyzeDashboardAI = async (): Promise<string> => {
+  return await getDashboardInsights()
 }
 
 export default function DashboardPage() {
@@ -97,8 +86,8 @@ export default function DashboardPage() {
     }
   }
 
-  const aiContext = data ? 
-    `Nombre de VMs: ${data.totalVms}, Services actifs: ${data.activeServices}, Alertes critiques: ${data.alerts.critical}, majeures: ${data.alerts.major}, mineures: ${data.alerts.minor}, Santé système: ${data.systemHealth}%.` : 
+  const aiContext = data ?
+    `VMs: ${data.totalVms}, Services actifs: ${data.activeServices}, Alertes critiques: ${data.alerts.critical}, majeures: ${data.alerts.major}, mineures: ${data.alerts.minor}, Santé système: ${data.systemHealth}%, Déploiements: ${data.deploymentStats.total}, Succès: ${data.deploymentStats.success}, Échecs: ${data.deploymentStats.failed}, Suppressions: ${data.deploymentStats.deleted}.` :
     "Données du tableau de bord non disponibles."
 
   return (
@@ -253,6 +242,97 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      {/* Deployment Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-semibold">Déploiements</CardTitle>
+            <Rocket className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-8 w-1/2 bg-muted animate-pulse rounded-md" />
+            ) : (
+              <motion.div
+                key={`deploy-total-${data?.deploymentStats.total}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-4xl font-bold"
+              >
+                {data?.deploymentStats.total}
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-semibold">Succès</CardTitle>
+            <CheckCircle className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-8 w-1/2 bg-muted animate-pulse rounded-md" />
+            ) : (
+              <motion.div
+                key={`deploy-success-${data?.deploymentStats.success}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-4xl font-bold text-success"
+              >
+                {data?.deploymentStats.success}
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-semibold">Échecs</CardTitle>
+            <XCircle className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-8 w-1/2 bg-muted animate-pulse rounded-md" />
+            ) : (
+              <motion.div
+                key={`deploy-failed-${data?.deploymentStats.failed}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-4xl font-bold text-destructive"
+              >
+                {data?.deploymentStats.failed}
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg font-semibold">Supprimées</CardTitle>
+            <Trash2 className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-8 w-1/2 bg-muted animate-pulse rounded-md" />
+            ) : (
+              <motion.div
+                key={`deploy-deleted-${data?.deploymentStats.deleted}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-4xl font-bold"
+              >
+                {data?.deploymentStats.deleted}
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
           <CardHeader>
@@ -349,7 +429,7 @@ export default function DashboardPage() {
       <AssistantAIBlock
         title="Assistant IA du tableau de bord"
         context={aiContext}
-        onAnalyze={simulateDashboardAIAnalysis}
+        onAnalyze={() => analyzeDashboardAI()}
         className="w-full"
       />
 
