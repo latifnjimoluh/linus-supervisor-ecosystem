@@ -1,48 +1,26 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 
-// 🔐 Authentification & Utilisateurs
-const userAuthRoutes = require("./user/userAuthRoutes");
-const userRoutes = require("./user/userRoutes");
-const userRoleRoutes = require("./user/userRoleRoutes");
-const userPermissionRoutes = require("./user/userPermissionRoutes");
-const userActivityLogRoutes = require("./user/userActivityLogRoutes");
-const settingsRoutes = require("./user/userSettingsRoutes");
-
-// 🖥️ Gestion des VM
-const deployRoutes = require("./vm/deployVm");
-const deleteVMRoutes = require("./vm/deleteVm");
-const checkVMStatusRoutes = require("./vm/statusVm");
-const startVMRoutes = require("./vm/startVm");
-const stopVMRoutes = require("./vm/stopVm");
-const listVmRoutes = require("./vm/listVmRoutes");
-
-// ⚙️ Gestion des services et scripts
-
-// 🧠 Supervision & Templates
-const supervisionRoutes = require("./supervision/supervisionRoutes");
-const convertTemplateRoutes = require("./template/templateRoutes");
-
-// 🔐 Authentification & Utilisateurs
-router.use("/auth", userAuthRoutes);
-router.use("/users", userRoutes);
-router.use("/user-roles", userRoleRoutes);
-router.use("/permissions", userPermissionRoutes);
-router.use("/user-activity-logs", userActivityLogRoutes);
-router.use("/settings", settingsRoutes);
-
-// 🖥️ VM management (même préfixe, ordre important)
-router.use("/vm", deployRoutes);
-router.use("/vm", deleteVMRoutes);
-router.use("/vm", checkVMStatusRoutes);
-router.use("/vm", startVMRoutes);
-router.use("/vm", stopVMRoutes);
-router.use("/vm", listVmRoutes);
-
-// ⚙️ Services & Scripts
-
-// 🧠 Supervision & Templates
-router.use("/supervision", supervisionRoutes);
-router.use("/convert-template", convertTemplateRoutes);
+router.use('/auth', require('./auth/authRoutes'));
+router.use('/permissions', require('./permissions/permissionRoutes'));
+router.use('/roles', require('./roles/roleRoutes'));
+router.use('/users', require('./users/userRoutes'));
+router.use('/logs', require('./logs/logRoutes'));
+router.use('/settings/notifications', require('./settings/notificationRoutes'));
+router.use('/settings', require('./settings/userSettingRoutes'));
+router.use('/vms', require('./proxmox/proxmoxRoutes'));
+router.use('/templates', require('./templates/serviceTemplateRoutes'));
+router.use('/terraform', require('./terraform/terraformRoutes'));
+router.use('/monitoring', require('./monitoring/monitoringRoutes'));
+router.use('/dashboard', require('./dashboard/dashboardRoutes'));
+router.use('/alerts', require('./alerts/alertRoutes'));
+router.use('/ai-cache', require('./ai/aiCacheRoutes'));
+router.use('/servers', require('./servers/serverRoutes'));
+router.use('/scripts', require('./scripts/scriptRoutes'));
+router.use('/assistant', require('./assistant/assistantRoutes'));
+router.use('/terminal', require('./terminal/terminalRoutes'));
+router.use('/terminal', require('./terminal/sshRoutes'));
+router.use('/deployments', require('./deployments/deploymentRoutes'));
+router.use('/chatbot', require('./chatbot/chatbotRoutes'));
 
 module.exports = router;

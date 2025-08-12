@@ -1,4 +1,4 @@
-# 1️⃣ Adresses IP des VMs
+# 👉 Adresses IP des VMs
 output "vm_ips" {
   description = "Adresses IP des machines virtuelles créées (via QEMU agent)"
   value = {
@@ -7,13 +7,13 @@ output "vm_ips" {
   }
 }
 
-# 2️⃣ Noms des VMs déployées
+# 👉 Noms des VMs déployées
 output "vm_names" {
   description = "Noms des VMs déployées"
   value       = [for vm in proxmox_vm_qemu.vm : vm.name]
 }
 
-# 3️⃣ Commandes SSH personnalisées
+# 👉 Commandes SSH personnalisées
 output "ssh_commands" {
   description = "Commandes SSH pour accéder aux VMs"
   value = {
@@ -22,19 +22,19 @@ output "ssh_commands" {
   }
 }
 
-# 4️⃣ Statut global du déploiement
+# 👉 Statut global du déploiement
 output "status" {
   description = "Résumé du déploiement"
   value = <<EOT
 ✅ ${length(proxmox_vm_qemu.vm)} VM(s) déployée(s)
-🟢 Script d'initialisation : ${var.initialization_script}
-🧩 Scripts de service injectés :
-%{ for name, path in var.service_config_scripts ~}
-- ${name} : ${path}
+📄 Scripts injectés :
+%{ for vm, scripts in var.scripts ~}
+- ${vm} : ${join(", ", scripts)}
 %{ endfor ~}
 EOT
 }
 
+# 👉 IDs des VMs
 output "vm_ids" {
   description = "IDs des machines virtuelles créées"
   value = {
@@ -42,4 +42,3 @@ output "vm_ids" {
     vm.name => vm.vmid
   }
 }
-# 5️⃣ Informations sur les services déployés

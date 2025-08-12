@@ -20,7 +20,7 @@ provider "proxmox" {
   pm_tls_insecure = true
 }
 
-# 🧠 Calcul dynamique des adresses IP
+# 🧬 Calcul dynamique des adresses IP
 locals {
   ipconfig_map = {
     for vm in var.vm_names :
@@ -89,9 +89,9 @@ resource "proxmox_vm_qemu" "vm" {
   }
 }
 
-# 🚀 Déploiement distant des scripts init + config pour chaque VM
-resource "null_resource" "configure_service" {
-  for_each = var.service_config_scripts
+# 🚀 Déploiement distant des scripts pour chaque VM
+resource "null_resource" "run_scripts" {
+  for_each = { for vm, scripts in var.scripts : vm => scripts if length(scripts) > 0 }
 
   depends_on = [proxmox_vm_qemu.vm]
 
@@ -107,42 +107,20 @@ resource "null_resource" "configure_service" {
     timeout     = "2m"
   }
 
-  # 📄 Transfert des scripts
-  provisioner "file" {
-    source      = var.initialization_script
-    destination = "/tmp/init.sh"
+  # 📦 Transfert dynamique des scripts sur la VM
+  provisioner "local-exec" {
+    command = join(" && ", [
+      for idx, script in each.value :
+      "scp -i ${var.ssh_private_key_path} -o StrictHostKeyChecking=no ${script} ${var.cloudinit_user}@${proxmox_vm_qemu.vm[each.key].default_ipv4_address}:/tmp/script_${idx + 1}.sh"
+    ])
   }
 
-  provisioner "file" {
-    source      = each.value
-    destination = "/tmp/config.sh"
-  }
-
-  provisioner "file" {
-    source      = var.monitoring_script
-    destination = "/tmp/monitoring.sh"
-  }
-
-  # 🎯 Script de détection des services
-  provisioner "file" {
-    source      = var.monitored_services_script
-    destination = "/tmp/service-detector.sh"
-  }
-
-  # 🛠️ Conversion CRLF -> LF et exécution des scripts
+  # ▶️ Exécution séquentielle des scripts transférés
   provisioner "remote-exec" {
     inline = [
-      "for f in init.sh config.sh monitoring.sh service-detector.sh; do tr -d '\\r' < /tmp/$f > /tmp/$f.tmp && mv /tmp/$f.tmp /tmp/$f; chmod +x /tmp/$f; done",
-      "echo '🔧 Execution INIT SCRIPT...'",
-      "sudo /tmp/init.sh",
-      "echo '🔧 Execution CONFIG SCRIPT...'",
-      "sudo /tmp/config.sh",
-      "echo '🔧 Execution monitoring SCRIPT...'",
-      "sudo /tmp/monitoring.sh",
-      "echo '🔧 Execution service-detector SCRIPT...'",
-      "sudo /tmp/service-detector.sh",
-      "echo '✅ Fin des scripts'"
+      "export INSTANCE_ID=${var.instance_id}",
+      "for f in $(ls /tmp/script_*.sh 2>/dev/null); do tr -d '\\r' < $f > $f.tmp && mv $f.tmp $f; chmod +x $f; sudo bash -c \"INSTANCE_ID=${var.instance_id} $f\"; done",
+      "echo '✅ Fin des scripts avec INSTANCE_ID=${var.instance_id}'"
     ]
   }
-
 }

@@ -1,0 +1,11 @@
+{
+  "channels": {
+    "email": true,
+    "webhook": "",
+    "slack": "",
+    "telegram": "",
+    "discord": ""
+  },
+  "rules": [],
+  "retry": { "interval": 5, "max": 3, "consolidate": false, "silence": 10 }
+}

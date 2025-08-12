@@ -1,41 +1,52 @@
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
+const { sequelize } = require('./models');
+const routes = require('./routes');
+const logger = require('./utils/logger');
+const errorHandler = require('./middlewares/errorHandler');
 
-require("dotenv").config()
-const express = require("express")
-const cors = require("cors")
-const morgan = require("morgan")
-const helmet = require("helmet")
-const compression = require("compression")
-const cookieParser = require("cookie-parser")
-const db = require("./config/db")
-const routes = require("./routes")
-const logAllActions = require("./middlewares/logAllActions")
+const app = express();
+logger.info("Initialisation de l'application Express");
 
-const app = express()
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3001')
+  .split(',')
+  .map((o) => o.trim());
 
-// Middleware sécurité & logs
-app.use(cors())
-app.use(morgan("dev"))
-app.use(helmet())
-app.use(compression())
-app.use(express.json())
-app.use(cookieParser())
-app.use(logAllActions)
+// ✅ CORS doit venir AVANT les routes
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
 
-// Routes API
-app.use("/api", routes)
+app.use(express.json());
+app.use(routes);
 
-// Accueil
-app.get("/", (req, res) => {
-  res.send("✅ API Linusupervision opérationnelle")
-})
+const PORT = process.env.PORT || 3000;
 
-// Gestion des erreurs
-app.use((req, res) => {
-  res.status(404).json({ message: "Route non trouvée." })
-})
+app.use(errorHandler);
 
-// Lancement du serveur
-const PORT = process.env.PORT || 5000
-app.listen(PORT, () => {
-  console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`)
-})
+async function start() {
+  app.listen(PORT, async () => {
+    logger.info(`Serveur démarré sur le port ${PORT}`);
+    try {
+      await sequelize.authenticate();
+      logger.info('Connexion à la base de données réussie');
+    } catch (err) {
+      logger.error('Erreur de connexion à la base de données', err);
+    }
+  });
+}
+
+if (require.main === module) {
+  start();
+}
+
+module.exports = app;

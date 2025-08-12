@@ -1,21 +1,15 @@
 "use strict";
 const fs = require("fs");
 const path = require("path");
-const Sequelize = require("sequelize");
-const basename = path.basename(__filename);
-const config = require(__dirname + "/../config/config.json")["development"];
-const db = {};
+const { sequelize, Sequelize } = require("../config/db");
 
-const sequelize = new Sequelize(
-  config.database,
-  config.username,
-  config.password,
-  config
-);
+const basename = path.basename(__filename);
+const db = { Sequelize, sequelize };
 
 function loadModels(dir) {
   fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
     const fullPath = path.join(dir, entry.name);
+
     if (entry.isDirectory()) {
       loadModels(fullPath);
     } else if (
@@ -25,19 +19,18 @@ function loadModels(dir) {
     ) {
       const model = require(fullPath)(sequelize, Sequelize.DataTypes);
       db[model.name] = model;
+      console.log(`📁 Modèle chargé : ${model.name}`);
     }
   });
 }
 
 loadModels(__dirname);
 
-Object.keys(db).forEach(modelName => {
+Object.keys(db).forEach((modelName) => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
+    console.log(`🔗 Associations configurées pour : ${modelName}`);
   }
 });
-
-db.sequelize = sequelize;
-db.Sequelize = Sequelize;
 
 module.exports = db;

@@ -14,7 +14,6 @@ variable "pm_password" {
   sensitive   = true
 }
 
-
 variable "proxmox_node" {
   description = "Nom du nœud Proxmox cible"
   type        = string
@@ -111,29 +110,27 @@ variable "gateway_ip" {
   default     = "192.168.24.1"
 }
 
-variable "service_config_scripts" {
-  description = "Map service => chemin script config"
-  type        = map(string)
-}
-
-variable "initialization_script" {
-  description = "Script init commun (ex: install dépendances)"
-  type        = string
-}
-
-variable "monitoring_script" {
-  description = "Script d'agent de supervision à injecter dans toutes les VMs"
-  type        = string
-  default     = ""
-}
-
-variable "monitored_services_script" {
-  description = "Script de détection des services système"
-  type        = string
-  default     = ""
+variable "scripts" {
+  description = "Map VM => liste de chemins de scripts à exécuter dans l'ordre"
+  type        = map(list(string))
+  default     = {}
 }
 
 variable "instance_id" {
-  type = string
+  description = "Identifiant unique de déploiement"
+  type        = string
 }
 
+variable "script_refs" {
+  description = "Références aux scripts à injecter (type + id)"
+  type        = list(object({
+    type = string
+    id   = number
+  }))
+  default = []
+}
+
+variable "proxmox_api_token_secret" {
+  description = "Token secret d’authentification Proxmox"
+  type        = string
+}

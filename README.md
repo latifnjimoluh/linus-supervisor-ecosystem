@@ -1,135 +1,100 @@
-# 📘 Linusupervisor Backend
+# Linusupervisor Backend
 
-## 🚀 Présentation
+Node.js backend with Express and Sequelize providing user, role, and permission management secured by JWT authentication and verbose console logging.
 
-Un backend Express.js modulaire permettant de déployer, superviser, configurer et surveiller des serveurs Linux à distance (via Proxmox/Terraform), dans le cadre du projet "Système centralisé de supervision intelligente du BUNEC".
+## Monorepo structure
 
----
+The repository uses **npm workspaces** to host both the backend API and the Next.js frontend.
 
-## 🧰 Technologies utilisées
-
-- Node.js
-- Express.js
-- Sequelize (PostgreSQL)
-- JWT Authentication
-- dotenv
-- SSH2 / Child Process
-- Middleware personnalisés (`verifyToken`, `checkPermission`)
-- Modularisation par contrôleurs et templates
-
----
-
-## 🗂️ Arborescence des principaux dossiers
-
-```bash
+```
 .
-├── controllers/
-│   ├── auth/
-│   ├── generate/
-│   ├── supervision/
-│   ├── vm/
-│   └── template/
-├── models/
-├── routes/
-├── services/   (optionnel)
-├── middlewares/
-├── config/
-├── scripts/
-├── logs/
-├── utils/
-└── app.js
+├── app.js             # Express entry point
+├── frontend/          # Next.js application
+├── controllers/       # Express route handlers
+├── services/          # Business logic separated from controllers
+└── tests/             # Jest and supertest tests
 ```
 
----
+Run scripts from the repository root so shared dependencies are reused by both applications.
 
-## ⚙️ Configuration
+## Prerequisites
+- Node.js 18+
+- MySQL server
 
-Créer un fichier `.env` à la racine avec les variables suivantes :
+## Setup
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Copy `.env.example` to `.env` and adjust values. Include SMTP settings for password reset emails.
+3. Start the applications:
+   ```bash
+   npm run dev:backend   # API
+   npm run dev:frontend  # Frontend
+   ```
 
-```dotenv
-PORT=5000
-DATABASE_URL=postgres://user:password@localhost:5432/linusupervisor
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRES_IN=1h
-```
+## Database schema
+The SQL schema used by the backend is documented in [sql/schema.sql](sql/schema.sql). It defines tables for users, roles, permissions, deployments, and monitoring records.
 
----
+### Deployment flow
 
-## ▶️ Lancement du projet
+1. Build both apps from the root:
+   ```bash
+   npm --workspace . run build    # backend (if applicable)
+   npm --workspace frontend run build
+   ```
+2. Deploy the `app.js` server with the built frontend served by your preferred web server or CDN.
+3. Set environment variables documented below on the server.
 
-```bash
-npm install
-npm run dev   # Pour lancer en développement
-npm start     # Pour lancer en production
-```
+### Environment variables
 
----
+| Name | Description | Default |
+|------|-------------|---------|
+| `PORT` | Port HTTP du serveur | `3000` |
+| `JWT_SECRET` | Clé pour signer les jetons JWT | _none_ |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | Paramètres de connexion base de données | _required_ |
+| `CORS_ORIGINS` | Liste d'origines autorisées séparées par des virgules | `http://localhost:5173` |
+| `SMTP_USER`, `SMTP_PASS` | Identifiants SMTP pour l'envoi de mails | _optional_ |
 
-## 📡 API
+## Testing with Postman
+A Postman collection is available in `postman_collection.json`. Import it and set the `baseUrl` and `token` variables. Login to obtain a token before accessing protected routes.
 
-La documentation complète de l’API est dans `DOCUMENTATION_API.md`
-Tu peux aussi utiliser Postman ou Swagger pour tester les routes.
+## API Documentation
+See [docs/API.md](docs/API.md) for the list of available endpoints.
 
----
+## Logging
+All authenticated requests are automatically recorded in the `logs` table. Retrieve them via `GET /logs`.
 
-## 🔐 Authentification
+## Permissions
+Routes verify a specific permission string such as `user.list` or `vm.start`. Permissions are stored in the database and linked to roles, keeping authorization fully dynamic.
 
-Toutes les routes sont protégées via JWT et vérification de permissions.
-Tu dois inclure ce header :
+## Password Reset
+Users can request a reset code via `POST /auth/request-reset` and submit a new password with `POST /auth/reset-password`.
 
-```http
-Authorization: Bearer <your_token>
-```
+## User Settings
+Each user can manage their own infrastructure parameters through `/settings/me` endpoints. Superadmins may review all user settings via `GET /settings`.
 
----
+## Proxmox VM Management
+VM operations use the credentials stored in user settings. Available endpoints include:
+- `GET /vms` – list VMs from the Proxmox cluster
+- `POST /vms/:vmId/start` – start a VM
+- `POST /vms/:vmId/stop` – stop a VM
+- `POST /vms/check-status` – check VM status and ping reachability
+- `POST /vms/convert` – convert a VM to a reusable template
+- `GET /vms/conversions` – view template conversion history
 
-## 🛠 Fonctionnalités principales
+## Service Templates
+Define reusable service deployment templates. Each template stores its form schema as JSON so the frontend can generate dynamic inputs.
+- `GET /templates` – list templates
+- `POST /templates` – create a new template
+- `GET /templates/:id` – retrieve a template
+- `PUT /templates/:id` – update a template
+- `DELETE /templates/:id` – deactivate a template
+- `POST /templates/generate` – generate a script from stored template content
 
-- Création, démarrage, arrêt et suppression de VMs via Proxmox
-- Génération de scripts d’init, de supervision, de monitoring
-- Suivi du statut des services installés
-- Journalisation des actions utilisateurs
-- Rôles & permissions dynamiques
-- Template JSON modulaire pour injecter des configurations
-- Architecture RESTful prête pour CI/CD et scalabilité
+## Terraform Deployment
+Use `POST /terraform/deploy` to launch a Terraform run that clones a template VM and executes initialization, configuration, monitoring, and service-detection scripts. Script paths are stored in the database and selected by ID at deployment time.
+The base Terraform configuration lives in the `terraform/` directory (`main.tf`, `variables.tf`, `outputs.tf`). The backend copies these files for each run, generates a `variables.tfvars.json`, and executes `terraform init` and `terraform apply` inside a run-specific folder.
 
----
-
-## 🧪 Tests
-
-📌 Les tests unitaires ou d’intégration sont à mettre en place avec jest ou mocha.
-(Dossier `__tests__` recommandé – à créer)
-
----
-
-## 📁 Données persistées
-
-Liste des modèles Sequelize utilisés :
-
-- User
-- Role, Permission, RolePermission
-- InitScript, MonitoringScript, MonitoringService
-- ConfigTemplate, ConfigTemplateService
-- Deployment, Delete, VMInstance
-- StatusSnapshot, ServiceStatus
-- UserActionLog, UserSetting
-
----
-
-## ✨ Recommandations
-
-- Ajouter Swagger/OpenAPI (route `/api-docs`)
-- Mettre en place des tests (jest)
-- Ajouter sécurité avancée (rate-limit, helmet, input sanitization)
-- Créer un vrai système de rollback en cas d’échec VM
-- Ajouter supervision IA contextuelle (optionnel)
-
----
-
-## 🧠 Auteur
-
-Projet de Bachelor 3 – KEYCE School
-
-Nom : [Ton nom ici]
-Sujet : Mise en œuvre d’un système centralisé de gestion et de supervision intelligente des infrastructures Linux au BUNEC
+Use `GET /deployments/:id` to retrieve deployment metadata and the log contents generated during the run.
 
