@@ -12,7 +12,7 @@
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "jest",
     "test:frontend": "npm --workspace frontend test",
-    "dev": "nodemon app.js",  
+    "dev": "nodemon app.js",
     "start": "node app.js"
   },
   "keywords": [],
@@ -23,6 +23,7 @@
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
