@@ -2,6 +2,7 @@ import { api } from './api';
 
 export interface DeploymentDetail {
   id: number;
+  instance_id?: string;
   vm_name: string;
   template: string;
   status: string;
@@ -10,8 +11,17 @@ export interface DeploymentDetail {
   log: string | null;
 }
 
+export interface LastDeployment extends DeploymentDetail {
+  instance_id: string;
+}
+
 export async function fetchDeployment(id: string): Promise<DeploymentDetail> {
   const res = await api.get(`/deployments/${id}`);
+  return res.data;
+}
+
+export async function fetchLastDeployment(): Promise<LastDeployment> {
+  const res = await api.get('/deployments/last');
   return res.data;
 }
 

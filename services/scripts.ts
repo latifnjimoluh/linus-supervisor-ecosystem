@@ -47,6 +47,15 @@ export const restoreScript = async (
   return res.data;
 };
 
+// Nouvelle fonction pour mise à jour du script
+export const updateScript = async (
+  id: number,
+  data: Partial<GeneratedScriptDetail> // permet d’envoyer category, service_type, description, status, content...
+): Promise<{ message: string; script: GeneratedScriptDetail }> => {
+  const res = await api.put(`/scripts/${id}`, data);
+  return res.data;
+};
+
 // services/scripts.ts (ou l’endroit où tu déclenches l’analyse)
 export const analyzeScript = async (script: string, id: number) => {
   const res = await api.post(`/scripts/${id}/analyze`, {
@@ -56,5 +65,3 @@ export const analyzeScript = async (script: string, id: number) => {
   });
   return res.data; // { analysis: string }
 };
-
-

@@ -22,7 +22,7 @@ const emptyData: DashboardData = {
   systemHealth: 0,
   networkTraffic: { incoming: 0, outgoing: 0 },
   recentActivity: [],
-  lastUpdated: new Date().toISOString(),
+  lastUpdated: null,
   apiError: false,
   deploymentStats: { total: 0, success: 0, failed: 0, deleted: 0 },
 }
@@ -90,6 +90,18 @@ export default function DashboardPage() {
     `VMs: ${data.totalVms}, Services actifs: ${data.activeServices}, Alertes critiques: ${data.alerts.critical}, majeures: ${data.alerts.major}, mineures: ${data.alerts.minor}, Santé système: ${data.systemHealth}%, Déploiements: ${data.deploymentStats.total}, Succès: ${data.deploymentStats.success}, Échecs: ${data.deploymentStats.failed}, Suppressions: ${data.deploymentStats.deleted}.` :
     "Données du tableau de bord non disponibles."
 
+  const formattedLastUpdated = React.useMemo(() => {
+    if (!data?.lastUpdated) return "—"
+    return new Date(data.lastUpdated).toLocaleString(undefined, {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+  }, [data?.lastUpdated])
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -114,7 +126,7 @@ export default function DashboardPage() {
       )}
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Widget: Nombre de VMs */}
         <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -434,7 +446,7 @@ export default function DashboardPage() {
       />
 
       <div className="text-right text-sm text-muted-foreground">
-        Dernière mise à jour: {data?.lastUpdated || "N/A"}
+        Dernière mise à jour: {formattedLastUpdated}
         {loading && <span className="ml-2 animate-pulse">• Actualisation...</span>}
       </div>
     </div>

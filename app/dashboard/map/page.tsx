@@ -1,44 +1,58 @@
 "use client"
 
 import * as React from "react"
-import { Server, Globe, HardDrive, Network, AlertTriangle, CheckCircle, Info, RefreshCw, Plus, Activity, Shield } from 'lucide-react'
+import {
+  Server, Globe, HardDrive, Network, AlertTriangle, CheckCircle, Info,
+  RefreshCw, Plus, Activity, Shield
+} from "lucide-react"
+import Link from "next/link"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
-import { cn } from "@/lib/utils" // Ensure cn is imported
+import { InlineBanner } from "@/components/ui/inline-banner"
+import { cn } from "@/lib/utils"
 import { getInfrastructureMap, type InfrastructureServer } from "@/services/dashboard"
 import { useRouter } from "next/navigation"
 
 const simulateMapAIAnalysis = async (context: string): Promise<string> => {
-  await new Promise(resolve => setTimeout(resolve, 2000))
-
+  await new Promise((r) => setTimeout(r, 2000))
   const prompt = `Tu es un assistant réseau. À partir des statistiques suivantes, résume l'état des zones et signale les priorités : ${context}`
-  const match = context.match(/Serveurs affichés: (\d+), LAN: (\d+), WAN: (\d+), DMZ: (\d+), OK: (\d+), Alerte: (\d+), Hors supervision: (\d+)/)
-  const total = match ? parseInt(match[1]) : 0
-  const lan = match ? parseInt(match[2]) : 0
-  const wan = match ? parseInt(match[3]) : 0
-  const dmz = match ? parseInt(match[4]) : 0
-  const ok = match ? parseInt(match[5]) : 0
-  const alert = match ? parseInt(match[6]) : 0
-  const unsupervised = match ? parseInt(match[7]) : 0
+  const m = context.match(/Serveurs affichés: (\d+), LAN: (\d+), WAN: (\d+), DMZ: (\d+), MGMT: (\d+), OK: (\d+), Alerte: (\d+), Hors supervision: (\d+)/)
+  const total = m ? parseInt(m[1]) : 0
+  const lan = m ? parseInt(m[2]) : 0
+  const wan = m ? parseInt(m[3]) : 0
+  const dmz = m ? parseInt(m[4]) : 0
+  const mgmt = m ? parseInt(m[5]) : 0
+  const ok = m ? parseInt(m[6]) : 0
+  const alert = m ? parseInt(m[7]) : 0
+  const unsupervised = m ? parseInt(m[8]) : 0
 
-  return `🤖 **Analyse IA de la carte d'infrastructure**\n\n${total} serveurs : LAN ${lan}, WAN ${wan}, DMZ ${dmz}. Statuts — OK ${ok}, Alerte ${alert}, Hors supervision ${unsupervised}.\n\n**Actions recommandées :**\n- Inspecter les ${alert} serveur(s) en alerte\n- Vérifier la supervision de ${unsupervised} hôte(s)\n\n*Prompt utilisé :* ${prompt}`
+  return `🤖 **Analyse IA de la carte d'infrastructure**\n\n${total} serveurs : LAN ${lan}, WAN ${wan}, DMZ ${dmz}, MGMT ${mgmt}. Statuts — OK ${ok}, Alerte ${alert}, Hors supervision ${unsupervised}.\n\n**Actions recommandées :**\n- Inspecter les ${alert} serveur(s) en alerte\n- Vérifier la supervision de ${unsupervised} hôte(s)\n\n*Prompt utilisé :* ${prompt}`
 }
 
 export default function InfrastructureMapPage() {
   const [servers, setServers] = React.useState<InfrastructureServer[]>([])
+  const [status, setStatus] = React.useState<"ok" | "degraded">("ok")
+  const [errors, setErrors] = React.useState<string[]>([])
   const [loading, setLoading] = React.useState(true)
-  const [filterZone, setFilterZone] = React.useState<"all" | "LAN" | "WAN" | "DMZ">("all")
+  const [filterZone, setFilterZone] = React.useState<"all" | "LAN" | "WAN" | "DMZ" | "MGMT">("all")
   const router = useRouter()
 
   const fetchServers = React.useCallback(() => {
     setLoading(true)
     getInfrastructureMap()
-      .then(setServers)
-      .catch(() => setServers([]))
+      .then((data) => {
+        setServers(data.servers)
+        setStatus(data.status)
+        setErrors(data.errors || [])
+      })
+      .catch((err) => {
+        setStatus("degraded")
+        setErrors([err.message])
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -46,33 +60,40 @@ export default function InfrastructureMapPage() {
     fetchServers()
   }, [fetchServers])
 
-  const filteredServers = servers.filter(server =>
-    !server.isTemplate && (filterZone === "all" || server.zone === filterZone)
+  const filteredServers = servers.filter(
+    (s) => !s.isTemplate && (filterZone === "all" || s.zone === filterZone)
   )
 
-  const zoneSummary = { LAN: 0, WAN: 0, DMZ: 0 }
+  const zoneSummary = { LAN: 0, WAN: 0, DMZ: 0, MGMT: 0 }
   const statusSummary = { ok: 0, alert: 0, unsupervised: 0 }
-  filteredServers.forEach(s => {
-    zoneSummary[s.zone]++
-    statusSummary[s.status]++
+  filteredServers.forEach((s) => {
+    zoneSummary[s.zone as keyof typeof zoneSummary]++
+    statusSummary[s.status as keyof typeof statusSummary]++
   })
-  const aiContext = `Serveurs affichés: ${filteredServers.length}, LAN: ${zoneSummary.LAN}, WAN: ${zoneSummary.WAN}, DMZ: ${zoneSummary.DMZ}, OK: ${statusSummary.ok}, Alerte: ${statusSummary.alert}, Hors supervision: ${statusSummary.unsupervised}`
 
-  const getStatusIcon = (status: InfrastructureServer['status']) => {
-    switch (status) {
-      case "ok": return <CheckCircle className="h-4 w-4 text-green-500" />
-      case "alert": return <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse" />
-      case "unsupervised": return <Info className="h-4 w-4 text-yellow-500" />
+  const aiContext = `Serveurs affichés: ${filteredServers.length}, LAN: ${zoneSummary.LAN}, WAN: ${zoneSummary.WAN}, DMZ: ${zoneSummary.DMZ}, MGMT: ${zoneSummary.MGMT}, OK: ${statusSummary.ok}, Alerte: ${statusSummary.alert}, Hors supervision: ${statusSummary.unsupervised}`
+
+  const getStatusIcon = (s: InfrastructureServer["status"]) => {
+    switch (s) {
+      case "ok": return <CheckCircle className="h-4 w-4 text-green-500 drop-shadow" />
+      case "alert": return <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse drop-shadow" />
+      case "unsupervised": return <Info className="h-4 w-4 text-yellow-500 drop-shadow" />
       default: return null
     }
   }
 
-  const getZoneColor = (zone: InfrastructureServer['zone']) => {
-    switch (zone) {
-      case "LAN": return "border-blue-500/50 bg-blue-500/10"
-      case "WAN": return "border-purple-500/50 bg-purple-500/10"
-      case "DMZ": return "border-orange-500/50 bg-orange-500/10"
-      default: return "border-gray-500/50 bg-gray-500/10"
+  const zoneStyle = (z: InfrastructureServer["zone"]) => {
+    switch (z) {
+      case "LAN":
+        return "border-blue-400/50 bg-blue-500/10 ring-1 ring-blue-400/30 shadow-[0_0_40px_-12px] shadow-blue-500/20"
+      case "WAN":
+        return "border-purple-400/50 bg-purple-500/10 ring-1 ring-purple-400/30 shadow-[0_0_40px_-12px] shadow-purple-500/20"
+      case "DMZ":
+        return "border-orange-400/50 bg-orange-500/10 ring-1 ring-orange-400/30 shadow-[0_0_40px_-12px] shadow-orange-500/20"
+      case "MGMT":
+        return "border-emerald-400/50 bg-emerald-500/10 ring-1 ring-emerald-400/30 shadow-[0_0_40px_-12px] shadow-emerald-500/20"
+      default:
+        return "border-slate-400/50 bg-slate-500/10 ring-1 ring-slate-400/30"
     }
   }
 
@@ -89,71 +110,156 @@ export default function InfrastructureMapPage() {
     }
   }
 
+  const statusBarColor = (s: InfrastructureServer["status"]) =>
+    s === "ok" ? "bg-green-500/80" : s === "alert" ? "bg-red-500/80" : "bg-yellow-400/80"
+
+  /** ---------- UI HELPERS ---------- */
+  const Zone = ({
+    zone,
+    title,
+    rect,
+  }: {
+    zone: InfrastructureServer["zone"],
+    title: string,
+    rect: React.CSSProperties
+  }) => {
+    const zoneServers = filteredServers.filter((s) => s.zone === zone)
+    return (
+      <div
+        className={cn("absolute rounded-2xl p-4 md:p-5 border backdrop-blur-sm", zoneStyle(zone))}
+        style={rect}
+      >
+        <h3 className="font-semibold text-base mb-2 tracking-wide">{title}</h3>
+        {zoneServers.length === 0 ? (
+          <p className="text-muted-foreground text-xs">Aucun serveur dans cette zone.</p>
+        ) : (
+          // Grille responsive: spacing automatique des cartes
+          <div className="grid gap-3 pt-1 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
+            {zoneServers.map((server) => (
+              <TooltipProvider key={server.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <motion.div
+                      className={cn(
+                        "flex flex-col items-start justify-start p-3 rounded-xl border bg-card/80 backdrop-blur-sm",
+                        "shadow-lg hover:shadow-xl cursor-pointer transition-all",
+                        server.status === "alert"
+                          ? "border-red-500 ring-2 ring-red-500/60 animate-[pulse_1.8s_ease-in-out_infinite]"
+                          : "border-border/60 hover:border-primary"
+                      )}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                      whileHover={{ scale: 1.02 }}
+                      onClick={() => router.push(`/monitoring/${server.id}`)}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        {getRoleIcon(server.role)}
+                        <span className="font-medium text-sm leading-none">{server.name}</span>
+                        {server.isTemplate && <Badge variant="outline" className="text-[10px]">Template</Badge>}
+                      </div>
+
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        {getStatusIcon(server.status)}
+                        <span className="tabular-nums">{server.ip}</span>
+                      </div>
+
+                      <div className="mt-1 w-full flex items-center justify-between">
+                        <Badge variant="secondary" className="text-[10px]">{server.zone}</Badge>
+                        <div className={cn("h-1.5 w-24 rounded-full", statusBarColor(server.status))} />
+                      </div>
+                    </motion.div>
+                  </TooltipTrigger>
+                  <TooltipContent className="backdrop-blur-sm bg-popover/95">
+                    <p className="font-semibold">{server.name}</p>
+                    <p className="text-xs">IP : {server.ip}</p>
+                    <p className="text-xs">Rôle : {server.role}</p>
+                    <p className="text-xs">Type : {server.isTemplate ? "Template" : "VM"}</p>
+                    <p className="text-xs">Statut : {server.status === "ok" ? "OK" : server.status === "alert" ? "Alerte" : "Hors supervision"}</p>
+                    <p className="text-xs">Uptime : {server.uptime}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Carte d'Infrastructure</h1>
-          <p className="text-muted-foreground mt-2">
-            Visualisation topologique de votre architecture réseau.
-          </p>
+        <div className="space-y-1">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Carte d&apos;Infrastructure</h1>
+          <p className="text-muted-foreground">Visualisation topologique de votre architecture réseau.</p>
+          <div className="flex gap-2 pt-1">
+            <Badge variant="secondary" className="rounded-full">{filteredServers.length} serveurs</Badge>
+            <Badge variant="outline" className="rounded-full hidden sm:inline-flex">
+              OK {statusSummary.ok} • Alertes {statusSummary.alert} • HS {statusSummary.unsupervised}
+            </Badge>
+          </div>
         </div>
         <div className="flex gap-3">
           <Button onClick={fetchServers} variant="outline" className="rounded-xl">
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
             Actualiser
           </Button>
-          <Button className="rounded-xl">
-            <Plus className="mr-2 h-4 w-4" /> Ajouter un serveur
-          </Button>
+          <Button asChild className="rounded-xl">
+              <Link href="/deploy">
+                <Plus className="mr-2 h-4 w-4" /> Ajouter un serveur
+              </Link>
+            </Button>
         </div>
       </header>
 
+      {/* Warnings */}
+      {status === "degraded" && (
+        <div className="space-y-2">
+          <InlineBanner kind="warning" title="Données partielles (voir détails)" description={errors.join(" • ")} />
+          <div className="flex gap-2">
+            <Button onClick={fetchServers} size="sm" variant="outline" className="rounded-xl self-start">
+              Réessayer
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
       <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
-        <CardHeader>
+        <CardHeader className="pb-2">
           <CardTitle className="text-lg">Filtres</CardTitle>
+          <CardDescription>Affichez uniquement la zone souhaitée</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <Button
-            variant={filterZone === "all" ? "default" : "outline"}
-            onClick={() => setFilterZone("all")}
-            className="rounded-xl"
-          >
-            Toutes les zones
-          </Button>
-          <Button
-            variant={filterZone === "LAN" ? "default" : "outline"}
-            onClick={() => setFilterZone("LAN")}
-            className="rounded-xl"
-          >
-            LAN
-          </Button>
-          <Button
-            variant={filterZone === "WAN" ? "default" : "outline"}
-            onClick={() => setFilterZone("WAN")}
-            className="rounded-xl"
-          >
-            WAN
-          </Button>
-          <Button
-            variant={filterZone === "DMZ" ? "default" : "outline"}
-            onClick={() => setFilterZone("DMZ")}
-            className="rounded-xl"
-          >
-            DMZ
-          </Button>
+        <CardContent className="flex gap-2 overflow-x-auto no-scrollbar py-2">
+          {(["all", "LAN", "WAN", "DMZ", "MGMT"] as const).map((z) => (
+            <Button
+              key={z}
+              variant={filterZone === z ? "default" : "outline"}
+              onClick={() => setFilterZone(z)}
+              className={cn(
+                "rounded-full whitespace-nowrap",
+                z === "LAN" && "border-blue-400/50",
+                z === "WAN" && "border-purple-400/50",
+                z === "DMZ" && "border-orange-400/50",
+                z === "MGMT" && "border-emerald-400/50"
+              )}
+            >
+              {z === "all" ? "Toutes les zones" : z}
+            </Button>
+          ))}
         </CardContent>
       </Card>
 
+      {/* Map */}
       <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Network className="h-5 w-5" />
             Vue Cartographique
           </CardTitle>
-          <CardDescription>
-            Visualisation des serveurs par zone réseau.
-          </CardDescription>
+          <CardDescription>Visualisation des serveurs par zone réseau.</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -162,98 +268,24 @@ export default function InfrastructureMapPage() {
               <span className="ml-2">Chargement de la carte...</span>
             </div>
           ) : (
-            <div className="relative w-full h-[600px] border rounded-xl overflow-hidden bg-gradient-to-br from-background to-muted/20">
-              {/* Zone containers */}
-              <div className={cn("absolute border-2 rounded-xl p-4", getZoneColor("LAN"))} style={{ top: '10%', left: '5%', width: '40%', height: '80%' }}>
-                <h3 className="font-bold text-lg mb-4">LAN (Réseau Local)</h3>
-                {filteredServers.filter(s => s.zone === "LAN").length === 0 && (
-                  <p className="text-muted-foreground text-sm">Aucun serveur dans cette zone.</p>
-                )}
-              </div>
-              <div className={cn("absolute border-2 rounded-xl p-4", getZoneColor("DMZ"))} style={{ top: '10%', left: '55%', width: '40%', height: '40%' }}>
-                <h3 className="font-bold text-lg mb-4">DMZ (Zone Démilitarisée)</h3>
-                {filteredServers.filter(s => s.zone === "DMZ").length === 0 && (
-                  <p className="text-muted-foreground text-sm">Aucun serveur dans cette zone.</p>
-                )}
-              </div>
-              <div className={cn("absolute border-2 rounded-xl p-4", getZoneColor("WAN"))} style={{ top: '55%', left: '55%', width: '40%', height: '35%' }}>
-                <h3 className="font-bold text-lg mb-4">WAN (Réseau Étendu)</h3>
-                {filteredServers.filter(s => s.zone === "WAN").length === 0 && (
-                  <p className="text-muted-foreground text-sm">Aucun serveur dans cette zone.</p>
-                )}
-              </div>
-
-              {/* Inter-zone connections */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
-                <line x1="25%" y1="50%" x2="75%" y2="30%" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeDasharray="4 4" />
-                <line x1="25%" y1="50%" x2="75%" y2="72%" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeDasharray="4 4" />
-                <line x1="75%" y1="30%" x2="75%" y2="72%" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeDasharray="4 4" />
-              </svg>
-              <Network className="absolute h-6 w-6 text-muted-foreground z-10" style={{ left: '75%', top: '52%', transform: 'translate(-50%, -50%)' }} />
-
-              <TooltipProvider>
-                {filteredServers.map((server) => (
-                  <motion.div
-                    key={server.id}
-                    data-map-server
-                    data-zone={server.zone}
-                    data-status={server.status}
-                    className={cn(
-                      "absolute flex flex-col items-center justify-center p-2 rounded-lg shadow-md cursor-pointer transition-all duration-200",
-                      "bg-card border",
-                      server.status === "alert" ? "border-red-500 ring-2 ring-red-500 animate-pulse" : "border-border hover:border-primary"
-                    )}
-                    style={{
-                      left: `${server.position.x * 100}%`,
-                      top: `${server.position.y * 100}%`,
-                      transform: 'translate(-50%, -50%)',
-                      zIndex: 20,
-                    }}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3 }}
-                    whileHover={{ scale: 1.05, zIndex: 11 }}
-                    onClick={() => router.push(`/monitoring/${server.id}`)}
-                  >
-                    <div className="flex items-center gap-1 mb-1">
-                      {getRoleIcon(server.role)}
-                      <span className="font-medium text-sm">{server.name}</span>
-                      {server.isTemplate && (
-                        <Badge variant="outline" className="text-[10px]">Template</Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      {getStatusIcon(server.status)}
-                      <span>{server.ip}</span>
-                    </div>
-                    <Badge variant="secondary" className="mt-1 text-xs">{server.zone}</Badge>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="absolute inset-0" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="font-semibold">{server.name}</p>
-                        <p>IP: {server.ip}</p>
-                        <p>Rôle: {server.role}</p>
-                        <p>Type: {server.isTemplate ? "Template" : "VM"}</p>
-                        <p>Statut: {server.status === "ok" ? "OK" : server.status === "alert" ? "Alerte" : "Hors supervision"}</p>
-                        <p>Uptime: {server.uptime}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </motion.div>
-                ))}
-              </TooltipProvider>
-
-              {servers.length === 0 && !loading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
-                  <Server className="h-12 w-12 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Aucun serveur à afficher</h3>
-                  <p className="mb-4">Commencez par ajouter des serveurs pour les visualiser ici.</p>
-                  <Button className="rounded-xl">
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter un serveur
-                  </Button>
-                </div>
+            <div
+              className={cn(
+                "relative w-full h-[680px] border rounded-2xl overflow-hidden",
+                "shadow-2xl",
+                status === "degraded" && "grayscale opacity-60"
               )}
+              style={{
+                backgroundImage:
+                  "radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(120deg, rgba(59,130,246,0.08), rgba(168,85,247,0.08) 50%, rgba(249,115,22,0.08))",
+                backgroundSize: "24px 24px, 48px 48px, cover",
+                backgroundPosition: "0 0, 12px 12px, center",
+              }}
+            >
+              {/* === Quadrillage 2×2 : 2 zones à gauche, 2 zones à droite === */}
+              <Zone zone="MGMT" title="MGMT (Management)" rect={{ top: "4%", left: "5%", width: "40%", height: "42%" }} />
+              <Zone zone="LAN"  title="LAN (Réseau Local)" rect={{ top: "54%", left: "5%", width: "40%", height: "42%" }} />
+              <Zone zone="DMZ"  title="DMZ (Zone Démilitarisée)" rect={{ top: "4%", left: "55%", width: "40%", height: "42%" }} />
+              <Zone zone="WAN"  title="WAN (Réseau Étendu)" rect={{ top: "54%", left: "55%", width: "40%", height: "42%" }} />
             </div>
           )}
         </CardContent>
@@ -261,31 +293,36 @@ export default function InfrastructureMapPage() {
 
       {/* Legend */}
       <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-lg">Légende</CardTitle>
+          <CardDescription>Codes visuels utilisés sur la carte</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-          <div className="flex items-center gap-2">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+          <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-2.5">
             <CheckCircle className="h-4 w-4 text-green-500" /> Statut OK
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-2.5">
             <AlertTriangle className="h-4 w-4 text-red-500" /> Statut Alerte
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-2.5">
             <Info className="h-4 w-4 text-yellow-500" /> Hors supervision
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 border-2 border-blue-500/50 bg-blue-500/10 rounded" /> Zone LAN
+          <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-2.5">
+            <div className="h-4 w-4 border-2 border-blue-400/50 bg-blue-500/10 rounded" /> Zone LAN
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 border-2 border-purple-500/50 bg-purple-500/10 rounded" /> Zone WAN
+          <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-2.5">
+            <div className="h-4 w-4 border-2 border-purple-400/50 bg-purple-500/10 rounded" /> Zone WAN
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 border-2 border-orange-500/50 bg-orange-500/10 rounded" /> Zone DMZ
+          <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-2.5">
+            <div className="h-4 w-4 border-2 border-orange-400/50 bg-orange-500/10 rounded" /> Zone DMZ
+          </div>
+          <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-2.5">
+            <div className="h-4 w-4 border-2 border-emerald-400/50 bg-emerald-500/10 rounded" /> Zone MGMT
           </div>
         </CardContent>
       </Card>
 
+      {/* AI Assistant */}
       <AssistantAIBlock
         title="Assistant IA de la carte"
         context={aiContext}

@@ -225,7 +225,7 @@ export default function HistoryPage() {
       )}
 
       <Dialog open={!!selected} onOpenChange={closeDetail}>
-        <DialogContent>
+        <DialogContent className="w-[600px] h-[400px] overflow-x-auto overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{detail?.vm_name || selected?.vm_name}</DialogTitle>
             <DialogDescription>

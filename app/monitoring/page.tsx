@@ -249,7 +249,7 @@ export default function MonitoringPage() {
                       </div>
                       <CardDescription className="min-w-0">
                         <code className="text-xs bg-muted px-2 py-1 rounded break-all">{vm.ip}</code>
-                        <span className="ml-2 text-xs truncate inline-block max-w-[55%] align-bottom">{vm.os}</span>
+                        <span className="ml-2 text-xs truncate inline-block max-w-[55%] align-bottom">{vm.hostname}</span>
                       </CardDescription>
                     </CardHeader>
 

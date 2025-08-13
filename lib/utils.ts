@@ -30,3 +30,8 @@ export function formatDate(value: string | null) {
   const date = new Date(value)
   return date.toLocaleString('fr-FR')
 }
+
+export function capitalize(value: string) {
+  if (!value) return ''
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}

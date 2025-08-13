@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Search, Edit, Trash2, Shield, Key, Check, X, Loader2, Bot } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Key, Check, Loader2, ArrowUpDown } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -16,8 +16,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { useToast } from "@/hooks/use-toast"
 import {
-  listAllPermissions,
+  listPermissions,
   createPermission,
+  updatePermission,
   deletePermission,
   assignPermissions,
   unassignPermissions,
@@ -25,9 +26,9 @@ import {
   Permission as PermissionBase,
 } from "@/services/permissions"
 import { listRoles, Role as RoleBase } from "@/services/roles"
+import { capitalize } from "@/lib/utils"
 
 interface Permission extends PermissionBase {
-  module: string
   is_active: boolean
 }
 
@@ -77,16 +78,18 @@ Votre système compte ${totalPermissions} permissions dont ${activePermissions} 
 
 export default function PermissionsPage() {
   const [permissions, setPermissions] = React.useState<Permission[]>([])
-  const [allPermissions, setAllPermissions] = React.useState<Permission[]>([])
   const [roles, setRoles] = React.useState<Role[]>([])
   const [loading, setLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
-  const [moduleFilter, setModuleFilter] = React.useState<string>("all")
+  const [sortField, setSortField] = React.useState("key")
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("asc")
   const [selectedRole, setSelectedRole] = React.useState<string>("all")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
-  const [selectedModule, setSelectedModule] = React.useState("general")
-  const [formData, setFormData] = React.useState({ name: "", description: "", module: "" })
+  const [editingPermission, setEditingPermission] = React.useState<Permission | null>(null)
+  const [formData, setFormData] = React.useState({ key: "", name: "", description: "" })
+  const [editData, setEditData] = React.useState({ key: "", name: "", description: "" })
   const [formLoading, setFormLoading] = React.useState(false)
+  const [editLoading, setEditLoading] = React.useState(false)
   const [assignLoading, setAssignLoading] = React.useState(false)
   const [pagination, setPagination] = React.useState({ page: 1, pages: 1, total: 0, limit: 10 })
   const { toast } = useToast()
@@ -94,14 +97,8 @@ export default function PermissionsPage() {
   const fetchData = React.useCallback(async () => {
     setLoading(true)
     try {
-      const permRes = await listAllPermissions()
+      const permRes = await listPermissions(pagination.page, pagination.limit, searchTerm, sortField, sortOrder)
       const roleData = await listRoles()
-      const mappedPerms = permRes.map(p => ({
-        ...p,
-        module: 'general',
-        is_active: p.status !== 'inactif',
-      }))
-      setAllPermissions(mappedPerms)
       const rolesWithPerms = await Promise.all(
         roleData.map(async r => {
           const perms = await getPermissionsByRole(r.id)
@@ -109,42 +106,25 @@ export default function PermissionsPage() {
         })
       )
       setRoles(rolesWithPerms)
-      setPagination(prev => ({
-        ...prev,
-        total: mappedPerms.length,
-        pages: Math.ceil(mappedPerms.length / prev.limit),
-        page: 1,
+      const mappedPerms = permRes.data.map(p => ({
+        ...p,
+        is_active: p.status !== 'inactif',
       }))
+      setPermissions(mappedPerms)
+      setPagination(permRes.pagination)
     } catch (err) {
       console.error('fetchData error', err)
     } finally {
       setLoading(false)
     }
-  }, [pagination.limit])
+  }, [pagination.page, pagination.limit, searchTerm, sortField, sortOrder])
 
   React.useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  React.useEffect(() => {
-    const start = (pagination.page - 1) * pagination.limit
-    const end = start + pagination.limit
-    setPermissions(allPermissions.slice(start, end))
-  }, [allPermissions, pagination.page, pagination.limit])
-
-  const basePermissions = searchTerm ? allPermissions : permissions
-  const filteredPermissions = basePermissions.filter(permission => {
-    const matchesSearch = permission.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         permission.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesModule = moduleFilter === "all" || permission.module === moduleFilter
-    return matchesSearch && matchesModule
-  })
-
-  const modules = Array.from(new Set(allPermissions.map(p => p.module)))
-
   const handleCreatePermission = async () => {
-    const moduleName = selectedModule === "new" ? formData.module : selectedModule
-    if (!formData.name.trim() || !formData.description.trim() || !moduleName.trim()) {
+    if (!formData.key.trim() || !formData.name.trim() || !formData.description.trim()) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs",
@@ -153,21 +133,11 @@ export default function PermissionsPage() {
       return
     }
 
-    // Validate permission name format
-    if (!/^[a-z]+\.[a-z_]+$/.test(formData.name)) {
+    // Validate permission key format
+    if (!/^[a-z]+\.[a-z_]+$/.test(formData.key)) {
       toast({
         title: "Format invalide",
-        description: "Le nom doit suivre le format 'module.action' (ex: vm.create)",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Check if permission already exists
-    if (allPermissions.some(p => p.name === formData.name)) {
-      toast({
-        title: "Erreur",
-        description: "Cette permission existe déjà",
+        description: "La clé doit suivre le format 'module.action' (ex: vm.create)",
         variant: "destructive",
       })
       return
@@ -176,30 +146,15 @@ export default function PermissionsPage() {
     setFormLoading(true)
 
     try {
-      const created = await createPermission({ name: formData.name, description: formData.description })
-      const newPermission: Permission = {
-        ...created,
-        module: moduleName,
-        is_active: true,
-      }
-      setAllPermissions(prev => {
-        const updated = [...prev, newPermission]
-        setPagination(p => ({
-          ...p,
-          total: updated.length,
-          pages: Math.ceil(updated.length / p.limit),
-        }))
-        return updated
-      })
-      setFormData({ name: "", description: "", module: "" })
-      setSelectedModule("general")
+      await createPermission({ key: formData.key, name: formData.name, description: formData.description })
+      setFormData({ key: "", name: "", description: "" })
       setIsCreateDialogOpen(false)
-
       toast({
         title: "Permission créée",
-        description: `La permission "${formData.name}" a été créée avec succès`,
+        description: `La permission "${formData.key}" a été créée avec succès`,
         variant: "success",
       })
+      fetchData()
     } catch (error) {
       toast({
         title: "Erreur",
@@ -208,6 +163,37 @@ export default function PermissionsPage() {
       })
     } finally {
       setFormLoading(false)
+    }
+  }
+
+  const handleEditPermission = async () => {
+    if (!editingPermission) return
+    if (!editData.key.trim() || !editData.name.trim() || !editData.description.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs",
+        variant: "destructive",
+      })
+      return
+    }
+    setEditLoading(true)
+    try {
+      await updatePermission(editingPermission.id, editData)
+      toast({
+        title: "Permission mise à jour",
+        description: `La permission "${editData.key}" a été mise à jour avec succès`,
+        variant: "success",
+      })
+      setEditingPermission(null)
+      fetchData()
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la mise à jour de la permission",
+        variant: "destructive",
+      })
+    } finally {
+      setEditLoading(false)
     }
   }
 
@@ -226,16 +212,7 @@ export default function PermissionsPage() {
 
     try {
       await deletePermission(permissionId)
-      setAllPermissions(prev => {
-        const updated = prev.filter(p => p.id !== permissionId)
-        setPagination(p => ({
-          ...p,
-          total: updated.length,
-          pages: Math.ceil(updated.length / p.limit),
-          page: Math.min(p.page, Math.ceil(updated.length / p.limit) || 1),
-        }))
-        return updated
-      })
+      fetchData()
 
       toast({
         title: "Permission supprimée",
@@ -271,7 +248,7 @@ export default function PermissionsPage() {
         return role
       }))
 
-      const permission = allPermissions.find(p => p.id === permissionId)
+      const permission = permissions.find(p => p.id === permissionId)
       const role = roles.find(r => r.id === roleId)
 
       toast({
@@ -290,14 +267,13 @@ export default function PermissionsPage() {
     }
   }
 
-  const selectedRoleData = roles.find(r => String(r.id) === selectedRole) // Compare with string value from select
+  const selectedRoleData = roles.find(r => String(r.id) === selectedRole)
   const stats = {
-    total: allPermissions.length,
-    active: allPermissions.filter(p => p.is_active).length,
-    modules: modules.length,
+    total: pagination.total,
+    active: permissions.filter(p => p.is_active).length,
   }
 
-const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, Modules: ${stats.modules}. Répartition par rôle: Admin (${roles.find(r => r.name === 'admin')?.permissions.length || 0}), Technicien (${roles.find(r => r.name === 'technicien')?.permissions.length || 0}), Auditeur (${roles.find(r => r.name === 'auditeur')?.permissions.length || 0}).`;
+const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}. Répartition par rôle: Admin (${roles.find(r => r.name === 'admin')?.permissions.length || 0}), Technicien (${roles.find(r => r.name === 'technicien')?.permissions.length || 0}), Auditeur (${roles.find(r => r.name === 'auditeur')?.permissions.length || 0}).`;
 
   return (
     <div className="space-y-6">
@@ -315,22 +291,32 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
             <DialogHeader>
               <DialogTitle>Créer une nouvelle permission</DialogTitle>
               <DialogDescription>
-                Définissez une nouvelle permission avec son module associé
+                Définissez une nouvelle permission
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nom technique</Label>
+                <Label htmlFor="key">Clé</Label>
                 <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="ex: vm.create, template.analyze"
+                  id="key"
+                  value={formData.key}
+                  onChange={(e) => setFormData(prev => ({ ...prev, key: e.target.value }))}
+                  placeholder="ex: vm.create"
                   className="rounded-xl"
                 />
                 <p className="text-xs text-muted-foreground">
                   Format: module.action (lettres minuscules et points uniquement)
                 </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Nom</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Nom lisible"
+                  className="rounded-xl"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
@@ -342,43 +328,12 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
                   className="rounded-xl"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="module">Module</Label>
-                <Select
-                  value={selectedModule}
-                  onValueChange={(value) => {
-                    setSelectedModule(value)
-                    if (value !== "new") {
-                      setFormData(prev => ({ ...prev, module: "" }))
-                    }
-                  }}
-                >
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Sélectionner un module" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {modules.map(module => (
-                      <SelectItem key={module} value={module}>{module}</SelectItem>
-                    ))}
-                    <SelectItem value="new">Nouveau module...</SelectItem>
-                  </SelectContent>
-                </Select>
-                {selectedModule === "new" && (
-                  <Input
-                    placeholder="Nom du nouveau module"
-                    value={formData.module}
-                    onChange={(e) => setFormData(prev => ({ ...prev, module: e.target.value }))}
-                    className="rounded-xl mt-2"
-                  />
-                )}
-              </div>
               <div className="flex gap-2 pt-4">
                 <Button
                   variant="outline"
                   onClick={() => {
                     setIsCreateDialogOpen(false)
-                    setFormData({ name: "", description: "", module: "" })
-                    setSelectedModule("general")
+                    setFormData({ key: "", name: "", description: "" })
                   }}
                   className="rounded-xl"
                 >
@@ -405,7 +360,7 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="rounded-2xl">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -428,41 +383,34 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
             </div>
           </CardContent>
         </Card>
-        <Card className="rounded-2xl">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Modules</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.modules}</p>
-              </div>
-              <Shield className="h-8 w-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4 flex-wrap">
+      <div className="flex gap-4 flex-wrap items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Rechercher une permission..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setPagination(p => ({ ...p, page: 1 }))
+            }}
             className="pl-10 rounded-xl"
           />
         </div>
-        <Select value={moduleFilter} onValueChange={setModuleFilter}>
-          <SelectTrigger className="w-48 rounded-xl">
-            <SelectValue placeholder="Filtrer par module" />
+        <Select value={sortField} onValueChange={(v) => { setSortField(v); setPagination(p => ({...p, page:1})) }}>
+          <SelectTrigger className="w-40 rounded-xl">
+            <SelectValue placeholder="Trier par" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tous les modules</SelectItem>
-            {modules.map(module => (
-              <SelectItem key={module} value={module}>{module}</SelectItem>
-            ))}
+            <SelectItem value="key">Clé</SelectItem>
+            <SelectItem value="name">Nom</SelectItem>
           </SelectContent>
         </Select>
+        <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')}>
+          <ArrowUpDown className="h-4 w-4" />
+        </Button>
         <Select value={selectedRole} onValueChange={setSelectedRole}>
           <SelectTrigger className="w-48 rounded-xl">
             <SelectValue placeholder="Gérer les permissions pour" />
@@ -470,7 +418,7 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
           <SelectContent>
             <SelectItem value="all">Voir toutes les permissions</SelectItem>
             {roles.map(role => (
-              <SelectItem key={role.id} value={String(role.id)}>Rôle: {role.name}</SelectItem>
+              <SelectItem key={role.id} value={String(role.id)}>Rôle: {capitalize(role.name)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -481,10 +429,10 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Key className="h-5 w-5" />
-            {selectedRole === "all" ? "Toutes les permissions" : `Permissions du rôle "${selectedRoleData?.name}"`}
+            {selectedRole === "all" ? "Toutes les permissions" : `Permissions du rôle "${capitalize(selectedRoleData?.name ?? "" )}"`}
           </CardTitle>
           <CardDescription>
-            {filteredPermissions.length} permission(s) trouvée(s) sur {pagination.total} au total
+            {permissions.length} permission(s) trouvée(s) sur {pagination.total} au total
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -494,9 +442,9 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
               <span className="ml-2">Chargement des permissions...</span>
             </div>
           ) : (
-            <>  
+            <>
             <div className="space-y-4">
-              {filteredPermissions.map((permission, index) => {
+              {permissions.map((permission, index) => {
                 const isAssigned = selectedRoleData?.permissions.includes(permission.id) || false
                 const isUsedByRoles = roles.filter(role => role.permissions.includes(permission.id))
 
@@ -512,7 +460,7 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
                       {selectedRole !== "all" && (
                         <Checkbox
                           checked={isAssigned}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked) =>
                             handlePermissionToggle(parseInt(selectedRole), permission.id, isAssigned)
                           }
                           disabled={assignLoading}
@@ -520,16 +468,14 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
                       )}
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="font-medium font-mono text-sm">{permission.name}</h4>
-                          <Badge variant="outline" className="text-xs">
-                            {permission.module}
-                          </Badge>
-                    {permission.is_active ? (
+                          <h4 className="font-medium font-mono text-sm">{permission.key}</h4>
+                          {permission.is_active ? (
                             <Badge variant="success" className="text-xs">Actif</Badge>
                           ) : (
                             <Badge variant="warning" className="text-xs">Inactif</Badge>
                           )}
                         </div>
+                        <p className="text-sm">{permission.name}</p>
                         <p className="text-sm text-muted-foreground mt-1">{permission.description}</p>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                           <span>
@@ -539,13 +485,16 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
                               : '—'}
                           </span>
                           {isUsedByRoles.length > 0 && (
-                            <span>Utilisé par: {isUsedByRoles.map(r => r.name).join(", ")}</span>
+                            <span>Utilisé par: {isUsedByRoles.map(r => capitalize(r.name)).join(", ")}</span>
                           )}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="rounded-xl">
+                      <Button variant="outline" size="sm" className="rounded-xl" onClick={() => {
+                        setEditingPermission(permission)
+                        setEditData({ key: permission.key, name: permission.name, description: permission.description })
+                      }}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
@@ -563,13 +512,13 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
                           <AlertDialogHeader>
                             <AlertDialogTitle>Supprimer la permission</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Êtes-vous sûr de vouloir supprimer la permission "{permission.name}" ? Cette action est irréversible.
+                              Êtes-vous sûr de vouloir supprimer la permission "{permission.key}" ? Cette action est irréversible.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Annuler</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleDeletePermission(permission.id, permission.name)}
+                              onClick={() => handleDeletePermission(permission.id, permission.key)}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Supprimer
@@ -582,39 +531,99 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}, 
                 )
               })}
             </div>
-            {!searchTerm && (
-              <div className="flex items-center justify-between pt-4">
-                <span className="text-sm text-muted-foreground">
-                  Page {pagination.page} sur {pagination.pages}
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={pagination.page <= 1}
-                    onClick={() =>
-                      setPagination(p => ({ ...p, page: p.page - 1 }))
-                    }
-                  >
-                    Précédent
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={pagination.page >= pagination.pages}
-                    onClick={() =>
-                      setPagination(p => ({ ...p, page: p.page + 1 }))
-                    }
-                  >
-                    Suivant
-                  </Button>
-                </div>
+            <div className="flex items-center justify-between pt-4">
+              <span className="text-sm text-muted-foreground">
+                Page {pagination.page} sur {pagination.pages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page <= 1}
+                  onClick={() =>
+                    setPagination(p => ({ ...p, page: p.page - 1 }))
+                  }
+                >
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page >= pagination.pages}
+                  onClick={() =>
+                    setPagination(p => ({ ...p, page: p.page + 1 }))
+                  }
+                >
+                  Suivant
+                </Button>
               </div>
-            )}
+            </div>
             </>
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Permission Dialog */}
+      <Dialog open={!!editingPermission} onOpenChange={() => setEditingPermission(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier la permission</DialogTitle>
+            <DialogDescription>Mettre à jour les détails de la permission.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-key">Clé</Label>
+              <Input
+                id="edit-key"
+                value={editData.key}
+                onChange={(e) => setEditData(prev => ({ ...prev, key: e.target.value }))}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Nom</Label>
+              <Input
+                id="edit-name"
+                value={editData.name}
+                onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Input
+                id="edit-description"
+                value={editData.description}
+                onChange={(e) => setEditData(prev => ({ ...prev, description: e.target.value }))}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="flex gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setEditingPermission(null)}
+                className="rounded-xl"
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleEditPermission}
+                disabled={editLoading}
+                className="rounded-xl flex-1"
+              >
+                {editLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Mise à jour...
+                  </>
+                ) : (
+                  "Mettre à jour"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* AI Analysis Block */}
       <AssistantAIBlock

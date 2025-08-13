@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useErrors } from "./use-errors"
 
 type ToastVariant = "default" | "destructive" | "success" | "warning" | "info"
 
@@ -22,11 +23,18 @@ const ToastContext = React.createContext<ToastContextType | undefined>(undefined
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<Toast[]>([])
+  const { setError } = useErrors()
 
   const toast = React.useCallback((newToast: Omit<Toast, 'id'>) => {
+    if (newToast.variant === 'destructive') {
+      const message = newToast.description ? `${newToast.title}: ${newToast.description}` : newToast.title
+      setError('global', { message, detailsUrl: '/logs' })
+      return
+    }
+
     const id = Math.random().toString(36).substring(2, 9)
     const toastWithId = { id, ...newToast }
-    
+
     setToasts(prev => [...prev, toastWithId])
 
     // Auto dismiss after duration
@@ -34,7 +42,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
     }, duration)
-  }, [])
+  }, [setError])
 
   const dismiss = React.useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id))

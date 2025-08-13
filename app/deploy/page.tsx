@@ -1,8 +1,16 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
-  Server, Cpu, Network, FileJson, ChevronDown, ChevronUp, Copy, Check
+  Server,
+  Cpu,
+  Network,
+  FileJson,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Check,
 } from "lucide-react"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -11,21 +19,40 @@ import { AnimatePresence, motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getStatusBadge } from "@/components/status-badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command"
 import { Checkbox } from "@/components/ui/checkbox"
 import { runDeployment } from "@/services/terraform"
 import { getGeneratedScripts, getServiceTypes, ScriptGroup } from "@/services/scripts"
 import { listProxmoxTemplates, ProxmoxVM } from "@/services/vms"
-import { analyzeDeploymentConfig, checkDeploymentCapacity } from "@/services/deployments"
+import {
+  analyzeDeploymentConfig,
+  checkDeploymentCapacity,
+  fetchDeployment,
+  fetchLastDeployment,
+} from "@/services/deployments"
 import { ErrorMessage } from "@/components/ui/error-message"
 
 // -------------------- Helpers noms VM --------------------
@@ -49,6 +76,11 @@ const sanitizeVmNames = (input: string): string[] => {
 const allNamesValid = (input: string) => {
   const cleaned = sanitizeVmNames(input)
   return cleaned.length > 0 && cleaned.every((n) => VM_NAME_REGEX.test(n))
+}
+
+const clamp = (value: number, min: number, max: number) => {
+  if (Number.isNaN(value)) return min
+  return Math.min(Math.max(value, min), max)
 }
 
 // -------------------- Zod Schema --------------------
@@ -103,6 +135,10 @@ export default function DeployPage() {
       }
     | null
   >(null)
+  const [diskMin, setDiskMin] = React.useState(10)
+  const [diskMax, setDiskMax] = React.useState(500)
+  const [memMax, setMemMax] = React.useState(16384)
+  const [last, setLast] = React.useState<null | { instance_id: string; status: string }>(null)
 
   const {
     register,
@@ -149,6 +185,67 @@ export default function DeployPage() {
       }
     )
   }, [])
+
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        const id = typeof window !== "undefined" ? localStorage.getItem("last_instance_id") : null
+        if (id) {
+          const dep = await fetchDeployment(id)
+          setLast({ instance_id: id, status: dep.status })
+        } else {
+          const dep = await fetchLastDeployment()
+          localStorage.setItem("last_instance_id", dep.instance_id)
+          setLast({ instance_id: dep.instance_id, status: dep.status })
+        }
+      } catch {
+        /* aucun déploiement */
+      }
+    }
+    load()
+  }, [])
+
+  React.useEffect(() => {
+    if (!last) return
+    if (["success", "failed"].includes(last.status)) return
+    const interval = setInterval(async () => {
+      try {
+        const dep = await fetchDeployment(last.instance_id)
+        setLast({ instance_id: last.instance_id, status: dep.status })
+      } catch {}
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [last])
+
+  React.useEffect(() => {
+    const tmpl = templates.find((t) => t.name === formData.template_name)
+    const min = tmpl ? Math.max(Math.floor((tmpl.maxdisk || 0) / 1024 ** 3), 10) : 10
+    setDiskMin(min)
+    const current = getValues("disk_size")
+    if (current < min) {
+      setValue("disk_size", min, { shouldValidate: true })
+    }
+  }, [templates, formData.template_name, getValues, setValue])
+
+  React.useEffect(() => {
+    if (capacityInfo) {
+      const maxDisk = Math.max(capacityInfo.disk.available, diskMin)
+      setDiskMax(maxDisk)
+      const d = getValues("disk_size")
+      const clampedDisk = clamp(d, diskMin, maxDisk)
+      if (clampedDisk !== d) {
+        setValue("disk_size", clampedDisk, { shouldValidate: true })
+      }
+
+      const maxMem = Math.max(capacityInfo.memory.available, 512)
+      setMemMax(maxMem)
+      const m = getValues("memory_mb")
+      const clampedMem = clamp(m, 512, maxMem)
+      if (clampedMem !== m) {
+        setValue("memory_mb", clampedMem, { shouldValidate: true })
+      }
+    }
+  }, [capacityInfo, diskMin, getValues, setValue])
 
   React.useEffect(() => {
     checkDeploymentCapacity(
@@ -261,6 +358,9 @@ export default function DeployPage() {
         variant: "success",
       })
 
+      if (typeof window !== "undefined") {
+        localStorage.setItem("last_instance_id", res.instance_id)
+      }
       router.push(`/deployments/${res.instance_id}`)
     } catch (err: any) {
       toast({
@@ -309,12 +409,24 @@ export default function DeployPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <header className="sticky top-0 z-10 bg-background pb-4">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          Créer une Machine Virtuelle
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Configurez et déployez vos VMs en quelques clics avec Terraform.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+              Créer une Machine Virtuelle
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Configurez et déployez vos VMs en quelques clics avec Terraform.
+            </p>
+          </div>
+          {last && (
+            <Link href={`/deployments/${last.instance_id}`}>
+              <Button variant="outline" className="flex items-center gap-2">
+                Reprendre dernier déploiement
+                {getStatusBadge(last.status)}
+              </Button>
+            </Link>
+          )}
+        </div>
       </header>
 
       <div className="flex-1 overflow-auto mt-6">
@@ -540,13 +652,27 @@ export default function DeployPage() {
                     control={control}
                     render={({ field }) => (
                       <>
-                        <Slider
-                          defaultValue={[field.value]}
-                          min={512}
-                          max={16384}
-                          step={512}
-                          onValueChange={(v) => field.onChange(v[0])}
-                        />
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            className="w-24"
+                            value={field.value}
+                            min={512}
+                            max={memMax}
+                            step={512}
+                            onChange={(e) => {
+                              const val = Math.round(Number(e.target.value) / 512) * 512
+                              field.onChange(clamp(val, 512, memMax))
+                            }}
+                          />
+                          <Slider
+                            value={[field.value]}
+                            min={512}
+                            max={memMax}
+                            step={512}
+                            onValueChange={(v) => field.onChange(v[0])}
+                          />
+                        </div>
                         <div className="text-sm text-muted-foreground text-center">
                           {field.value} Mo
                         </div>
@@ -561,13 +687,27 @@ export default function DeployPage() {
                     control={control}
                     render={({ field }) => (
                       <>
-                        <Slider
-                          defaultValue={[field.value]}
-                          min={10}
-                          max={500}
-                          step={10}
-                          onValueChange={(v) => field.onChange(v[0])}
-                        />
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            className="w-24"
+                            value={field.value}
+                            min={diskMin}
+                            max={diskMax}
+                            step={10}
+                            onChange={(e) => {
+                              const val = Math.round(Number(e.target.value) / 10) * 10
+                              field.onChange(clamp(val, diskMin, diskMax))
+                            }}
+                          />
+                          <Slider
+                            value={[field.value]}
+                            min={diskMin}
+                            max={diskMax}
+                            step={10}
+                            onValueChange={(v) => field.onChange(v[0])}
+                          />
+                        </div>
                         <div className="text-sm text-muted-foreground text-center">
                           {field.value} Go
                         </div>

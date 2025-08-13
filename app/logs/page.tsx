@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Filter, Download, RefreshCw, Eye, Calendar, User, Settings, Trash2, Server, AlertTriangle, CheckCircle, XCircle, FileText, Loader2, Bot } from 'lucide-react'
+import { Search, Download, RefreshCw, Eye, User, Settings, Trash2, Server, AlertTriangle, CheckCircle, XCircle, FileText, Loader2, Bot, ArrowUpDown } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { useToast } from "@/hooks/use-toast"
-import { listLogs, exportLogs as fetchLogsExport, LogEntry } from "@/services/logs"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
+import { listLogs, exportLogs as fetchLogsExport, estimateLogsExportSize, LogEntry } from "@/services/logs"
 
 // Simulate AI analysis for logs
 const simulateLogsAIAnalysis = async (context: string): Promise<string> => {
@@ -58,23 +60,32 @@ export default function LogsPage() {
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [selectedLog, setSelectedLog] = React.useState<LogEntry | null>(null)
   const [page, setPage] = React.useState(1)
-  const [pageSize, setPageSize] = React.useState(10)
+  const [limit, setLimit] = React.useState(10)
   const [total, setTotal] = React.useState(0)
-  const [exportFormat, setExportFormat] = React.useState<"csv" | "json" | "">("")
+  const [sortField, setSortField] = React.useState("timestamp")
+  const [order, setOrder] = React.useState<"asc" | "desc">("desc")
+  const [exportSize, setExportSize] = React.useState<number | null>(null)
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
+
+  const filtersActive = React.useMemo(
+    () => !!searchTerm || sortField !== 'timestamp' || order !== 'desc',
+    [searchTerm, sortField, order]
+  )
 
   const fetchLogs = React.useCallback(async () => {
     try {
       setLoading(true)
-      const res = await listLogs({ q: searchTerm || undefined, page, pageSize })
-      setLogs(res.results)
-      setTotal(res.total)
+      const res = await listLogs({ search: searchTerm || undefined, sort: sortField, order, page, limit })
+      setLogs(res.items)
+      setTotal(res.total_after_filter)
+      clearError('logs')
     } catch (err) {
-      console.error('Erreur chargement logs', err)
+      setError('logs', { message: "Impossible de charger les logs", detailsUrl: "/logs" })
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, page, pageSize])
+  }, [searchTerm, sortField, order, page, limit])
 
   React.useEffect(() => {
     const timeout = setTimeout(() => {
@@ -84,6 +95,16 @@ export default function LogsPage() {
       clearTimeout(timeout)
     }
   }, [fetchLogs])
+
+  React.useEffect(() => {
+    if (filtersActive) {
+      estimateLogsExportSize({ search: searchTerm || undefined, sort: sortField, order })
+        .then((size) => setExportSize(size))
+        .catch(() => setExportSize(null))
+    } else {
+      setExportSize(null)
+    }
+  }, [filtersActive, searchTerm, sortField, order])
 
   const filteredLogs = logs.filter(log => {
     const matchesType = typeFilter === "all" || log.type === typeFilter
@@ -124,29 +145,31 @@ export default function LogsPage() {
   }
 
   const handleExport = async () => {
-    if (!exportFormat) return
     try {
-      const blob = await fetchLogsExport(exportFormat)
+      const blob = await fetchLogsExport({ search: searchTerm || undefined, sort: sortField, order })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `logs_export_${new Date().toISOString().split('T')[0]}.${exportFormat}`
+      a.download = `logs_export_${new Date().toISOString().split('T')[0]}.ndjson`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       toast({
         title: "Export réussi",
-        description: `Les logs ont été exportés en ${exportFormat.toUpperCase()}`,
+        description: "Les logs filtrés ont été exportés",
         variant: "success",
       })
     } catch (err) {
-      toast({
-        title: "Erreur export",
-        description: "Impossible d'exporter les logs",
-        variant: "destructive",
-      })
+      setError('logs', { message: "Impossible d'exporter les logs", detailsUrl: "/logs" })
     }
+  }
+
+  const formatBytes = (bytes: number) => {
+    if (!bytes) return "0 B"
+    const sizes = ["B", "KB", "MB", "GB", "TB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(1024))
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`
   }
 
   const stats = {
@@ -168,28 +191,19 @@ export default function LogsPage() {
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Actualiser
           </Button>
-          <div className="flex items-center gap-2">
-            <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "csv" | "json")}>
-              <SelectTrigger className="w-32 rounded-xl">
-                <Download className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Format" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="csv">CSV</SelectItem>
-                <SelectItem value="json">JSON</SelectItem>
-              </SelectContent>
-            </Select>
-            {exportFormat && (
-              <Button onClick={handleExport} variant="outline" size="sm" className="rounded-xl">
-                Télécharger
-              </Button>
-            )}
-          </div>
+          {filtersActive && (
+            <Button onClick={handleExport} variant="outline" size="sm" className="rounded-xl">
+              <Download className="mr-2 h-4 w-4" />
+              {`Télécharger${exportSize !== null ? ` (${formatBytes(exportSize)})` : ''}`}
+            </Button>
+          )}
         </div>
       </div>
 
+      <ErrorBanner id="logs" />
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="rounded-2xl">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -238,15 +252,29 @@ export default function LogsPage() {
 
       {/* Filters */}
       <div className="flex gap-4 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher dans les logs..."
-            value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-            className="pl-10 rounded-xl"
-          />
-        </div>
+      <div className="relative flex-1 max-w-sm">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Rechercher dans les logs..."
+          value={searchTerm}
+          onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+          className="pl-10 rounded-xl"
+        />
+      </div>
+        <Select value={sortField} onValueChange={(v) => { setSortField(v); setPage(1); }}>
+          <SelectTrigger className="w-40 rounded-xl">
+            <SelectValue placeholder="Trier par" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="timestamp">Date</SelectItem>
+            <SelectItem value="host">Hôte</SelectItem>
+            <SelectItem value="level">Niveau</SelectItem>
+            <SelectItem value="source">Source</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="icon" onClick={() => { setOrder(order === 'asc' ? 'desc' : 'asc'); setPage(1); }} className="rounded-xl">
+          <ArrowUpDown className="h-4 w-4" />
+        </Button>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-48 rounded-xl">
             <SelectValue placeholder="Type d'action" />
@@ -352,7 +380,7 @@ export default function LogsPage() {
             variant="outline"
             size="sm"
             onClick={() => setPage(p => p + 1)}
-            disabled={page >= Math.ceil(total / pageSize)}
+            disabled={page >= Math.ceil(total / limit)}
             className="rounded-xl"
           >
             Suivant
@@ -360,9 +388,9 @@ export default function LogsPage() {
         </div>
         <div className="flex items-center gap-2">
           <span>
-            Page {page} / {Math.max(1, Math.ceil(total / pageSize))}
+            Page {page} / {Math.max(1, Math.ceil(total / limit))}
           </span>
-          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+          <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}>
             <SelectTrigger className="w-20 rounded-xl">
               <SelectValue />
             </SelectTrigger>

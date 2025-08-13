@@ -33,6 +33,8 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { ErrorMessage } from "@/components/ui/error-message"
+import { InlineBanner } from "@/components/ui/inline-banner"
+
 import {
   fetchTemplatesAndScripts,
   updateTemplate,
@@ -40,78 +42,113 @@ import {
   simulateScript,
   type Template,
 } from "@/lib/templates"
-import { getScriptContent } from "@/lib/scripts"
+
+import {
+  getGeneratedScriptById,
+  getScriptContent,
+  updateScript,
+  type Script as ScriptApiModel,
+} from "@/lib/scripts"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
-const defaultBashScript = `#!/bin/bash\n\n# Nouveau script`
+const defaultBashScript = `#!/bin/bash
+
+# Nouveau script`
 const defaultTemplateJson = '{\n  "key": "value"\n}'
 
+// ----------------------------- Utils JSON & Type -----------------------------
+function safeParseJson(input: string): { ok: true; value: any } | { ok: false; error: Error } {
+  try {
+    const trimmed = (input ?? "").trim()
+    if (trimmed === "") return { ok: true, value: {} }
+    return { ok: true, value: JSON.parse(trimmed) }
+  } catch (e: any) {
+    return { ok: false, error: e }
+  }
+}
+
+function prettyJson(input: string): string {
+  const parsed = safeParseJson(input)
+  if (parsed.ok) return JSON.stringify(parsed.value, null, 2)
+  return input
+}
+
+type TemplateKind = "json" | "text"
+
+// heuristique simple : commence par { ou [
+function detectTemplateKind(raw: string): TemplateKind {
+  const t = (raw ?? "").trim()
+  if (!t) return "json" // par défaut
+  return t.startsWith("{") || t.startsWith("[") ? "json" : "text"
+}
+
+type ScriptListItem = Template & { type?: "script" }
 
 export default function CodeEditorPage() {
   const { theme } = useTheme()
   const searchParams = useSearchParams()
   const { toast } = useToast()
 
-  const [scripts, setScripts] = React.useState<Template[]>([])
+  const [scripts, setScripts] = React.useState<ScriptListItem[]>([])
   const [templates, setTemplates] = React.useState<Template[]>([])
-  const [selectedScript, setSelectedScript] = React.useState<Template | null>(null)
+  const [selectedScript, setSelectedScript] = React.useState<ScriptListItem | null>(null)
   const [selectedTemplate, setSelectedTemplate] = React.useState<Template | null>(null)
-  const [scriptContent, setScriptContent] = React.useState("")
-  const [scriptName, setScriptName] = React.useState("")
-  const [isModified, setIsModified] = React.useState(false)
-  const [isSaving, setIsSaving] = React.useState(false)
+
+  const [scriptContent, setScriptContent] = React.useState<string>("")
+  const [scriptName, setScriptName] = React.useState<string>("")
+  const [isModified, setIsModified] = React.useState<boolean>(false)
+  const [isSaving, setIsSaving] = React.useState<boolean>(false)
   const [syntaxErrors, setSyntaxErrors] = React.useState<string[]>([])
   const [scriptStatus, setScriptStatus] = React.useState<"idle" | "ok" | "error">("idle")
-  const tabParam = searchParams.get("tab") || "scripts"
-  const [activeTab, setActiveTab] = React.useState(tabParam)
 
+  const tabParam = (searchParams.get("tab") as "scripts" | "templates") || "scripts"
+  const [activeTab, setActiveTab] = React.useState<"scripts" | "templates">(tabParam)
   const [scriptView, setScriptView] = React.useState<"code" | "json">("code")
 
-  const [templateName, setTemplateName] = React.useState("")
-  const [templateCategory, setTemplateCategory] = React.useState("")
-  const [templateService, setTemplateService] = React.useState("")
-  const [templateContent, setTemplateContent] = React.useState("")
+  // ---- État template
+  const [templateName, setTemplateName] = React.useState<string>("")
+  const [templateCategory, setTemplateCategory] = React.useState<string>("")
+  const [templateService, setTemplateService] = React.useState<string>("")
+  const [templateContent, setTemplateContent] = React.useState<string>("")
   const [templateStatus, setTemplateStatus] = React.useState<"idle" | "ok" | "error">("idle")
-
+  const [templateErrorMsg, setTemplateErrorMsg] = React.useState<string>("")
   const [templateView, setTemplateView] = React.useState<"code" | "json">("code")
+  const [templateKind, setTemplateKind] = React.useState<TemplateKind>("json")
 
   const itemId = searchParams.get("id")
 
   const scriptJson = React.useMemo(
-    () => JSON.stringify({ name: scriptName, content: scriptContent }, null, 2),
+    () => JSON.stringify({ name: scriptName ?? "", content: scriptContent ?? "" }, null, 2),
     [scriptName, scriptContent]
   )
 
   const templateJson = React.useMemo(() => {
-    let parsedContent: unknown
-    try {
-      parsedContent = JSON.parse(templateContent || "{}")
-    } catch {
-      parsedContent = templateContent
+    // Aperçu du payload envoyé à l'API lors de la sauvegarde
+    const base = {
+      name: templateName ?? "",
+      category: (templateCategory ?? "general") || "general",
+      service_type: (templateService ?? "custom") || "custom",
     }
+    if (templateKind === "json") {
+      const parsed = safeParseJson(templateContent)
+      const template_content = parsed.ok ? parsed.value : templateContent
+      return JSON.stringify({ ...base, template_content }, null, 2)
+    } else {
+      return JSON.stringify({ ...base, template_content: templateContent }, null, 2)
+    }
+  }, [templateName, templateCategory, templateService, templateContent, templateKind])
 
-    return JSON.stringify(
-      {
-        name: templateName,
-        category: templateCategory || "general",
-        service_type: templateService || "custom",
-        template_content: parsedContent,
-      },
-      null,
-      2
-    )
-  }, [templateName, templateCategory, templateService, templateContent])
-
+  // ----------------------------- Chargement initial -----------------------------
   React.useEffect(() => {
     fetchTemplatesAndScripts()
       .then(({ templates: tpls, scripts: scr }) => {
-        setTemplates(tpls)
-        setScripts(scr as Template[])
+        setTemplates(tpls ?? [])
+        setScripts((scr as ScriptListItem[]) ?? [])
         if (itemId) {
           const id = Number(itemId)
-          const foundScript = scr.find((s) => s.id === id)
-          const foundTemplate = tpls.find((t) => t.id === id)
+          const foundScript = (scr ?? []).find((s: any) => s.id === id)
+          const foundTemplate = (tpls ?? []).find((t) => t.id === id)
           if (foundScript) {
             setSelectedScript(foundScript)
             setActiveTab("scripts")
@@ -119,62 +156,86 @@ export default function CodeEditorPage() {
             setSelectedTemplate(foundTemplate)
             setActiveTab("templates")
           } else {
-            setSelectedScript(scr[0] || null)
+            setSelectedScript((scr ?? [])[0] || null)
           }
         } else {
-          setSelectedScript(scr[0] || null)
+          setSelectedScript((scr ?? [])[0] || null)
         }
       })
       .catch(() => {
         setTemplates([])
         setScripts([])
       })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId])
 
+  // ----------------------------- Sélection script -----------------------------
   React.useEffect(() => {
-    if (selectedScript) {
-      setScriptName(selectedScript.name)
-      setIsModified(false)
-      setScriptStatus("idle")
-      if (selectedScript.template_content && selectedScript.template_content.trim()) {
-        setScriptContent(selectedScript.template_content)
-      } else {
-        getScriptContent(selectedScript.id)
-          .then((content) => setScriptContent(content))
-          .catch(() => setScriptContent(""))
-      }
-      setScriptView("code")
-    }
+    if (!selectedScript) return
+    setScriptName(selectedScript.name ?? "")
+    setIsModified(false)
+    setScriptStatus("idle")
+    setScriptView("code")
+
+    getGeneratedScriptById(selectedScript.id)
+      .then((detail: { content?: string } & ScriptApiModel) => {
+        const fromDetail = (detail?.content ?? "").trim()
+        if (fromDetail) {
+          setScriptContent(fromDetail)
+          return
+        }
+        const inline = (selectedScript as any)?.template_content
+        if (inline && String(inline).trim()) {
+          setScriptContent(String(inline))
+          return
+        }
+        return getScriptContent(selectedScript.id).then((c) => setScriptContent(c || ""))
+      })
+      .catch(async () => {
+        const inline = (selectedScript as any)?.template_content
+        if (inline && String(inline).trim()) {
+          setScriptContent(String(inline))
+        } else {
+          const c = await getScriptContent(selectedScript.id).catch(() => "")
+          setScriptContent(c || "")
+        }
+      })
   }, [selectedScript])
 
+  // ----------------------------- Sélection template -----------------------------
   React.useEffect(() => {
-    if (selectedTemplate) {
-      setTemplateName(selectedTemplate.name)
-      setTemplateCategory(selectedTemplate.category)
-      setTemplateService(selectedTemplate.service_type)
-      try {
-        setTemplateContent(
-          JSON.stringify(
-            JSON.parse(selectedTemplate.template_content),
-            null,
-            2
-          )
-        )
-      } catch {
-        setTemplateContent(selectedTemplate.template_content)
-      }
+    if (!selectedTemplate) return
+    setTemplateName(selectedTemplate.name ?? "")
+    setTemplateCategory(selectedTemplate.category ?? "")
+    setTemplateService(selectedTemplate.service_type ?? "")
+
+    const raw = selectedTemplate.template_content ?? ""
+    const kind = detectTemplateKind(raw)
+    setTemplateKind(kind)
+
+    if (kind === "json") {
+      setTemplateContent(prettyJson(raw))
+      const parsed = safeParseJson(raw)
+      setTemplateStatus(parsed.ok ? "idle" : "error")
+      setTemplateErrorMsg(parsed.ok ? "" : parsed.error.message || "JSON invalide")
+      setTemplateView("code")
+    } else {
+      setTemplateContent(raw) // on garde tel quel, c'est du script/texte
       setTemplateStatus("idle")
+      setTemplateErrorMsg("")
       setTemplateView("code")
     }
   }, [selectedTemplate])
 
+  // ----------------------------- Scripts handlers -----------------------------
   const handleContentChange = (value: string) => {
-    setScriptContent(value)
+    const val = value ?? ""
+    setScriptContent(val)
     setIsModified(true)
     setScriptStatus("idle")
 
     const errors: string[] = []
-    const lines = value.split("\n")
+    const lines = val.split("\n")
     lines.forEach((line, index) => {
       const trimmed = line.trim()
       if (trimmed.startsWith("if [") && !trimmed.includes("];")) {
@@ -189,23 +250,71 @@ export default function CodeEditorPage() {
     setSyntaxErrors(errors)
   }
 
+  // ----------------------------- Templates handlers -----------------------------
+  const handleTemplateChange = (value: string) => {
+    const val = value ?? ""
+    setTemplateContent(val)
+
+    if (templateKind === "json") {
+      const parsed = safeParseJson(val)
+      if (parsed.ok) {
+        setTemplateStatus("ok")
+        setTemplateErrorMsg("")
+      } else {
+        setTemplateStatus("error")
+        setTemplateErrorMsg(parsed.error.message || "JSON invalide")
+      }
+    } else {
+      // Pas de validation JSON côté "texte"
+      setTemplateStatus("idle")
+      setTemplateErrorMsg("")
+    }
+  }
+
+  const handleChangeTemplateKind = (kind: TemplateKind) => {
+    setTemplateKind(kind)
+    if (kind === "json") {
+      // on tente de formater si déjà du json plausible
+      if (detectTemplateKind(templateContent) === "json") {
+        setTemplateContent(prettyJson(templateContent))
+        const parsed = safeParseJson(templateContent)
+        setTemplateStatus(parsed.ok ? "ok" : "error")
+        setTemplateErrorMsg(parsed.ok ? "" : parsed.error.message || "JSON invalide")
+      } else {
+        // bascule en JSON vide si l’utilisateur veut passer en JSON
+        setTemplateContent(prettyJson(templateContent || defaultTemplateJson))
+        const parsed = safeParseJson(templateContent || defaultTemplateJson)
+        setTemplateStatus(parsed.ok ? "ok" : "error")
+        setTemplateErrorMsg(parsed.ok ? "" : parsed.error.message || "JSON invalide")
+      }
+    } else {
+      // mode texte : aucune erreur
+      setTemplateStatus("idle")
+      setTemplateErrorMsg("")
+    }
+  }
+
+  // ----------------------------- Script actions -----------------------------
   const saveScript = async () => {
     if (!selectedScript) return
     setIsSaving(true)
     try {
-      const updated = await updateTemplate(selectedScript.id, {
-        name: scriptName,
-        template_content: scriptContent,
+      const updated = await updateScript(selectedScript.id, {
+        name: scriptName ?? "",
+        content: scriptContent ?? "",
       })
-      setScripts((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-      setSelectedScript(updated)
+
+      setScripts((prev) =>
+        prev.map((t) => (t.id === updated.id ? { ...t, name: updated.name ?? t.name } : t))
+      )
+      setSelectedScript((prev) => (prev ? { ...prev, name: updated.name ?? prev.name } : prev))
       setIsModified(false)
       toast({
         title: "Script sauvegardé",
-        description: `${scriptName} a été enregistré avec succès`,
+        description: `${scriptName || "Script"} a été enregistré avec succès`,
         variant: "success",
       })
-    } catch (error) {
+    } catch {
       toast({
         title: "Erreur de sauvegarde",
         description: "Impossible de sauvegarder le script",
@@ -227,9 +336,9 @@ export default function CodeEditorPage() {
         template_content: defaultBashScript,
         fields_schema: { fields: [] },
       })
-      setScripts((prev) => [...prev, tpl])
-      setSelectedScript(tpl)
-    } catch (error) {
+      setScripts((prev) => [...prev, tpl as any])
+      setSelectedScript(tpl as any)
+    } catch {
       toast({
         title: "Erreur",
         description: "Impossible de créer le script",
@@ -240,17 +349,17 @@ export default function CodeEditorPage() {
 
   const testScript = async () => {
     try {
-      await simulateScript(scriptContent)
+      await simulateScript(scriptContent ?? "")
       setScriptStatus("ok")
       toast({
         title: "Test réussi",
         description: "Le script est valide",
         variant: "success",
       })
-    } catch (error) {
+    } catch {
       setScriptStatus("error")
       toast({
-        title: "Erreur de test",
+        title: "Erreur",
         description: "Le script contient des erreurs",
         variant: "destructive",
       })
@@ -258,12 +367,12 @@ export default function CodeEditorPage() {
   }
 
   const exportScript = (format: "sh" | "txt" | "json") => {
-    let content = scriptContent
+    let content = scriptContent ?? ""
     let filename = scriptName || "script"
     let type = "text/plain"
 
     if (format === "json") {
-      content = JSON.stringify({ name: filename, content: scriptContent }, null, 2)
+      content = JSON.stringify({ name: filename, content: content }, null, 2)
       type = "application/json"
       filename = filename.endsWith(".json") ? filename : `${filename}.json`
     } else if (format === "txt") {
@@ -297,16 +406,16 @@ export default function CodeEditorPage() {
 
     const reader = new FileReader()
     reader.onload = (e) => {
-      const content = e.target?.result as string
+      const content = (e.target?.result as string) ?? ""
       setScriptContent(content)
-      setScriptName(file.name)
+      setScriptName(file.name ?? "")
       setIsModified(true)
     }
     reader.readAsText(file)
   }
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(scriptContent)
+    navigator.clipboard.writeText(scriptContent ?? "")
     toast({
       title: "Copié !",
       description: "Script copié dans le presse-papiers",
@@ -315,7 +424,7 @@ export default function CodeEditorPage() {
   }
 
   const copyTemplateToClipboard = () => {
-    navigator.clipboard.writeText(templateContent)
+    navigator.clipboard.writeText(templateContent ?? "")
     toast({
       title: "Copié !",
       description: "Template copié dans le presse-papiers",
@@ -325,14 +434,28 @@ export default function CodeEditorPage() {
 
   const simulateTemplate = async () => {
     try {
-      await simulateScript(JSON.stringify(JSON.parse(templateContent)))
+      if (templateKind === "json") {
+        const parsed = safeParseJson(templateContent)
+        if (!parsed.ok) {
+          setTemplateStatus("error")
+          toast({
+            title: "Erreur",
+            description: `Template JSON invalide: ${parsed.error.message}`,
+            variant: "destructive",
+          })
+          return
+        }
+        await simulateScript(JSON.stringify(parsed.value))
+      } else {
+        await simulateScript(templateContent ?? "")
+      }
       setTemplateStatus("ok")
       toast({
         title: "Simulation réussie",
         description: "Le template semble valide",
         variant: "success",
       })
-    } catch (error) {
+    } catch {
       setTemplateStatus("error")
       toast({
         title: "Erreur",
@@ -343,58 +466,96 @@ export default function CodeEditorPage() {
   }
 
   const saveTemplate = async () => {
-    let parsed
-    try {
-      parsed = JSON.parse(templateContent)
-    } catch {
-      toast({
-        title: "Erreur",
-        description: "Template JSON invalide",
-        variant: "destructive",
-      })
-      return
-    }
     try {
       if (selectedTemplate) {
-        const updated = await updateTemplate(selectedTemplate.id, {
-          name: templateName,
-          category: templateCategory || "general",
-          service_type: templateService || "custom",
-          description: "",
-          template_content: JSON.stringify(parsed),
-          fields_schema: { fields: [] },
-        })
+        const payload =
+          templateKind === "json"
+            ? (() => {
+                const parsed = safeParseJson(templateContent)
+                if (!parsed.ok) {
+                  setTemplateStatus("error")
+                  setTemplateErrorMsg(parsed.error.message || "JSON invalide")
+                  toast({
+                    title: "Erreur",
+                    description: `Template JSON invalide: ${parsed.error.message}`,
+                    variant: "destructive",
+                  })
+                  throw new Error("invalid json")
+                }
+                return {
+                  name: templateName ?? "",
+                  category: (templateCategory ?? "general") || "general",
+                  service_type: (templateService ?? "custom") || "custom",
+                  description: "",
+                  template_content: JSON.stringify(parsed.value, null, 2),
+                  fields_schema: { fields: [] },
+                }
+              })()
+            : {
+                name: templateName ?? "",
+                category: (templateCategory ?? "general") || "general",
+                service_type: (templateService ?? "custom") || "custom",
+                description: "",
+                template_content: templateContent ?? "",
+                fields_schema: { fields: [] },
+              }
+
+        const updated = await updateTemplate(selectedTemplate.id, payload as any)
         setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
         setSelectedTemplate(updated)
+        setTemplateStatus("idle")
+        setTemplateErrorMsg("")
         toast({
           title: "Template sauvegardé",
-          description: `${templateName} a été enregistré`,
+          description: `${templateName || "Template"} a été enregistré`,
           variant: "success",
         })
       } else {
-        const created = await createTemplate({
-          name: templateName,
-          category: templateCategory || "general",
-          service_type: templateService || "custom",
-          description: "",
-          template_content: JSON.stringify(parsed),
-          fields_schema: { fields: [] },
-        })
+        const payload =
+          templateKind === "json"
+            ? (() => {
+                const parsed = safeParseJson(templateContent || defaultTemplateJson)
+                if (!parsed.ok) {
+                  setTemplateStatus("error")
+                  setTemplateErrorMsg(parsed.error.message || "JSON invalide")
+                  toast({
+                    title: "Erreur",
+                    description: `Template JSON invalide: ${parsed.error.message}`,
+                    variant: "destructive",
+                  })
+                  throw new Error("invalid json")
+                }
+                return {
+                  name: templateName || `template_${Date.now()}.json`,
+                  category: (templateCategory ?? "general") || "general",
+                  service_type: (templateService ?? "custom") || "custom",
+                  description: "",
+                  template_content: JSON.stringify(parsed.value, null, 2),
+                  fields_schema: { fields: [] },
+                }
+              })()
+            : {
+                name: templateName || `template_${Date.now()}.txt`,
+                category: (templateCategory ?? "general") || "general",
+                service_type: (templateService ?? "custom") || "custom",
+                description: "",
+                template_content: templateContent || defaultBashScript,
+                fields_schema: { fields: [] },
+              }
+
+        const created = await createTemplate(payload as any)
         setTemplates((prev) => [...prev, created])
         setSelectedTemplate(created)
+        setTemplateStatus("idle")
+        setTemplateErrorMsg("")
         toast({
           title: "Template créé",
-          description: `${templateName} a été enregistré`,
+          description: `${created.name} a été enregistré`,
           variant: "success",
         })
       }
-      setTemplateStatus("idle")
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder le template",
-        variant: "destructive",
-      })
+    } catch {
+      // déjà toasts au-dessus si JSON invalide
     }
   }
 
@@ -411,7 +572,12 @@ export default function CodeEditorPage() {
       })
       setTemplates((prev) => [...prev, tpl])
       setSelectedTemplate(tpl)
-    } catch (error) {
+      // init état
+      setTemplateKind("json")
+      setTemplateContent(prettyJson(defaultTemplateJson))
+      setTemplateStatus("idle")
+      setTemplateErrorMsg("")
+    } catch {
       toast({
         title: "Erreur",
         description: "Impossible de créer le template",
@@ -420,262 +586,242 @@ export default function CodeEditorPage() {
     }
   }
 
+  // --------------------------------- UI ---------------------------------
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-6">
         <TabsList className="w-full md:w-auto">
           <TabsTrigger value="scripts">Scripts</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
         </TabsList>
+
+        {/* SCRIPTS */}
         <TabsContent value="scripts">
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-4xl font-semibold">Éditeur de code interactif</h1>
-          <p className="text-muted-foreground mt-1">
-            Créez et modifiez vos scripts avec assistance IA
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <input
-            type="file"
-            accept=".sh,.py,.js,.txt"
-            onChange={importScript}
-            className="hidden"
-            id="import-script"
-          />
-          <Button asChild variant="outline" className="rounded-xl">
-            <label htmlFor="import-script" className="cursor-pointer">
-              <Upload className="mr-2 h-4 w-4" />
-              Importer
-            </label>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="rounded-xl">
-                <Download className="mr-2 h-4 w-4" />
-                Exporter
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => exportScript("sh")}>Format .sh</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => exportScript("txt")}>Format .txt</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => exportScript("json")}>Format .json</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button onClick={testScript} variant="outline" className="rounded-xl">
-            <Play className="mr-2 h-4 w-4" />
-            Tester
-          </Button>
-          <Button onClick={saveScript} disabled={!isModified || isSaving} className="rounded-xl">
-            {isSaving ? (
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            Sauvegarder
-          </Button>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1">
-          <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Scripts
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-              {scripts.map((tpl) => (
-                <div
-                  key={tpl.id}
-                  onClick={() => setSelectedScript(tpl)}
-                  className={cn(
-                    "p-3 rounded-xl border cursor-pointer transition-colors hover:bg-muted/50",
-                    selectedScript?.id === tpl.id && "bg-primary/10 border-primary"
-                  )}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-sm">{tpl.name}</span>
-                    <Badge variant="secondary" className="text-xs">
-                      Script
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    bash
-                  </div>
-                </div>
-              ))}
-
-              <Button
-                variant="outline"
-                className="w-full rounded-xl"
-                onClick={createNewScript}
-              >
-                <Code className="mr-2 h-4 w-4" />
-                Nouveau script
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-3 space-y-6">
-          <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Code className="h-5 w-5" />
-                  {scriptName}
-                  {isModified && (
-                    <Badge variant="warning" className="text-xs">
-                      Non sauvegardé
-                    </Badge>
-                  )}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={copyToClipboard}
-                    className="rounded-xl"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  {scriptStatus === "ok" && (
-                    <Badge variant="success" className="text-xs">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Syntaxe OK
-                    </Badge>
-                  )}
-                  {scriptStatus === "error" && (
-                    <Badge variant="destructive" className="text-xs">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      Erreur
-                    </Badge>
-                  )}
-                </div>
+              <div>
+                <h1 className="text-4xl font-semibold">Éditeur de code interactif</h1>
+                <p className="text-muted-foreground mt-1">Créez et modifiez vos scripts avec assistance IA</p>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="script-name">Nom du script</Label>
-                  <Input
-                    id="script-name"
-                    value={scriptName}
-                    onChange={(e) => {
-                      setScriptName(e.target.value)
-                      setIsModified(true)
-                    }}
-                    className="rounded-xl"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="script-language">Langage</Label>
-                  <Select value="bash">
-                    <SelectTrigger className="rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bash">Bash</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="flex gap-3">
+                <input
+                  type="file"
+                  accept=".sh,.py,.js,.txt"
+                  onChange={importScript}
+                  className="hidden"
+                  id="import-script"
+                />
+                <Button asChild variant="outline" className="rounded-xl">
+                  <label htmlFor="import-script" className="cursor-pointer">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Importer
+                  </label>
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="rounded-xl">
+                      <Download className="mr-2 h-4 w-4" />
+                      Exporter
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => exportScript("sh")}>Format .sh</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportScript("txt")}>Format .txt</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportScript("json")}>Format .json</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button onClick={testScript} variant="outline" className="rounded-xl">
+                  <Play className="mr-2 h-4 w-4" />
+                  Tester
+                </Button>
+                <Button onClick={saveScript} disabled={!isModified || isSaving} className="rounded-xl">
+                  {isSaving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Sauvegarder
+                </Button>
               </div>
+            </div>
 
-              {syntaxErrors.length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4 text-red-600" />
-                    <span className="font-medium text-red-600">
-                      Erreurs de syntaxe
-                    </span>
-                  </div>
-                  <ul className="space-y-1">
-                    {syntaxErrors.map((error, index) => (
-                      <li key={index}>
-                        <ErrorMessage>{error}</ErrorMessage>
-                      </li>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-1">
+                <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Scripts
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 max-h-96 overflow-y-auto">
+                    {scripts.map((tpl) => (
+                      <div
+                        key={tpl.id}
+                        onClick={() => setSelectedScript(tpl)}
+                        className={cn(
+                          "p-3 rounded-xl border cursor-pointer transition-colors hover:bg-muted/50",
+                          selectedScript?.id === tpl.id && "bg-primary/10 border-primary"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm">{tpl.name}</span>
+                          <Badge variant="secondary" className="text-xs">
+                            Script
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">bash</div>
+                      </div>
                     ))}
-                  </ul>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
-          <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
-            <CardHeader>
-              <CardTitle className="text-lg">Éditeur</CardTitle>
-              <CardDescription>
-                Éditez votre script avec coloration syntaxique et validation en temps
-                réel
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={scriptView} onValueChange={setScriptView} className="space-y-2">
-                <TabsList className="w-full md:w-auto">
-                  <TabsTrigger value="code">Code</TabsTrigger>
-                  <TabsTrigger value="json">JSON</TabsTrigger>
-                </TabsList>
-                <TabsContent value="code">
-                  <div className="relative rounded-xl overflow-hidden">
-                    <MonacoEditor
-                      value={scriptContent}
-                      language="bash"
-                      onChange={(value) => handleContentChange(value || "")}
-                      height="500px"
-                      theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                      options={{
-                        minimap: { enabled: false },
-                        fontSize: 14,
-                        automaticLayout: true,
-                        wordWrap: "on",
-                        scrollBeyondLastLine: false,
-                      }}
-                    />
-                    <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-                      {scriptContent.split("\n").length} lignes
+                    <Button variant="outline" className="w-full rounded-xl" onClick={createNewScript}>
+                      <Code className="mr-2 h-4 w-4" />
+                      Nouveau script
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="lg:col-span-3 space-y-6">
+                <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Code className="h-5 w-5" />
+                        {scriptName || "Sans nom"}
+                        {isModified && (
+                          <Badge variant="warning" className="text-xs">
+                            Non sauvegardé
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={copyToClipboard} className="rounded-xl">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        {scriptStatus === "ok" && (
+                          <Badge variant="success" className="text-xs">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Syntaxe OK
+                          </Badge>
+                        )}
+                        {scriptStatus === "error" && (
+                          <Badge variant="destructive" className="text-xs">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Erreur
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="json">
-                  <div className="relative rounded-xl overflow-hidden">
-                    <MonacoEditor
-                      value={scriptJson}
-                      language="json"
-                      height="500px"
-                      theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                      options={{
-                        readOnly: true,
-                        minimap: { enabled: false },
-                        fontSize: 14,
-                        automaticLayout: true,
-                        wordWrap: "on",
-                        scrollBeyondLastLine: false,
-                      }}
-                    />
-                    <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-                      {scriptJson.split("\n").length} lignes
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="script-name">Nom du script</Label>
+                        <Input
+                          id="script-name"
+                          value={scriptName ?? ""}
+                          onChange={(e) => {
+                            setScriptName(e.target.value ?? "")
+                            setIsModified(true)
+                          }}
+                          className="rounded-xl"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="script-language">Langage</Label>
+                        <Select value="bash" onValueChange={() => {}}>
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bash">Bash</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-      </div>
+
+                    {syntaxErrors.length > 0 && (
+                      <>
+                        <InlineBanner kind="destructive" title="Erreurs de syntaxe" className="mb-2" />
+                        <ul className="space-y-1">
+                          {syntaxErrors.map((error, index) => (
+                            <li key={index}>
+                              <ErrorMessage>{error}</ErrorMessage>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Éditeur</CardTitle>
+                    <CardDescription>
+                      Éditez votre script avec coloration syntaxique et validation en temps réel
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Tabs value={scriptView} onValueChange={setScriptView} className="space-y-2">
+                      <TabsList className="w-full md:w-auto">
+                        <TabsTrigger value="code">Code</TabsTrigger>
+                        <TabsTrigger value="json">JSON</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="code">
+                        <div className="relative rounded-xl overflow-hidden">
+                          <MonacoEditor
+                            value={scriptContent}
+                            language="bash"
+                            onChange={(value) => handleContentChange(value || "")}
+                            height="500px"
+                            theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                            options={{
+                              minimap: { enabled: false },
+                              fontSize: 14,
+                              automaticLayout: true,
+                              wordWrap: "on",
+                              scrollBeyondLastLine: false,
+                            }}
+                          />
+                          <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                            {(scriptContent || "").split("\n").length} lignes
+                          </div>
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="json">
+                        <div className="relative rounded-xl overflow-hidden">
+                          <MonacoEditor
+                            value={scriptJson}
+                            language="json"
+                            height="500px"
+                            theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                            options={{
+                              readOnly: true,
+                              minimap: { enabled: false },
+                              fontSize: 14,
+                              automaticLayout: true,
+                              wordWrap: "on",
+                              scrollBeyondLastLine: false,
+                            }}
+                          />
+                          <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                            {(scriptJson || "").split("\n").length} lignes
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
         </TabsContent>
+
+        {/* TEMPLATES */}
         <TabsContent value="templates">
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-4xl font-semibold">Templates</h1>
-                <p className="text-muted-foreground mt-1">
-                  Gérez vos templates paramétrables
-                </p>
+                <p className="text-muted-foreground mt-1">Gérez vos templates paramétrables</p>
               </div>
               <div className="flex gap-3">
                 <Button onClick={simulateTemplate} variant="outline" className="rounded-xl">
@@ -711,17 +857,11 @@ export default function CodeEditorPage() {
                             Template
                           </Badge>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {tpl.category}
-                        </div>
+                        <div className="text-xs text-muted-foreground">{tpl.category}</div>
                       </div>
                     ))}
 
-                    <Button
-                      variant="outline"
-                      className="w-full rounded-xl"
-                      onClick={createNewTemplate}
-                    >
+                    <Button variant="outline" className="w-full rounded-xl" onClick={createNewTemplate}>
                       <Code className="mr-2 h-4 w-4" />
                       Nouveau template
                     </Button>
@@ -734,13 +874,13 @@ export default function CodeEditorPage() {
                   <CardHeader>
                     <CardTitle className="text-lg">Informations</CardTitle>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
+                  <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="template-name">Nom</Label>
                       <Input
                         id="template-name"
-                        value={templateName}
-                        onChange={(e) => setTemplateName(e.target.value)}
+                        value={templateName ?? ""}
+                        onChange={(e) => setTemplateName(e.target.value ?? "")}
                         className="rounded-xl"
                       />
                     </div>
@@ -748,8 +888,8 @@ export default function CodeEditorPage() {
                       <Label htmlFor="template-category">Catégorie</Label>
                       <Input
                         id="template-category"
-                        value={templateCategory}
-                        onChange={(e) => setTemplateCategory(e.target.value)}
+                        value={templateCategory ?? ""}
+                        onChange={(e) => setTemplateCategory(e.target.value ?? "")}
                         className="rounded-xl"
                       />
                     </div>
@@ -757,10 +897,22 @@ export default function CodeEditorPage() {
                       <Label htmlFor="template-service">Service</Label>
                       <Input
                         id="template-service"
-                        value={templateService}
-                        onChange={(e) => setTemplateService(e.target.value)}
+                        value={templateService ?? ""}
+                        onChange={(e) => setTemplateService(e.target.value ?? "")}
                         className="rounded-xl"
                       />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Type de template</Label>
+                      <Select value={templateKind} onValueChange={(v) => handleChangeTemplateKind(v as TemplateKind)}>
+                        <SelectTrigger className="rounded-xl">
+                          <SelectValue placeholder="Sélectionner" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="json">JSON</SelectItem>
+                          <SelectItem value="text">Script / Texte</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </CardContent>
                 </Card>
@@ -770,39 +922,50 @@ export default function CodeEditorPage() {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Code className="h-5 w-5" /> Contenu
-                        {templateStatus === "ok" && (
+                        {templateKind === "json" && templateStatus === "ok" && (
                           <Badge variant="success" className="text-xs">
                             <CheckCircle className="h-3 w-3 mr-1" /> Valide
                           </Badge>
                         )}
-                        {templateStatus === "error" && (
+                        {templateKind === "json" && templateStatus === "error" && (
                           <Badge variant="destructive" className="text-xs">
                             <AlertTriangle className="h-3 w-3 mr-1" /> Erreur
                           </Badge>
                         )}
                       </CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyTemplateToClipboard()}
-                        className="rounded-xl"
-                      >
+                      <Button variant="ghost" size="sm" onClick={copyTemplateToClipboard} className="rounded-xl">
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <Tabs value={templateView} onValueChange={setTemplateView} className="space-y-2">
+                    {templateKind === "json" && templateStatus === "error" && templateErrorMsg && (
+                      <div className="mb-3">
+                        <InlineBanner
+                          kind="destructive"
+                          title="Template JSON invalide"
+                          description={templateErrorMsg}
+                        />
+                      </div>
+                    )}
+
+                    <Tabs
+                      // si "text", un seul onglet "code"
+                      value={templateView}
+                      onValueChange={setTemplateView}
+                      className="space-y-2"
+                    >
                       <TabsList className="w-full md:w-auto">
                         <TabsTrigger value="code">Code</TabsTrigger>
-                        <TabsTrigger value="json">JSON</TabsTrigger>
+                        {templateKind === "json" && <TabsTrigger value="json">JSON (payload)</TabsTrigger>}
                       </TabsList>
+
                       <TabsContent value="code">
                         <div className="relative rounded-xl overflow-hidden">
                           <MonacoEditor
                             value={templateContent}
-                            language="json"
-                            onChange={(value) => setTemplateContent(value || "")}
+                            language={templateKind === "json" ? "json" : "bash"}
+                            onChange={(value) => handleTemplateChange(value || "")}
                             height="500px"
                             theme={theme === "dark" ? "vs-dark" : "vs-light"}
                             options={{
@@ -814,31 +977,34 @@ export default function CodeEditorPage() {
                             }}
                           />
                           <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-                            {templateContent.split("\n").length} lignes
+                            {(templateContent || "").split("\n").length} lignes
                           </div>
                         </div>
                       </TabsContent>
-                      <TabsContent value="json">
-                        <div className="relative rounded-xl overflow-hidden">
-                          <MonacoEditor
-                            value={templateJson}
-                            language="json"
-                            height="500px"
-                            theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                            options={{
-                              readOnly: true,
-                              minimap: { enabled: true },
-                              fontSize: 14,
-                              automaticLayout: true,
-                              wordWrap: "on",
-                              scrollBeyondLastLine: false,
-                            }}
-                          />
-                          <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-                            {templateJson.split("\n").length} lignes
+
+                      {templateKind === "json" && (
+                        <TabsContent value="json">
+                          <div className="relative rounded-xl overflow-hidden">
+                            <MonacoEditor
+                              value={templateJson}
+                              language="json"
+                              height="500px"
+                              theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                              options={{
+                                readOnly: true,
+                                minimap: { enabled: true },
+                                fontSize: 14,
+                                automaticLayout: true,
+                                wordWrap: "on",
+                                scrollBeyondLastLine: false,
+                              }}
+                            />
+                            <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                              {(templateJson || "").split("\n").length} lignes
+                            </div>
                           </div>
-                        </div>
-                      </TabsContent>
+                        </TabsContent>
+                      )}
                     </Tabs>
                   </CardContent>
                 </Card>
@@ -850,4 +1016,3 @@ export default function CodeEditorPage() {
     </div>
   )
 }
-
