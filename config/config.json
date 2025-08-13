@@ -5,16 +5,21 @@
     "database": "linsup",
     "host": "localhost",
     "port": 5432,
-    "dialect": "postgres",
-    "logging": false
+    "dialect": "postgres"
+  },
+  "test": {
+    "use_env_variable": "TEST_DATABASE_URL",
+    "dialect": "postgres"
   },
   "production": {
-    "username": "linsup_user",
-    "password": "WOMDbnBNg1s8mMbKinuSwDnPIoUiweSu",
-    "database": "linsup",
-    "host": "dpg-d2dm1995pdvs73f1sc60-a",
-    "port": 5432,
+    "use_env_variable": "postgresql://linsup_user:WOMDbnBNg1s8mMbKinuSwDnPloUiweSu@dpg-d2dm1995pdvs73f1sc60-a/linsup",
     "dialect": "postgres",
-    "logging": false
+    "protocol": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    }
   }
 }
