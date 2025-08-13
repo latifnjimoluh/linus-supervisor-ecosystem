@@ -24,7 +24,7 @@ const createToken = (user, expiresIn = process.env.JWT_EXPIRES_IN || '1h') => {
  * \u{1F512} Vérification du token et injection du rôle + permissions dans req.user
  */
 
-exports.verifyToken = async (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'] || req.headers['Authorization'];
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
