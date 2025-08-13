@@ -17,9 +17,12 @@ exports.listVMs = async (req, res) => {
       return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
     }
 
-    const client = new ProxmoxService(settings);
-    const response = await client.get('/cluster/resources?type=vm');
-    const all = response.data || [];
+    const s = settings.get({ plain: true });
+    const client = new ProxmoxService(s);
+
+    // ProxmoxService.get() renvoie déjà un tableau (payload "déballé")
+    const rows = await client.get('/cluster/resources?type=vm');
+    const all = Array.isArray(rows) ? rows : [];
 
     const vms = all.filter((r) => r.type === 'qemu' && r.template === 0);
     const templates = all.filter((r) => r.type === 'qemu' && r.template === 1);
@@ -47,10 +50,8 @@ exports.listNodes = async (req, res) => {
       proxmox_node: s.proxmox_node, // optionnel ici
     });
 
-    const response = await client.get('/nodes');
-    const nodes = Array.isArray(response.data)
-      ? response.data.map((n) => ({ node: n.node, status: n.status }))
-      : [];
+    const rows = await client.get('/nodes');
+    const nodes = (Array.isArray(rows) ? rows : []).map((n) => ({ node: n.node, status: n.status }));
     res.json(nodes);
   } catch (err) {
     console.error('❌ Erreur listNodes:', err.stack || err.message);
@@ -58,7 +59,7 @@ exports.listNodes = async (req, res) => {
   }
 };
 
-// 📦 Lister les stockages disponibles
+// 📦 Lister les stockages disponibles (avec espace libre)
 exports.listStorages = async (req, res) => {
   try {
     const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
@@ -66,13 +67,13 @@ exports.listStorages = async (req, res) => {
       return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
     }
 
-    const s = settings.get({ plain: true }); // <-- important
+    const s = settings.get({ plain: true });
     const targetNode = req.query.node || s.proxmox_node;
     if (!targetNode) {
       return res.status(400).json({ message: 'Nœud Proxmox non spécifié.' });
     }
 
-    const client = new ProxmoxService({ 
+    const client = new ProxmoxService({
       proxmox_api_url: s.proxmox_api_url,
       proxmox_api_token_id: s.proxmox_api_token_id,
       proxmox_api_token_name: s.proxmox_api_token_name,
@@ -80,17 +81,26 @@ exports.listStorages = async (req, res) => {
       proxmox_node: targetNode,
     });
 
-    const response = await client.get('/cluster/resources?type=storage');
-    const all = response.data || [];
+    const rows = await client.get('/cluster/resources?type=storage');
+    const all = Array.isArray(rows) ? rows : [];
+
     const storages = all
-      .filter((st) => st.type === 'storage' && (!st.node || st.node === client.node))
-      .map((st) => ({
-        storage: st.storage,
-        content: st.content,
-        maxdisk: st.maxdisk,
-        disk: st.disk,
-        plugintype: st.plugintype,
-      }));
+      .filter((st) => st.type === 'storage' && st.status === 'available' && (!st.node || st.node === client.node))
+      .map((st) => {
+        const total = Number(st.maxdisk || 0);
+        const used = Number(st.disk || 0);
+        const free = Math.max(total - used, 0);
+        return {
+          storage: st.storage,
+          content: st.content,
+          plugintype: st.plugintype,
+          node: st.node || client.node,
+          shared: !!st.shared,
+          total_bytes: total,
+          used_bytes: used,
+          free_bytes: free,
+        };
+      });
 
     res.json(storages);
   } catch (err) {
@@ -107,7 +117,7 @@ exports.getSystemInfo = async (req, res) => {
       return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
     }
 
-    const s = settings.get({ plain: true }); // <-- important
+    const s = settings.get({ plain: true });
     const targetNode = req.query.node || s.proxmox_node;
     if (!targetNode) {
       return res.status(400).json({ message: 'Nœud Proxmox non spécifié.' });
@@ -121,30 +131,28 @@ exports.getSystemInfo = async (req, res) => {
       proxmox_node: targetNode,
     });
 
+    // get() renvoie l'objet status directement (déballé)
     const status = await client.get(`/nodes/${client.node}/status`);
-    const mem = status.data?.memory || {};
-    const rootfs = status.data?.rootfs || {};
-    // Selon versions d’API, cpuinfo peut être absent : gérer safe defaults
-    const cpuinfo = status.data?.cpuinfo || {};
-    const cpu = {
-      cores: cpuinfo.cores || 0,
-      sockets: cpuinfo.sockets || 0,
-      // tu peux aussi renvoyer le ratio CPU global si présent:
-      usage: typeof status.data?.cpu === 'number' ? status.data.cpu : null,
-    };
+    const mem = status?.memory || {};
+    const rootfs = status?.rootfs || {};
+    const cpuinfo = status?.cpuinfo || {};
+
+    const memTotal = Number(mem.total || 0);
+    const memUsed = Number(mem.used || 0);
+    const memFree = Math.max(memTotal - memUsed, 0);
+
+    const diskTotal = Number(rootfs.total || 0);
+    const diskUsed = Number(rootfs.used || 0);
+    const diskFree = Math.max(diskTotal - diskUsed, 0);
 
     res.json({
       node: client.node,
-      memory: {
-        total: mem.total || 0,
-        used: mem.used || 0,
-        free: mem.total && mem.used ? mem.total - mem.used : 0,
-      },
-      cpu,
-      disk: {
-        total: rootfs.total || 0,
-        used: rootfs.used || 0,
-        free: rootfs.total && rootfs.used ? rootfs.total - rootfs.used : 0,
+      memory: { total: memTotal, used: memUsed, free: memFree },
+      disk: { total: diskTotal, used: diskUsed, free: diskFree },
+      cpu: {
+        cores: cpuinfo.cores || 0,
+        sockets: cpuinfo.sockets || 0,
+        usage: typeof status?.cpu === 'number' ? status.cpu : null, // ratio 0..1
       },
     });
   } catch (err) {
@@ -152,8 +160,6 @@ exports.getSystemInfo = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
-
-
 
 // ▶️ Démarrer une VM
 exports.startVM = async (req, res) => {
@@ -163,7 +169,9 @@ exports.startVM = async (req, res) => {
     const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
     if (!settings) return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
 
-    const client = new ProxmoxService(settings);
+    const s = settings.get({ plain: true });
+    const client = new ProxmoxService(s);
+
     await client.post(`/nodes/${client.node}/qemu/${vmId}/status/start`);
 
     await logAction(req, `start_vm:${vmId}`);
@@ -182,7 +190,9 @@ exports.stopVM = async (req, res) => {
     const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
     if (!settings) return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
 
-    const client = new ProxmoxService(settings);
+    const s = settings.get({ plain: true });
+    const client = new ProxmoxService(s);
+
     await client.post(`/nodes/${client.node}/qemu/${vmId}/status/stop`);
 
     await logAction(req, `stop_vm:${vmId}`);
@@ -195,8 +205,8 @@ exports.stopVM = async (req, res) => {
 
 async function getVMStatus(client, vmId) {
   try {
-    const res = await client.get(`/nodes/${client.node}/qemu/${vmId}/status/current`);
-    return res.data?.status;
+    const obj = await client.get(`/nodes/${client.node}/qemu/${vmId}/status/current`);
+    return obj?.status;
   } catch (err) {
     console.error('❌ Erreur getVMStatus :', err.message);
     throw err;
@@ -208,19 +218,20 @@ async function deleteVM(client, vmId) {
 }
 
 async function getVMInfo(client, vmId) {
-  const res = await client.get(`/nodes/${client.node}/qemu/${vmId}/config`);
-  return res.data;
+  // get() renvoie déjà l'objet config
+  return client.get(`/nodes/${client.node}/qemu/${vmId}/config`);
 }
 
 async function getVMIP(client, vmId) {
   try {
-    const res = await client.get(`/nodes/${client.node}/qemu/${vmId}/agent/network-get-interfaces`);
-    const interfaces = res.data?.result || res.data || [];
+    // Réponse déballée : { result: [ ...interfaces ] }
+    const payload = await client.get(`/nodes/${client.node}/qemu/${vmId}/agent/network-get-interfaces`);
+    const interfaces = payload?.result || payload || [];
     for (const iface of interfaces) {
-      const addresses = iface["ip-addresses"] || iface["ip_addresses"] || [];
+      const addresses = iface['ip-addresses'] || iface['ip_addresses'] || [];
       for (const addr of addresses) {
-        const ip = addr["ip-address"] || addr.address;
-        if (ip && ip !== "127.0.0.1" && ip.includes('.')) {
+        const ip = addr['ip-address'] || addr.address;
+        if (ip && ip !== '127.0.0.1' && ip.includes('.')) {
           return ip;
         }
       }
@@ -263,17 +274,18 @@ exports.checkVMStatus = async (req, res) => {
 
   try {
     const settings = await UserSetting.findOne({ where: { user_id: userId } });
-
     if (!settings) {
       return res.status(404).json({ message: '❌ Paramètres utilisateur introuvables' });
     }
 
-    const node = bodyNode || settings.proxmox_node;
-    const ip_address = bodyIP || settings.last_used_ip || null;
-    const apiUrl = proxmox_api_url || settings.proxmox_api_url;
-    const tokenId = proxmox_api_token_id || settings.proxmox_api_token_id;
-    const tokenName = proxmox_api_token_name || settings.proxmox_api_token_name;
-    const tokenSecret = proxmox_api_token_secret || settings.proxmox_api_token_secret;
+    const s = settings.get({ plain: true });
+
+    const node = bodyNode || s.proxmox_node;
+    const ip_address = bodyIP || s.last_used_ip || null;
+    const apiUrl = proxmox_api_url || s.proxmox_api_url;
+    const tokenId = proxmox_api_token_id || s.proxmox_api_token_id;
+    const tokenName = proxmox_api_token_name || s.proxmox_api_token_name;
+    const tokenSecret = proxmox_api_token_secret || s.proxmox_api_token_secret;
 
     if (!node || !ip_address || !apiUrl || !tokenId || !tokenName || !tokenSecret) {
       return res.status(400).json({ message: '❌ Paramètres API ou IP manquants même après fallback.' });
@@ -288,7 +300,6 @@ exports.checkVMStatus = async (req, res) => {
     });
 
     const vmStatus = await getVMStatus(client, vm_id);
-
     const pingResult = await isPingable(ip_address);
 
     await logAction(req, 'check_vm_status', { vm_id, vm_status: vmStatus, ping_ok: pingResult });
@@ -333,9 +344,11 @@ exports.convertToTemplate = async (req, res) => {
       return res.status(404).json({ message: 'Paramètres utilisateur introuvables' });
     }
 
-    host = host || userSettings.proxmox_host;
-    username = username || userSettings.proxmox_ssh_user;
-    privateKeyPath = privateKeyPath || userSettings.ssh_private_key_path;
+    const s = userSettings.get({ plain: true });
+
+    host = host || s.proxmox_host;
+    username = username || s.proxmox_ssh_user;
+    privateKeyPath = privateKeyPath || s.ssh_private_key_path;
 
     if (!host || !username || !privateKeyPath) {
       console.log('⚠️ Informations de connexion manquantes');
@@ -459,11 +472,12 @@ exports.deleteVMDirect = async (req, res) => {
 
   const settings = await UserSetting.findOne({ where: { user_id: user.id } });
 
-  const node = bodyNode || settings?.proxmox_node;
-  const apiUrl = proxmox_api_url || settings?.proxmox_api_url;
-  const tokenId = proxmox_api_token_id || settings?.proxmox_api_token_id;
-  const tokenName = proxmox_api_token_name || settings?.proxmox_api_token_name;
-  const tokenSecret = proxmox_api_token_secret || settings?.proxmox_api_token_secret;
+  const s = settings?.get({ plain: true }) || {};
+  const node = bodyNode || s.proxmox_node;
+  const apiUrl = proxmox_api_url || s.proxmox_api_url;
+  const tokenId = proxmox_api_token_id || s.proxmox_api_token_id;
+  const tokenName = proxmox_api_token_name || s.proxmox_api_token_name;
+  const tokenSecret = proxmox_api_token_secret || s.proxmox_api_token_secret;
 
   if (!node || !apiUrl || !tokenId || !tokenName || !tokenSecret) {
     return res.status(400).json({
@@ -592,14 +606,20 @@ exports.deleteVMDirect = async (req, res) => {
   }
 };
 
-
 exports.checkIfVMNameExists = async (settings, vmNameToCheck) => {
-  const client = new ProxmoxService(settings);
+  const resolved = {
+    proxmox_api_url: settings.proxmox_api_url || settings.apiUrl,
+    proxmox_api_token_id: settings.proxmox_api_token_id || settings.tokenId,
+    proxmox_api_token_name: settings.proxmox_api_token_name || settings.tokenName,
+    proxmox_api_token_secret: settings.proxmox_api_token_secret || settings.tokenSecret,
+    proxmox_node: settings.proxmox_node || settings.node,
+  };
+
+  const client = new ProxmoxService(resolved);
   try {
-    const res = await client.get('/cluster/resources?type=vm');
-    const allVMs = res.data?.filter((r) => r.type === 'qemu') || [];
-    const found = allVMs.find((vm) => vm.name === vmNameToCheck);
-    return !!found;
+    const rows = await client.get('/cluster/resources?type=vm');
+    const allVMs = (Array.isArray(rows) ? rows : []).filter(r => r.type === 'qemu');
+    return !!allVMs.find(vm => vm.name === vmNameToCheck);
   } catch (error) {
     console.error('❌ [checkIfVMNameExists] Erreur :', error.message);
     return false;
