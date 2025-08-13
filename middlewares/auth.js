@@ -23,48 +23,65 @@ const createToken = (user, expiresIn = process.env.JWT_EXPIRES_IN || '1h') => {
 /**
  * \u{1F512} Vérification du token et injection du rôle + permissions dans req.user
  */
-const verifyToken = async (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.log('🚫 Token absent ou invalide');
-    return res.status(401).json({ message: 'Token manquant ou invalide.' });
-  }
 
-  const token = authHeader.split(' ')[1];
-
-  jwt.verify(token, secret, async (err, decoded) => {
-    if (err) {
-      console.log('❌ Token invalide:', err);
-      return res.status(403).json({ message: 'Token invalide.' });
+exports.verifyToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('🚫 Token absent ou invalide (header manquant ou format incorrect)');
+      return res.status(401).json({ message: 'Token manquant ou invalide.' });
     }
 
+    if (!secret) {
+      console.error('⚠️ JWT_SECRET manquant dans les variables d’environnement');
+      return res.status(500).json({ message: 'Configuration JWT manquante.' });
+    }
+
+    const token = authHeader.slice(7);
+
+    // jwt.verify (sync) lève en cas d’expiration / signature invalide
+    let decoded;
     try {
-      const role = await Role.findByPk(decoded.role_id, {
-        include: [{ model: Permission, as: 'permissions' }],
-      });
-
-      if (!role || role.status !== 'actif') {
-        console.log('⛔ Rôle inactif ou introuvable:', decoded.role_id);
-        return res.status(403).json({ message: 'Rôle invalide ou inactif.' });
-      }
-
-      const permissions = role.permissions.map((p) => p.name);
-
-      req.user = {
-        id: decoded.id,
-        email: decoded.email,
-        role_id: decoded.role_id,
-        role: role.name,
-        permissions, // \u{2B07}\u{FE0F} Injection des permissions
-      };
-
-      console.log('✅ Authentifié avec rôle + permissions:', req.user);
-      next();
-    } catch (error) {
-      console.error('🔥 Erreur verifyToken:', error);
-      return res.status(500).json({ message: 'Erreur serveur.' });
+      decoded = jwt.verify(token, secret);
+    } catch (err) {
+      console.log('❌ Token invalide/expiré:', err?.name || err?.message || err);
+      const isExpired = err?.name === 'TokenExpiredError';
+      return res.status(401).json({ message: isExpired ? 'Session expirée.' : 'Token invalide.' });
     }
-  });
+
+    // Récupère le rôle + permissions depuis la BD
+    const role = await Role.findByPk(decoded.role_id, {
+      include: [{ model: Permission, as: 'permissions', through: { attributes: [] } }],
+    });
+
+    if (!role || role.status !== 'actif') {
+      console.log('⛔ Rôle inactif ou introuvable:', decoded.role_id);
+      return res.status(403).json({ message: 'Rôle invalide ou inactif.' });
+    }
+
+    const permissions = (role.permissions || []).map(p => p.name);
+
+    // Injection dans req.user (utilisable par les contrôleurs + logs)
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      role_id: decoded.role_id,
+      role: role.name,
+      permissions,
+    };
+
+    console.log('✅ Authentifié avec rôle + permissions:', {
+      id: req.user.id,
+      email: req.user.email,
+      role: req.user.role,
+      permissionsCount: permissions.length
+    });
+
+    return next();
+  } catch (error) {
+    console.error('🔥 Erreur verifyToken:', error);
+    return res.status(500).json({ message: 'Erreur serveur.' });
+  }
 };
 
 /**
