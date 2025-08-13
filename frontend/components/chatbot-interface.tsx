@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo } from "react"
 import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,6 +15,7 @@ import {
   Square,
   Maximize2,
   Minimize2,
+  FileDown,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
@@ -92,8 +93,29 @@ export function ChatbotInterface({ onClose, isOverlay, onToggleOverlay }: Chatbo
   const currentBotIdRef = useRef<string | null>(null)
   const [isNearBottom, setIsNearBottom] = useState(true)
   const [showNew, setShowNew] = useState(false)
+  const exportReady = useMemo(
+    () => {
+      const last = messages[messages.length - 1]
+      return last?.type === "bot" && last.done
+    },
+    [messages]
+  )
 
   const sanitize = (text: string) => text.replace(/[<>]/g, "")
+
+  const handleExport = () => {
+    const lastBot = messages.filter((m) => m.type === "bot").slice(-1)[0]
+    if (!lastBot) return
+    const meta = `Date: ${new Date().toISOString()}\nRequête: ${sanitize(lastPrompt)}`
+    const md = `${meta}\n\n${lastBot.content || ""}`
+    const blob = new Blob([md], { type: "text/markdown" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `chat-${Date.now()}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -357,12 +379,14 @@ export function ChatbotInterface({ onClose, isOverlay, onToggleOverlay }: Chatbo
         className={cn(
           "fixed flex flex-col bg-background border shadow-sm overflow-hidden",
           isOverlay
-            ? "z-[130] inset-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[90%] md:h-[90%] md:rounded-2xl"
+            ? "z-[130] left-0 right-0 top-[4rem] bottom-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[90%] md:h-[90%] md:rounded-2xl"
             : "z-[100] rounded-2xl"
         )}
         style={{
           ...(isOverlay
-            ? { transformOrigin: "bottom right" }
+            ? {
+                height: "calc(100dvh - 4rem - env(safe-area-inset-bottom))",
+              }
             : {
                 width: "min(420px, 96vw)",
                 height: "min(70dvh, 640px)",
@@ -388,6 +412,15 @@ export function ChatbotInterface({ onClose, isOverlay, onToggleOverlay }: Chatbo
             </h3>
           </div>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExport}
+              disabled={!exportReady}
+            >
+              <FileDown className="h-4 w-4 mr-1" />
+              Exporter Markdown
+            </Button>
             <Button
               ref={toggleRef}
               variant="ghost"
@@ -497,7 +530,7 @@ export function ChatbotInterface({ onClose, isOverlay, onToggleOverlay }: Chatbo
           )}
         </div>
 
-        <div className="p-4 border-t bg-background">
+        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t bg-background">
           <div className="flex gap-2 items-end">
             <input
               type="file"

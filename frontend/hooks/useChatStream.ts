@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { getAuthToken, refreshAuthToken } from "@/services/api";
 
 interface Handlers {
   onDelta: (token: string) => void;
@@ -26,11 +27,22 @@ export function useChatStream(threadId: string) {
 
   const send = useCallback(
     (message: string, handlers: Handlers) => {
-      const start = () => {
+      const start = async () => {
         const url = `/api/chat/stream?threadId=${encodeURIComponent(threadId)}&message=${encodeURIComponent(message)}`;
+        let token = getAuthToken();
+        if (!token) {
+          token = await refreshAuthToken();
+        }
+        if (!token) {
+          handlers.onError?.("auth");
+          return;
+        }
         abortRef.current = new AbortController();
         setIsLoading(true);
-        fetch(url, { signal: abortRef.current.signal, headers: { Accept: "text/event-stream" } })
+        fetch(url, {
+          signal: abortRef.current.signal,
+          headers: { Accept: "text/event-stream", Authorization: `Bearer ${token}` },
+        })
           .then(async (res) => {
             if (!res.ok) {
               handlers.onError?.(res.status === 402 || res.status === 429 ? "quota" : undefined);
@@ -53,7 +65,7 @@ export function useChatStream(threadId: string) {
                   const dataMatch = part.match(/^data: *(.*)$/m);
                   if (!dataMatch) continue;
                   const data = dataMatch[1];
-                  if (data === "[END]") {
+                  if (data === "[DONE]") {
                     flush(handlers);
                     handlers.onEnd?.();
                   } else {

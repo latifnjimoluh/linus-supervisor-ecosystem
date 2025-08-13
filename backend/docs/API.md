@@ -39,11 +39,17 @@ All routes except `POST /auth/login` require a Bearer token obtained from the lo
 - `GET /permissions/role/:role_id` – list permissions for a role
 
 ## Logs
-- `GET /logs` – list system logs with pagination and search
-- `GET /logs/export` – download logs as ZIP, TXT or JSON
+- `GET /logs?search=&sort=&order=&page=&limit=` – list system logs, applying search and sort before pagination and returning `{ total_after_filter, items }`
+- `GET /logs/export?search=&sort=&order=` – download filtered logs as NDJSON
 
 ## Chat
-- `GET /chat/stream?threadId=ID&message=...` – stream chatbot responses via Server-Sent Events. Each token arrives as `data:` frames and an `event: end` signals completion.
+- `GET /chat/stream?threadId=ID&message=...` – stream chatbot responses via Server-Sent Events. Tokens arrive as `data:` frames and a final `data: [DONE]` marks completion.
+
+## Deployments
+- `GET /deployments/:id/stream` – stream deployment status and log updates via SSE. Authenticate with `Authorization: Bearer <JWT>` or append `?access_token=` when headers cannot be set.
+
+## Dashboard
+- `GET /dashboard/map` – retrieve infrastructure map servers. Returns `{ status: "ok", servers: [...] }` on success or `{ status: "degraded", servers: [...], errors: [...] }` when data is partial.
 
 ## Alerts
 - `GET /alerts` – list alerts with pagination and filters
@@ -87,3 +93,7 @@ All routes except `POST /auth/login` require a Bearer token obtained from the lo
     }
     ```
     Supported types: `config`, `init`, `monitoring`, `services`.
+
+## Terminal
+- `POST /terminal/ssh/test` – verify SSH connectivity to a VM. Returns `{ ok: true }` on success or `{ ok: false, code, message }` with a specific error code such as `SSH_HANDSHAKE_TIMEOUT`, `SSH_AUTH_FAILED`, or `SSH_INVALID_KEY`. The handshake timeout (ms) can be tuned via `SSH_HANDSHAKE_TIMEOUT_MS`.
+- `POST /terminal/ssh/exec` – execute a command on a VM via SSH. Successful calls yield `{ stdout, stderr, code }`. Failures respond with an HTTP status and `{ code, message }` describing the cause (`SSH_CONNECTION_REFUSED`, `SSH_NETWORK_UNREACHABLE`, etc.).

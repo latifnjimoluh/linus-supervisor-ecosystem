@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Terminal as TerminalIcon, Server, Power, Wifi, Download, Settings } from 'lucide-react'
+import { Terminal as TerminalIcon, Server, Power, Wifi, Download, Settings, Loader2 } from 'lucide-react'
 import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { fetchTerminalVMs, TerminalVM, testSshConnection, execSshCommand } from "@/services/vms"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 
 interface TerminalSession {
   id: string
@@ -45,20 +47,20 @@ export default function TerminalPage() {
   const [isExecuting, setIsExecuting] = React.useState(false)
   const [isConnecting, setIsConnecting] = React.useState(false)
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
   const terminalRef = React.useRef<HTMLDivElement>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   React.useEffect(() => {
     fetchTerminalVMs()
-      .then(setVms)
-      .catch((e) =>
-        toast({
-          title: "Erreur",
-          description: "Impossible de récupérer les VMs",
-          variant: "destructive",
-        })
-      )
-  }, [toast])
+      .then((v) => {
+        setVms(v)
+        clearError('terminal-fetch')
+      })
+      .catch(() => {
+        setError('terminal-fetch', { message: "Impossible de récupérer les VMs", detailsUrl: "/logs" })
+      })
+  }, [clearError, setError])
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 300)
@@ -93,25 +95,18 @@ export default function TerminalPage() {
     if (!vm) return
 
     if (vm.status !== "running" || !vm.ip) {
-      toast({
-        title: "VM non disponible",
-        description: `La VM ${vm.name} n'est pas disponible`,
-        variant: "destructive",
-      })
+      setError('terminal', { message: `La VM ${vm.name} n'est pas disponible`, detailsUrl: "/logs" })
       return
     }
 
     if (!sshUser.trim()) {
-      toast({
-        title: "Utilisateur SSH requis",
-        description: "Veuillez saisir l'utilisateur SSH.",
-        variant: "destructive",
-      })
+      setError('terminal', { message: "Veuillez saisir l'utilisateur SSH.", detailsUrl: "/logs" })
       return
     }
 
     try {
       setIsConnecting(true)
+      clearError('terminal')
 
       // 🔐 Test de connexion réel via le backend
       const test = await testSshConnection({
@@ -121,11 +116,7 @@ export default function TerminalPage() {
       })
 
       if (!test.ok) {
-        toast({
-          title: "Connexion refusée",
-          description: test.message || "Impossible d'établir la connexion SSH.",
-          variant: "destructive",
-        })
+        setError('terminal', { message: test.message || "Impossible d'établir la connexion SSH.", detailsUrl: "/logs" })
         setIsConnecting(false)
         return
       }
@@ -168,11 +159,7 @@ export default function TerminalPage() {
         variant: "success",
       })
     } catch (e: any) {
-      toast({
-        title: "Erreur de connexion",
-        description: e?.response?.data?.message || e?.message || "Echec du test SSH.",
-        variant: "destructive",
-      })
+      setError('terminal', { message: e?.response?.data?.message || e?.message || "Echec du test SSH.", detailsUrl: "/logs" })
     } finally {
       setIsConnecting(false)
     }
@@ -184,7 +171,6 @@ export default function TerminalPage() {
     setCurrentCommand("")
     setCommandHistory([])
     setHistoryIndex(-1)
-    
     toast({
       title: "Session fermée",
       description: "Terminal déconnecté",
@@ -358,6 +344,8 @@ export default function TerminalPage() {
         </div>
       </div>
 
+      <ErrorBanner id="terminal-fetch" />
+
       {!session ? (
         // VM Selection
         <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
@@ -413,9 +401,27 @@ export default function TerminalPage() {
               disabled={!selectedVM || !sshUser || isConnecting}
               className="w-full rounded-xl"
             >
-              <TerminalIcon className="mr-2 h-4 w-4" />
+              {isConnecting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <TerminalIcon className="mr-2 h-4 w-4" />
+              )}
               {isConnecting ? "Connexion..." : "Se connecter en SSH"}
             </Button>
+
+            <ErrorBanner
+              id="terminal"
+              actions={
+                <>
+                  <Button onClick={() => connectToVM(selectedVM)} size="sm">
+                    Réessayer
+                  </Button>
+                  <Button onClick={() => clearError('terminal')} variant="outline" size="sm">
+                    Modifier les paramètres
+                  </Button>
+                </>
+              }
+            />
 
             <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-xl">
               <div className="flex items-center gap-2 mb-2">

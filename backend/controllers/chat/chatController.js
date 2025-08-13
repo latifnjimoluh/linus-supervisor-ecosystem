@@ -63,8 +63,7 @@ exports.stream = asyncHandler(async (req, res) => {
       status: 'success',
     });
     try {
-      res.write('event: end\n');
-      res.write('data: [END]\n\n');
+      res.write('data: [DONE]\n\n');
     } catch {}
   } catch (err) {
     logger.error('chat_stream_error', { userId, threadId, err: err.message });

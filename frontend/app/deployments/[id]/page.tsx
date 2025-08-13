@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { fetchDeployment, summarizeDeploymentLogs, DeploymentDetail } from "@/services/deployments"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
+import { getAuthToken, refreshAuthToken, logoutUser } from "@/services/api"
 
 // --- Helpers d'affichage de log (clean & normalise) ---
 const stripAnsi = (s: string) => s.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
@@ -80,67 +81,98 @@ export default function DeploymentDetailsPage() {
   React.useEffect(() => {
     if (!deploymentId) return
 
-    // Poll fallback (démarre au début, s’arrête dès que le SSE s’ouvre)
-    pollRef.current = setInterval(fetchDeploymentDetails, 5000)
-
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
-    const url = `${baseUrl}/deployments/${deploymentId}/stream`
-    const es = new EventSource(url)
+    let es: EventSource | null = null
+    let retried = false
 
-    es.onopen = () => {
-      setStreaming(true)
-      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
-    }
-
-    es.addEventListener("status", (e: MessageEvent) => {
-      const { status } = JSON.parse(e.data)
-      setDeployment(d => (d ? { ...d, status } : d))
-    })
-
-    es.addEventListener("log", (e: MessageEvent) => {
-      const { chunk } = JSON.parse(e.data)
-      const clean = normalizeForUI(chunk)
-      setDeployment(d => (d ? { ...d, log: (d.log || "") + clean } : d))
-    })
-
-    // message d’erreur “friendly” envoyé par le backend (ex: STORAGE_FULL)
-    es.addEventListener("error", (e: MessageEvent) => {
-      try {
-        const { message } = JSON.parse(e.data)
-        setFriendlyError(message || "Le déploiement a échoué.")
-      } catch {
-        setFriendlyError("Le déploiement a échoué.")
+    const connect = async () => {
+      let token = getAuthToken()
+      if (!token) {
+        token = await refreshAuthToken()
       }
-    })
+      if (!token) {
+        toast({ title: "Session expirée", variant: "destructive" })
+        logoutUser("Session expirée")
+        return
+      }
 
-    es.addEventListener("done", () => {
-      setStreaming(false)
-      es.close()
-      // Dernier fetch pour figer dates et statut
-      fetchDeploymentDetails()
-    })
-
-    es.onerror = () => {
-      // Si le SSE casse, on garde/relance le polling de secours
-      setStreaming(false)
+      // Poll fallback (démarre au début, s’arrête dès que le SSE s’ouvre)
       if (!pollRef.current) pollRef.current = setInterval(fetchDeploymentDetails, 5000)
+
+      const url = `${baseUrl}/deployments/${deploymentId}/stream?access_token=${encodeURIComponent(token)}`
+      es = new EventSource(url)
+
+      es.onopen = () => {
+        retried = false
+        setStreaming(true)
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      }
+
+      es.addEventListener("status", (e: MessageEvent) => {
+        const { status } = JSON.parse(e.data)
+        setDeployment(d => (d ? { ...d, status } : d))
+      })
+
+      es.addEventListener("log", (e: MessageEvent) => {
+        const { chunk } = JSON.parse(e.data)
+        const clean = normalizeForUI(chunk)
+        setDeployment(d => (d ? { ...d, log: (d.log || "") + clean } : d))
+      })
+
+      // message d’erreur “friendly” envoyé par le backend (ex: STORAGE_FULL)
+      es.addEventListener("error", (e: MessageEvent) => {
+        try {
+          const { message } = JSON.parse(e.data)
+          setFriendlyError(message || "Le déploiement a échoué.")
+        } catch {
+          setFriendlyError("Le déploiement a échoué.")
+        }
+      })
+
+      es.addEventListener("done", () => {
+        setStreaming(false)
+        es?.close()
+        // Dernier fetch pour figer dates et statut
+        fetchDeploymentDetails()
+      })
+
+      es.onerror = async () => {
+        // Si le SSE casse, on garde/relance le polling de secours
+        setStreaming(false)
+        if (!pollRef.current) pollRef.current = setInterval(fetchDeploymentDetails, 5000)
+        es?.close()
+        if (!retried) {
+          retried = true
+          const newToken = await refreshAuthToken()
+          if (newToken) {
+            connect()
+          } else {
+            toast({ title: "Session expirée", variant: "destructive" })
+            logoutUser("Session expirée")
+          }
+        }
+      }
     }
+
+    connect()
 
     return () => {
-      es.close()
+      es?.close()
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
     }
-  }, [deploymentId, fetchDeploymentDetails])
+  }, [deploymentId, fetchDeploymentDetails, toast])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "in_progress":
+      case "pending":
+      case "running":
         return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 animate-pulse">En cours…</Badge>
-      case "completed":
-      case "deployed":
+      case "success":
         return <Badge variant="success">Terminé</Badge>
       case "failed":
         return <Badge variant="destructive">Échec</Badge>
+      case "canceled":
+        return <Badge variant="secondary">Annulé</Badge>
       default:
         return <Badge variant="secondary">Inconnu</Badge>
     }
@@ -193,7 +225,7 @@ export default function DeploymentDetailsPage() {
           </CardTitle>
           <CardDescription>ID: {deployment.id}</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Statut actuel</p>
             <div className="flex items-center gap-2">

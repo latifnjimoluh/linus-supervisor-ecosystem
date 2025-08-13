@@ -1,5 +1,35 @@
 const { Client } = require('ssh2');
 
+class SshError extends Error {
+  constructor(code, httpStatus, message) {
+    super(message);
+    this.code = code;
+    this.httpStatus = httpStatus;
+  }
+}
+
+function normalizeSshError(err) {
+  if (err.level === 'client-timeout' || /Timed out while waiting for handshake/i.test(err.message)) {
+    return new SshError('SSH_HANDSHAKE_TIMEOUT', 504, 'Connexion SSH impossible : délai dépassé');
+  }
+  if (err.code === 'ENOTFOUND') {
+    return new SshError('SSH_DNS_NOT_FOUND', 502, 'Hôte introuvable');
+  }
+  if (err.code === 'ECONNREFUSED') {
+    return new SshError('SSH_CONNECTION_REFUSED', 502, 'Connexion refusée');
+  }
+  if (err.level === 'client-authentication' || /All configured authentication methods failed/i.test(err.message)) {
+    return new SshError('SSH_AUTH_FAILED', 401, 'Authentification SSH échouée');
+  }
+  if (err.code === 'EHOSTUNREACH' || err.code === 'ENETUNREACH') {
+    return new SshError('SSH_NETWORK_UNREACHABLE', 502, 'Réseau injoignable');
+  }
+  if (/Invalid private key|bad passphrase/i.test(err.message)) {
+    return new SshError('SSH_INVALID_KEY', 400, 'Clé SSH invalide');
+  }
+  return new SshError('SSH_UNKNOWN_ERROR', 500, err.message);
+}
+
 /**
  * Retrieve raw content of a remote file via SSH
  * @param {Object} options
@@ -45,7 +75,7 @@ const getRemoteFileContent = async ({ host, username, privateKey, filePath }) =>
  * @param {string} options.command
  * @returns {Promise<{ stdout: string, stderr: string, code: number | null }>} separate output streams
  */
-const execSSHCommand = ({ host, username, privateKey, command }) => {
+const execSSHCommand = ({ host, username, privateKey, command, timeout = 10000 }) => {
   console.log(`🔐 execSSHCommand ${command} on ${username}@${host}`);
   return new Promise((resolve, reject) => {
     const conn = new Client();
@@ -53,10 +83,16 @@ const execSSHCommand = ({ host, username, privateKey, command }) => {
     let stderr = '';
     let exitCode = null;
 
+    const rejectWith = err => {
+      const n = normalizeSshError(err);
+      console.error('❌ execSSHCommand error:', err.message);
+      reject(n);
+    };
+
     conn
       .on('ready', () => {
         conn.exec(command, (err, stream) => {
-          if (err) return reject(err);
+          if (err) return rejectWith(err);
           stream
             .on('data', data => {
               stdout += data.toString();
@@ -73,11 +109,8 @@ const execSSHCommand = ({ host, username, privateKey, command }) => {
             });
         });
       })
-      .on('error', err => {
-        console.error('❌ execSSHCommand error:', err.message);
-        reject(err);
-      })
-      .connect({ host, username, privateKey });
+      .on('error', rejectWith)
+      .connect({ host, username, privateKey, readyTimeout: timeout });
   });
 };
 
@@ -132,4 +165,5 @@ module.exports = {
   getRemoteFileContent,
   getRemoteJSON,
   execSSHCommand,
+  SshError,
 };

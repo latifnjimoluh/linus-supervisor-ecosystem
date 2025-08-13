@@ -206,7 +206,7 @@ export default function DeployPage() {
 
   React.useEffect(() => {
     if (!last) return
-    if (["completed", "failed", "deployed"].includes(last.status)) return
+    if (["success", "failed"].includes(last.status)) return
     const interval = setInterval(async () => {
       try {
         const dep = await fetchDeployment(last.instance_id)
@@ -421,7 +421,7 @@ export default function DeployPage() {
             <Link href={`/deployments/${last.instance_id}`}>
               <Button variant="outline" className="flex items-center gap-2">
                 Reprendre dernier déploiement
-                {(["completed", "deployed"].includes(last.status)) ? (
+                {(last.status === "success") ? (
                   <Badge variant="success">Terminé</Badge>
                 ) : last.status === "failed" ? (
                   <Badge variant="destructive">Échec</Badge>

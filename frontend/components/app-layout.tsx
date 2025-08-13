@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/app-header"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ChatbotLauncher } from "@/components/chatbot-launcher"
 import { AuthGuard } from "@/components/auth-guard"
+import { ErrorBanner } from "./error-banner"
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -30,7 +31,8 @@ export function AppLayout({ children }: AppLayoutProps) {
         <AppSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
         <div className="flex flex-1 flex-col">
           <AppHeader onToggleSidebar={toggleSidebar} />
-          <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-auto p-3 sm:p-4 md:p-6">
+          <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-auto p-3 sm:p-4 md:p-6 pb-24">
+            <ErrorBanner id="global" />
             {children}
           </main>
         </div>
