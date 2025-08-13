@@ -27,11 +27,9 @@ export async function testSshConnection(params: {
 }) {
   try {
     const res = await api.post('/terminal/ssh/test', params);
-    return res.data as { ok: boolean; message?: string };
+    return res.data as { ok: boolean; code?: string; message?: string };
   } catch (e: any) {
-    const msg = e?.response?.data?.message || e?.message || 'Erreur inconnue';
-    // propage une erreur claire
-    throw new Error(`[POST /terminal/ssh/test] ${msg}`);
+    return e?.response?.data || { ok: false, message: e?.message || 'Erreur inconnue' };
   }
 }
 
@@ -45,7 +43,8 @@ export async function execSshCommand(params: {
     const res = await api.post('/terminal/ssh/exec', params);
     return res.data as { stdout: string; stderr?: string; code?: number };
   } catch (e: any) {
-    const msg = e?.response?.data?.message || e?.message || 'Erreur inconnue';
+    if (e.response?.data) throw e;
+    const msg = e?.message || 'Erreur inconnue';
     throw new Error(`[POST /terminal/ssh/exec] ${msg}`);
   }
 }

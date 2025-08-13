@@ -202,7 +202,7 @@ exports.deploy = async (req, res) => {
       started_at: startTime.toISOString(),
     };
 
-    // Préparer le log file + entrée DB "in_progress"
+    // Préparer le log file + entrée DB "pending"
     const logsDir = path.resolve(__dirname, '../../logs');
     if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
     const logPath = path.resolve(logsDir, `deploy-${instanceId}.log`);
@@ -240,7 +240,7 @@ exports.deploy = async (req, res) => {
         vcpu_sockets: payload.vcpu_sockets || 1,
         disk_size: payload.disk_size || '20G',
       },
-      status: 'in_progress',
+      status: 'pending',
     });
 
     // 🔁 Répond IMMÉDIATEMENT pour débloquer l'UI
@@ -260,7 +260,7 @@ exports.deploy = async (req, res) => {
           success,
           vm_id: vmInfo?.vm_ids?.[vmName] || null,
           vm_ip: vmInfo?.vm_ips?.[vmName] || null,
-          status: success ? 'completed' : 'failed',
+          status: success ? 'success' : 'failed',
         });
 
         await logAction(req, 'Déploiement Terraform', {

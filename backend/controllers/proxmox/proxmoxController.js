@@ -567,7 +567,7 @@ exports.deleteVMDirect = async (req, res) => {
       {
         operation_type: "destroy",
         vm_ip,
-        status: "completed",
+        status: "success",
         log_path: logPath,
       },
       { where: { instance_id } }

@@ -4,6 +4,7 @@ const fse = require('fs-extra');
 const path = require('path');
 const { exec, execSync } = require('child_process');
 const { publish } = require('./sseHub'); // SSE hub: addClient/removeClient/publish
+const { Deployment } = require('../models');
 
 function getNextSequence(baseDir) {
   let seq = 1;
@@ -180,7 +181,8 @@ exports.runTerraformApplyStream = (instanceId, variables, externalLogPath = null
     };
 
     // Notifier statut initial + bannière de départ
-    publish(instanceId, 'status', { status: 'in_progress' });
+    Deployment.update({ status: 'running' }, { where: { instance_id: instanceId } }).catch(() => {});
+    publish(instanceId, 'status', { status: 'running' });
     const banner =
 `==== LANCEMENT Terraform (runId=${runId}) ====
 CWD: ${deployDir}
@@ -294,7 +296,7 @@ CMD: ${fullCmd}
 
       // ✅ Succès
       console.log('✅ [Terraform Runner] Déploiement terminé avec succès.');
-      publish(instanceId, 'status', { status: 'completed' });
+      publish(instanceId, 'status', { status: 'success' });
       publish(instanceId, 'done', {});
       return resolve({ stdout: '', stderr: '', success: true, hasScriptError, vmInfo });
     });

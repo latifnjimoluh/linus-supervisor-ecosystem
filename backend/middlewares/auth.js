@@ -27,7 +27,15 @@ const createToken = (user, expiresIn = process.env.JWT_EXPIRES_IN || '15m') => {
 const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+
+    let token = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    } else if (req.query?.access_token) {
+      token = req.query.access_token;
+    }
+
+    if (!token) {
       console.log('🚫 Token absent ou invalide (header manquant ou format incorrect)');
       return res.status(401).json({ message: 'Token manquant ou invalide.' });
     }
@@ -36,8 +44,6 @@ const verifyToken = async (req, res, next) => {
       console.error('⚠️ JWT_SECRET manquant dans les variables d’environnement');
       return res.status(500).json({ message: 'Configuration JWT manquante.' });
     }
-
-    const token = authHeader.slice(7);
 
     // jwt.verify (sync) lève en cas d’expiration / signature invalide
     let decoded;

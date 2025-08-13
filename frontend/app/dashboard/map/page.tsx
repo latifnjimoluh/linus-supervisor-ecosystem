@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
+import { InlineBanner } from "@/components/ui/inline-banner"
 import { cn } from "@/lib/utils" // Ensure cn is imported
 import { getInfrastructureMap, type InfrastructureServer } from "@/services/dashboard"
 import { useRouter } from "next/navigation"
@@ -31,6 +32,8 @@ const simulateMapAIAnalysis = async (context: string): Promise<string> => {
 
 export default function InfrastructureMapPage() {
   const [servers, setServers] = React.useState<InfrastructureServer[]>([])
+  const [status, setStatus] = React.useState<"ok" | "degraded">("ok")
+  const [errors, setErrors] = React.useState<string[]>([])
   const [loading, setLoading] = React.useState(true)
   const [filterZone, setFilterZone] = React.useState<"all" | "LAN" | "WAN" | "DMZ" | "MGMT">("all")
   const router = useRouter()
@@ -38,8 +41,15 @@ export default function InfrastructureMapPage() {
   const fetchServers = React.useCallback(() => {
     setLoading(true)
     getInfrastructureMap()
-      .then(setServers)
-      .catch(() => setServers([]))
+      .then((data) => {
+        setServers(data.servers)
+        setStatus(data.status)
+        setErrors(data.errors || [])
+      })
+      .catch((err) => {
+        setStatus("degraded")
+        setErrors([err.message])
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -111,6 +121,19 @@ export default function InfrastructureMapPage() {
         </div>
       </header>
 
+      {status === "degraded" && (
+        <div className="space-y-2">
+          <InlineBanner
+            kind="warning"
+            title="Données partielles (voir détails)"
+            description={errors.join(" • ")}
+          />
+          <Button onClick={fetchServers} size="sm" variant="outline" className="rounded-xl self-start">
+            Réessayer
+          </Button>
+        </div>
+      )}
+
       <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
         <CardHeader>
           <CardTitle className="text-lg">Filtres</CardTitle>
@@ -171,7 +194,12 @@ export default function InfrastructureMapPage() {
               <span className="ml-2">Chargement de la carte...</span>
             </div>
           ) : (
-            <div className="relative w-full h-[600px] border rounded-xl overflow-hidden bg-gradient-to-br from-background to-muted/20">
+            <div
+              className={cn(
+                "relative w-full h-[600px] border rounded-xl overflow-hidden bg-gradient-to-br from-background to-muted/20",
+                status === "degraded" ? "grayscale opacity-50" : ""
+              )}
+            >
               {/* Zone containers */}
               <div className={cn("absolute border-2 rounded-xl p-4", getZoneColor("MGMT"))} style={{ top: '2%', left: '5%', width: '40%', height: '6%' }}>
                 <h3 className="font-bold text-lg mb-4">MGMT (Management)</h3>

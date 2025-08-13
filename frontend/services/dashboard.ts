@@ -7,7 +7,8 @@ export interface DashboardData {
   systemHealth: number;
   networkTraffic: { incoming: number; outgoing: number };
   recentActivity: Array<{ id: string; type: string; message: string; timestamp: string }>;
-  lastUpdated: string;
+  lastUpdated: string | null;
+  server_tz?: string;
   apiError: boolean;
   deploymentStats: { total: number; success: number; failed: number; deleted: number };
 }
@@ -48,7 +49,13 @@ export interface InfrastructureServer {
   isTemplate: boolean;
 }
 
-export const getInfrastructureMap = async (): Promise<InfrastructureServer[]> => {
+export interface InfrastructureMapResponse {
+  status: "ok" | "degraded";
+  servers: InfrastructureServer[];
+  errors?: string[];
+}
+
+export const getInfrastructureMap = async (): Promise<InfrastructureMapResponse> => {
   const res = await api.get("/dashboard/map");
   return res.data;
 };

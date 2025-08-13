@@ -9,7 +9,9 @@ import { Menu, Bell, User, Settings, LogOut, HelpCircle, Loader2 } from 'lucide-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { fetchDeployment, fetchLastDeployment } from "@/services/deployments"
-import { logoutUser } from "@/services/api"
+import { getAuthToken, refreshAuthToken, logoutUser } from "@/services/api"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "./error-banner"
 
 interface AppHeaderProps {
   title?: string
@@ -17,7 +19,49 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
-  const [last, setLast] = React.useState<null | { instance_id: string; status: string }>(null)
+  const [last, setLast] = React.useState<null | { instance_id: string; status: string; updatedAt: number }>(null)
+  const esRef = React.useRef<EventSource | null>(null)
+  const [staleMsg, setStaleMsg] = React.useState<string | null>(null)
+  const retryRef = React.useRef(false)
+  const { setError } = useErrors()
+
+  const subscribe = React.useCallback(async (id: string) => {
+    if (esRef.current) esRef.current.close()
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+
+    let token = getAuthToken()
+    if (!token) {
+      token = await refreshAuthToken()
+    }
+    if (!token) {
+      setError('session', { message: "Session expirée", detailsUrl: "/login" })
+      logoutUser("Session expirée")
+      return
+    }
+
+    const es = new EventSource(`${baseUrl}/deployments/${id}/stream?access_token=${encodeURIComponent(token)}`)
+    es.onopen = () => {
+      retryRef.current = false
+    }
+    es.addEventListener("status", (e: MessageEvent) => {
+      const { status } = JSON.parse(e.data)
+      setLast({ instance_id: id, status, updatedAt: Date.now() })
+    })
+    es.onerror = async () => {
+      es.close()
+      if (!retryRef.current) {
+        retryRef.current = true
+        const newToken = await refreshAuthToken()
+        if (newToken) {
+          subscribe(id)
+        } else {
+          setError('session', { message: "Session expirée", detailsUrl: "/login" })
+          logoutUser("Session expirée")
+        }
+      }
+    }
+    esRef.current = es
+  }, [setError])
 
   React.useEffect(() => {
     const load = async () => {
@@ -25,28 +69,49 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
         const id = typeof window !== "undefined" ? localStorage.getItem("last_instance_id") : null
         if (id) {
           const dep = await fetchDeployment(id)
-          setLast({ instance_id: id, status: dep.status })
+          setLast({ instance_id: id, status: dep.status, updatedAt: Date.now() })
+          subscribe(id)
         } else {
           const dep = await fetchLastDeployment()
           localStorage.setItem("last_instance_id", dep.instance_id)
-          setLast({ instance_id: dep.instance_id, status: dep.status })
+          setLast({ instance_id: dep.instance_id, status: dep.status, updatedAt: Date.now() })
+          subscribe(dep.instance_id)
         }
       } catch (e) {
         console.error("No last deployment", e)
       }
     }
     load()
-  }, [])
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "last_instance_id" && e.newValue) {
+        fetchDeployment(e.newValue)
+          .then((dep) => {
+            setLast({ instance_id: e.newValue as string, status: dep.status, updatedAt: Date.now() })
+            subscribe(e.newValue as string)
+          })
+          .catch(() => {})
+      }
+    }
+    window.addEventListener("storage", onStorage)
+    return () => {
+      window.removeEventListener("storage", onStorage)
+      esRef.current?.close()
+    }
+  }, [subscribe])
 
   React.useEffect(() => {
     if (!last) return
-    if (["completed", "failed", "deployed"].includes(last.status)) return
-    const interval = setInterval(async () => {
-      try {
-        const dep = await fetchDeployment(last.instance_id)
-        setLast({ instance_id: last.instance_id, status: dep.status })
-      } catch {}
-    }, 5000)
+    const check = () => {
+      if (["running", "pending"].includes(last.status) && Date.now() - last.updatedAt > 15000) {
+        const t = new Date(last.updatedAt).toLocaleTimeString()
+        setStaleMsg(`Toujours en cours… (dernière mise à jour ${t})`)
+      } else {
+        setStaleMsg(null)
+      }
+    }
+    const interval = setInterval(check, 1000)
+    check()
     return () => clearInterval(interval)
   }, [last])
 
@@ -55,8 +120,9 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background">
-      <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-4 px-3 sm:px-4 md:px-6">
+    <>
+      <header className="sticky top-0 z-40 w-full border-b bg-background">
+        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-4 px-3 sm:px-4 md:px-6">
         <Button
           variant="outline"
           size="icon"
@@ -72,10 +138,12 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
           <Link href={`/deployments/${last.instance_id}`}>
             <Button variant="outline" className="flex items-center gap-2">
               Dernier déploiement
-              {(["completed", "deployed"].includes(last.status)) ? (
+              {last.status === "success" ? (
                 <Badge variant="success">Terminé</Badge>
               ) : last.status === "failed" ? (
                 <Badge variant="destructive">Échec</Badge>
+              ) : staleMsg ? (
+                <span className="flex items-center text-sm text-muted-foreground">{staleMsg}</span>
               ) : (
                 <span className="flex items-center text-sm text-muted-foreground">
                   <Loader2 className="mr-1 h-4 w-4 animate-spin" /> En cours…
@@ -130,6 +198,8 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </header>
+      </header>
+      <ErrorBanner id="session" />
+    </>
   )
 }

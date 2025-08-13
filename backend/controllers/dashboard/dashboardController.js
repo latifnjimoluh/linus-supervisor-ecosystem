@@ -6,6 +6,8 @@ const { randomUUID } = require('crypto');
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
+let lastInfrastructureMap = [];
+
 function extractLatestMonitoring(records) {
   const map = {};
   records.forEach((rec) => {
@@ -195,6 +197,9 @@ exports.getDashboardData = async (req, res) => {
       timestamp: log.created_at,
     }));
 
+    const now = new Date();
+    const serverTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
     res.json({
       totalVms,
       activeServices,
@@ -202,7 +207,8 @@ exports.getDashboardData = async (req, res) => {
       systemHealth,
       networkTraffic: { incoming: 0, outgoing: 0 },
       recentActivity,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: now.toISOString(),
+      server_tz: serverTz,
       apiError: false,
       deploymentStats: {
         total: totalDeployments,
@@ -370,25 +376,39 @@ exports.getDeploymentInsights = async (req, res) => {
 };
 
 exports.getInfrastructureMap = async (req, res) => {
+  const errors = [];
   try {
     const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
     if (!settings) {
-      return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
+      errors.push('Paramètres Proxmox introuvables.');
+      console.error('Proxmox settings missing for user', req.user.id);
+      return res.json({ status: 'degraded', errors, servers: lastInfrastructureMap });
     }
 
     const headers = {
       Authorization: `PVEAPIToken=${settings.proxmox_api_token_id}!${settings.proxmox_api_token_name}=${settings.proxmox_api_token_secret}`,
     };
     const proxmoxUrl = `${settings.proxmox_api_url}/cluster/resources?type=qemu`;
-    const proxmoxResp = await axios.get(proxmoxUrl, { httpsAgent, headers });
-    const proxmoxVms = (proxmoxResp.data?.data || [])
-      .filter((vm) => vm.type === 'qemu' && vm.template !== 1);
+    let proxmoxVms = [];
+    try {
+      const proxmoxResp = await axios.get(proxmoxUrl, { httpsAgent, headers });
+      proxmoxVms = (proxmoxResp.data?.data || []).filter((vm) => vm.type === 'qemu' && vm.template !== 1);
+    } catch (e) {
+      console.error('Proxmox API error:', e.message);
+      errors.push('Proxmox non joignable');
+      return res.json({ status: 'degraded', errors, servers: lastInfrastructureMap });
+    }
 
-    // Latest "deployed" records indexed by VM ID (vm_id not unique)
-    const deployments = await Deployment.findAll({
-      where: { status: 'deployed' },
-      order: [['created_at', 'DESC']],
-    });
+    let deployments = [];
+    try {
+      deployments = await Deployment.findAll({
+        where: { status: 'deployed' },
+        order: [['created_at', 'DESC']],
+      });
+    } catch (e) {
+      console.error('Deployment query failed:', e.message);
+      errors.push('Impossible de récupérer les déploiements');
+    }
     const deploymentMap = {};
     deployments.forEach((d) => {
       if (!deploymentMap[d.vm_id]) {
@@ -396,13 +416,17 @@ exports.getInfrastructureMap = async (req, res) => {
       }
     });
 
-    // Latest monitoring records indexed by IP
-    const records = await Monitoring.findAll({
-      order: [['vm_ip', 'ASC'], ['retrieved_at', 'DESC']],
-    });
+    let records = [];
+    try {
+      records = await Monitoring.findAll({
+        order: [['vm_ip', 'ASC'], ['retrieved_at', 'DESC']],
+      });
+    } catch (e) {
+      console.error('Monitoring query failed:', e.message);
+      errors.push('Impossible de récupérer la supervision');
+    }
     const latestMap = extractLatestMonitoring(records);
 
-    // Build server list starting from Proxmox VMs and enriching with DB data
     const servers = proxmoxVms.map((vm) => {
       const dep = deploymentMap[vm.vmid];
       const ip = dep?.vm_ip || vm.ip || 'N/A';
@@ -429,7 +453,7 @@ exports.getInfrastructureMap = async (req, res) => {
         uptime,
       };
     });
-    // Layout configuration for each zone expressed as ratios of the map container
+
     const zoneLayouts = {
       MGMT: { left: 0.05, top: 0.02, width: 0.4, height: 0.06 },
       LAN: { left: 0.05, top: 0.1, width: 0.4, height: 0.8 },
@@ -439,20 +463,25 @@ exports.getInfrastructureMap = async (req, res) => {
     };
     const zoneCounters = { MGMT: 0, LAN: 0, DMZ: 0, WAN: 0, DEFAULT: 0 };
 
-    // Determine position for each server within its zone using a simple grid
     const positioned = servers.map((s) => {
       const layout = zoneLayouts[s.zone] || zoneLayouts.DEFAULT;
       const zoneKey = zoneCounters.hasOwnProperty(s.zone) ? s.zone : 'DEFAULT';
       const idx = zoneCounters[zoneKey];
-      const cols = 5; // grid columns per zone
+      const cols = 5;
       const x = layout.left + ((idx % cols) + 0.5) * (layout.width / cols);
       const y = layout.top + (Math.floor(idx / cols) + 0.5) * (layout.height / cols);
       zoneCounters[zoneKey] += 1;
       return { ...s, position: { x, y } };
     });
 
-    res.json(positioned);
+    lastInfrastructureMap = positioned;
+
+    if (errors.length) {
+      return res.json({ status: 'degraded', servers: positioned, errors });
+    }
+    res.json({ status: 'ok', servers: positioned });
   } catch (err) {
-    res.status(500).json({ message: 'Erreur lors de la récupération de la carte', error: err.message });
+    console.error('Infrastructure map error:', err.message);
+    res.json({ status: 'degraded', servers: lastInfrastructureMap, errors: [err.message] });
   }
 };
