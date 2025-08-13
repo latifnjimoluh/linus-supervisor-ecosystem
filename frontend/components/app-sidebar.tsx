@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Activity,
+  Bell,
   Code,
   Edit,
   FileText,
@@ -53,7 +54,11 @@ const navItems: NavItem[] = [
   {
     label: "Supervision",
     icon: Activity,
-    children: [{ href: "/monitoring", icon: Activity, label: "Monitoring" }],
+    children: [
+      { href: "/monitoring", icon: Activity, label: "Monitoring" },
+      { href: "/logs", icon: FileText, label: "Logs" },
+      { href: "/alerts", icon: Bell, label: "Alertes" },
+    ],
   },
   {
     label: "Déploiement",
@@ -80,11 +85,6 @@ const navItems: NavItem[] = [
       { href: "/users/roles", icon: Shield, label: "Rôles" },
       { href: "/users/permissions", icon: Key, label: "Permissions" },
     ],
-  },
-  {
-    label: "Logs",
-    icon: FileText,
-    children: [{ href: "/logs", icon: FileText, label: "Logs" }],
   },
   { label: "Terminal", icon: Terminal, href: "/terminal" },
   {
@@ -121,12 +121,21 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
     setOpenItems((prev) => ({ ...prev, [label]: !prev[label] }))
 
   return (
-    <aside
-      className={cn(
-        "flex h-full flex-shrink-0 flex-col border-r bg-background transition-all duration-300",
-        isOpen ? "w-64" : "w-0"
-      )}
-    >
+    <>
+      {/* mobile overlay */}
+      <div
+        className={cn(
+          "fixed inset-0 z-40 bg-black/50 transition-opacity lg:hidden",
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        )}
+        onClick={onClose}
+      />
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-shrink-0 flex-col border-r bg-background transition-transform duration-300 lg:static lg:translate-x-0",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
       <div className="flex h-16 items-center justify-between border-b px-4">
         <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
           LS
@@ -195,6 +204,7 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
         })}
       </nav>
     </aside>
+    </>
   )
 }
 

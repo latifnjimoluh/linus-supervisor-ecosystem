@@ -2,6 +2,7 @@ import { api } from "./api";
 
 export interface Permission {
   id: number;
+  key: string;
   name: string;
   description: string;
   status?: string;
@@ -19,17 +20,29 @@ export interface PermissionList {
   };
 }
 
-export const listPermissions = async (page = 1, limit = 10): Promise<PermissionList> => {
-  const res = await api.get("/permissions", { params: { page, limit } });
+export const listPermissions = async (
+  page = 1,
+  limit = 10,
+  q = "",
+  sort = "key",
+  order: "asc" | "desc" = "asc"
+): Promise<PermissionList> => {
+  const res = await api.get("/permissions", {
+    params: { page, limit, q, sort, order },
+  });
   return res.data;
 };
 
-export const listAllPermissions = async (): Promise<Permission[]> => {
+export const listAllPermissions = async (
+  q = "",
+  sort = "key",
+  order: "asc" | "desc" = "asc"
+): Promise<Permission[]> => {
   let page = 1;
   const limit = 100;
   let all: Permission[] = [];
   while (true) {
-    const { data, pagination } = await listPermissions(page, limit);
+    const { data, pagination } = await listPermissions(page, limit, q, sort, order);
     all = all.concat(data);
     if (page >= pagination.pages) {
       break;
@@ -44,13 +57,16 @@ export const getPermission = async (id: number): Promise<Permission> => {
   return res.data;
 };
 
-export const createPermission = async (data: { name: string; description: string }): Promise<Permission> => {
+export const createPermission = async (data: { key: string; name: string; description: string }): Promise<Permission> => {
   const res = await api.post("/permissions", data);
   // backend may return { message, data }
   return res.data.permission ?? res.data.data?.[0] ?? res.data;
 };
 
-export const updatePermission = async (id: number, data: { name?: string; description?: string }): Promise<Permission> => {
+export const updatePermission = async (
+  id: number,
+  data: { key?: string; name?: string; description?: string }
+): Promise<Permission> => {
   const res = await api.put(`/permissions/${id}`, data);
   return res.data.permission ?? res.data;
 };

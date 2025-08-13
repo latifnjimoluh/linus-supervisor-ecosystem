@@ -7,7 +7,7 @@ const secret = process.env.JWT_SECRET;
 /**
  * \u{1F512} Création du token
  */
-const createToken = (user, expiresIn = process.env.JWT_EXPIRES_IN || '1h') => {
+const createToken = (user, expiresIn = process.env.JWT_EXPIRES_IN || '15m') => {
   console.log('🎫 Création du token avec:', user);
   return jwt.sign(
     {
@@ -111,7 +111,7 @@ const checkPermission = (permissionKey) => {
         return res.status(403).json({ message: '⛔ Rôle utilisateur introuvable.' });
       }
 
-      const permission = await Permission.findOne({ where: { name: permissionKey } });
+      const permission = await Permission.findOne({ where: { key: permissionKey } });
       if (!permission) {
         return res.status(403).json({ message: `⛔ Permission '${permissionKey}' non trouvée.` });
       }

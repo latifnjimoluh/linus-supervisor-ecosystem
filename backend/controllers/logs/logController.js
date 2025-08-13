@@ -1,5 +1,6 @@
 const { Log, User } = require('../../models');
 const { Op } = require('sequelize');
+const zlib = require('zlib');
 
 // Get logs with pagination and search
 exports.getAllLogs = async (req, res) => {
@@ -73,7 +74,7 @@ exports.getAllLogs = async (req, res) => {
   }
 };
 
-// Export all logs as CSV or JSON
+// Export all logs as ZIP, TXT or JSON
 exports.exportLogs = async (req, res) => {
   try {
     const { format = 'json' } = req.query;
@@ -108,16 +109,20 @@ exports.exportLogs = async (req, res) => {
       vm_id: null,
     }));
 
-    if (format === 'csv') {
-      const header = 'ID,Action,Type,Timestamp,User,Status,Description';
-      const rows = mapped.map(
-        (l) =>
-          `${l.id},${l.action},${l.type},${l.timestamp},${l.user || ''},${l.status},"${(l.description || '').replace(/"/g, '""')}"`
+    if (format === 'txt') {
+      const lines = mapped.map(
+        (l) => `${l.timestamp} [${l.status}] ${l.action} - ${(l.description || '').replace(/\n/g, ' ')}`
       );
-      const csv = [header, ...rows].join('\n');
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="logs.csv"');
-      return res.send(csv);
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', 'attachment; filename="logs.txt"');
+      return res.send(lines.join('\n'));
+    }
+
+    if (format === 'zip') {
+      const gz = zlib.gzipSync(Buffer.from(JSON.stringify(mapped, null, 2)));
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="logs.zip"');
+      return res.send(gz);
     }
 
     res.setHeader('Content-Type', 'application/json');

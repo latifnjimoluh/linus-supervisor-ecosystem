@@ -106,4 +106,7 @@
   p, span, div {
     @apply text-base font-normal; /* texte standard, infos */
   }
+  img, svg {
+    @apply h-auto max-w-full;
+  }
 }

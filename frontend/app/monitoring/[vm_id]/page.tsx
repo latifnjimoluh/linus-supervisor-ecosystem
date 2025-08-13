@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import {
   ArrowLeft, Play, Square, Copy, RefreshCw, Activity,
   Cpu, MemoryStick, AlertTriangle, CheckCircle, XCircle,
-  Settings, FileText, Loader2, Eye, Trash2
+  Settings, FileText, Loader2, Eye, Trash2, BarChart3
 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,7 +38,7 @@ interface VMDetails {
   status: "running" | "stopped" | "error"
   created_at: string
   uptime: string
-  os: string
+  hostname: string
   template: string
   vcpu: number
   memory: string
@@ -65,6 +65,8 @@ interface VMDetails {
     level: "info" | "warning" | "error"
     message: string
   }>
+  open_ports: number[]
+  top_processes: Array<{ pid: number; cmd: string; cpu: number }>
   last_monitoring: string
 }
 
@@ -204,7 +206,7 @@ export default function VMDetailsPage() {
               : 'error',
         created_at: data.created_at ? new Date(data.created_at).toLocaleString('fr-FR') : '',
         uptime: system.uptime || data.status?.uptime || '',
-        os: system.os || system.hostname || '',
+        hostname: system.hostname || '',
         template: data.template || '',
         vcpu: data.status?.cpus || 0,
         memory: formatKB(memoryTotalKb),
@@ -225,7 +227,9 @@ export default function VMDetailsPage() {
           status: s.active === 'active' ? 'active' : s.active === 'inactive' ? 'inactive' : 'failed',
           description: s.enabled,
         })),
-        recent_logs: [],
+        recent_logs: Array.isArray(system.recent_logs) ? system.recent_logs : [],
+        open_ports: Array.isArray(system.open_ports) ? system.open_ports : [],
+        top_processes: Array.isArray(system.top_processes) ? system.top_processes : [],
         last_monitoring: monitor.retrieved_at ? formatDate(monitor.retrieved_at) : '',
       }
       setVmData(mapped)
@@ -490,7 +494,7 @@ export default function VMDetailsPage() {
       </div>
 
       {/* VM Info and Metrics */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* System Info */}
         <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
           <CardHeader>
@@ -500,7 +504,7 @@ export default function VMDetailsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between"><span className="text-muted-foreground">OS:</span><span className="font-medium">{vmData.os}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Nom serveur:</span><span className="font-medium">{vmData.hostname}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Template:</span><span className="font-medium">{vmData.template}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">vCPU:</span><span className="font-medium">{vmData.vcpu} cores</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">RAM:</span><span className="font-medium">{vmData.memory}</span></div>
@@ -571,6 +575,36 @@ export default function VMDetailsPage() {
                 value={vmData.metrics.disk_total ? (vmData.metrics.disk_usage / vmData.metrics.disk_total) * 100 : 0}
                 className="h-2"
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Détails monitoring */}
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Détails monitoring
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between"><span className="text-muted-foreground">Instance ID:</span><span className="font-medium">{vmData.instance_id}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Hostname:</span><span className="font-medium">{vmData.hostname}</span></div>
+            <div>
+              <span className="text-muted-foreground">Ports ouverts:</span>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {vmData.open_ports.map((p, i) => (
+                  <Badge key={i} variant="outline" className="font-mono">{p}</Badge>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Top processus:</span>
+              <div className="mt-1 space-y-1">
+                {vmData.top_processes.map((proc, i) => (
+                  <div key={i} className="flex justify-between text-sm font-mono"><span>{proc.cmd} ({proc.pid})</span><span>{proc.cpu}%</span></div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>

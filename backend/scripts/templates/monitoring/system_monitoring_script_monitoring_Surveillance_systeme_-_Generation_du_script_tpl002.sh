@@ -33,6 +33,10 @@ OPEN_PORTS=$(ss -tuln | awk 'NR>1 {split($5,a,":"); print a[length(a)]}' | sort 
 TOP_PROCESSES=$(ps -eo pid,comm,%cpu --sort=-%cpu | head -n 6 | tail -n 5 | awk '{printf "{\"pid\":%s,\"cmd\":\"%s\",\"cpu\":%s},", $1, $2, $3}')
 TOP_PROCESSES="[${TOP_PROCESSES%,}]"
 
+# 🪵 Récupère les 20 dernières entrées de journal
+RECENT_LOGS=$(journalctl -n 20 --no-pager --output=short | sed 's/"/\\"/g' | awk '{printf "{\"timestamp\":\"%s %s\",\"level\":\"info\",\"message\":\""; for(i=3;i<=NF;i++){printf "%s%s",$i,(i<NF?" ":"")} printf"\"},"}')
+RECENT_LOGS="[${RECENT_LOGS%,}]"
+
 cat <<JSON > ${STATUS_JSON_PATH}
 {
   "timestamp": "${TIMESTAMP}",
@@ -55,9 +59,13 @@ cat <<JSON > ${STATUS_JSON_PATH}
     "tx_bytes": ${TX_BYTES}
   },
   "open_ports": [${OPEN_PORTS}],
-  "top_processes": ${TOP_PROCESSES}
+  "top_processes": ${TOP_PROCESSES},
+  "recent_logs": ${RECENT_LOGS}
 }
 JSON
 EOS
 
+chown root:root ${STATUS_JSON_PATH}
+chmod 644 ${STATUS_JSON_PATH}
+chown root:root ${STATUS_SCRIPT_PATH}
 chmod +x ${STATUS_SCRIPT_PATH}

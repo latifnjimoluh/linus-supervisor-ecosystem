@@ -12,7 +12,7 @@ export interface MonitoringVm {
   name: string;
   ip: string;
   status: 'running' | 'stopped' | 'error';
-  os: string;
+  hostname: string;
   cpu_usage: number;
   memory_usage: number;
   memory_total: number;

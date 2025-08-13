@@ -19,7 +19,7 @@ export async function listLogs(params?: { q?: string; page?: number; pageSize?: 
   return res.data as { results: LogEntry[]; total: number; page?: number; pageSize?: number; paginationDisabled?: boolean };
 }
 
-export async function exportLogs(format: 'csv' | 'json') {
+export async function exportLogs(format: 'zip' | 'txt' | 'json') {
   const res = await api.get('/logs/export', {
     params: { format },
     responseType: 'blob',

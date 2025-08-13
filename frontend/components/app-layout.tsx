@@ -6,6 +6,7 @@ import * as React from "react"
 import { AppHeader } from "@/components/app-header"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ChatbotLauncher } from "@/components/chatbot-launcher"
+import { AuthGuard } from "@/components/auth-guard"
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -24,15 +25,17 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      <AppSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
-      <div className="flex flex-1 flex-col">
-        <AppHeader onToggleSidebar={toggleSidebar} />
-        <main className="flex flex-1 flex-col gap-4 overflow-auto p-4 lg:gap-6 lg:p-6">
-          {children}
-        </main>
+    <AuthGuard>
+      <div className="flex h-screen w-full overflow-hidden">
+        <AppSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+        <div className="flex flex-1 flex-col">
+          <AppHeader onToggleSidebar={toggleSidebar} />
+          <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-auto p-3 sm:p-4 md:p-6">
+            {children}
+          </main>
+        </div>
+        <ChatbotLauncher />
       </div>
-      <ChatbotLauncher />
-    </div>
+    </AuthGuard>
   )
 }
