@@ -47,14 +47,14 @@ export const restoreScript = async (
   return res.data;
 };
 
-export const analyzeScript = async (
-  script: string,
-  id?: number
-): Promise<{ analysis: string }> => {
+// services/scripts.ts (ou l’endroit où tu déclenches l’analyse)
+export const analyzeScript = async (script: string, id: number) => {
   const res = await api.post(`/scripts/${id}/analyze`, {
     script,
     entity_type: 'script',
     entity_id: id,
   });
-  return res.data;
+  return res.data; // { analysis: string }
 };
+
+

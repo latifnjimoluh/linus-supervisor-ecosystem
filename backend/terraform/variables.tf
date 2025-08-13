@@ -107,7 +107,7 @@ variable "network_cidr" {
 variable "gateway_ip" {
   description = "Passerelle réseau"
   type        = string
-  default     = "192.168.24.1"
+  default     = "192.168.24.2"
 }
 
 variable "scripts" {

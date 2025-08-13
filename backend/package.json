@@ -2,17 +2,16 @@
   "name": "linusupervisor",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "frontend"
-  ],
+  "workspaces": ["frontend"],
   "main": "app.js",
   "scripts": {
-    "dev:backend": "nodemon app.js",
+    "dev:backend": "cross-env NODE_ENV=development nodemon app.js",
     "dev:frontend": "npm --workspace frontend run dev",
+    "dev": "npm run dev:backend",
+    "start": "cross-env NODE_ENV=production node app.js",
     "test": "npm run test:backend && npm run test:frontend",
-    "test:backend": "jest",
-    "test:frontend": "npm --workspace frontend test",
-    "dev": "nodemon app.js"
+    "test:backend": "cross-env NODE_ENV=test jest",
+    "test:frontend": "npm --workspace frontend test"
   },
   "keywords": [],
   "author": "",
@@ -22,13 +21,15 @@
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
     "dotenv": "^17.2.0",
+    "dotenv-flow": "^3.3.0",
     "express": "^5.1.0",
     "express-async-handler": "^1.2.0",
-    "fs": "^0.0.1-security",
     "fs-extra": "^11.3.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
@@ -46,5 +47,9 @@
     "nodemon": "^3.1.10",
     "sequelize-cli": "^6.6.3",
     "supertest": "^6.3.3"
-  }
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "packageManager": "npm@10.8.2"
 }

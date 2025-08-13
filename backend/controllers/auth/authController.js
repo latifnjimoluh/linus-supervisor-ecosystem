@@ -1,15 +1,26 @@
-const bcrypt = require('bcrypt');
+// controllers/auth/authController.js
+const bcrypt = require('bcryptjs'); // ✅ préfère bcryptjs en environnements type Render
 const db = require('../../models');
 const { User, Role } = db;
+const { Op } = db.Sequelize;
 const { createToken } = require('../../middlewares/auth');
-const { logAction } = require('../../middlewares/log');
 const { sendResetCode } = require('../../utils/mailer');
 
-// 📘 Controller d'inscription
-exports.register = async (req, res) => {
+// Petit helper: jamais laisser un logAction faire échouer la route
+async function safeLog(req, action, meta = {}) {
   try {
-    console.log('📥 Requête reçue (register):', req.body);
-    const creator = req.user;
+    const { logAction } = require('../../middlewares/log');
+    await logAction(req, action, meta);
+  } catch (e) {
+    console.error(`[LOGACTION] échec (${action})`, e?.message || e);
+  }
+}
+
+// ------------------------- REGISTER -------------------------
+exports.register = async (req, res) => {
+  const start = Date.now();
+  try {
+    const creator = req.user; // fourni par verifyToken + checkPermission en amont
 
     const {
       first_name,
@@ -19,39 +30,31 @@ exports.register = async (req, res) => {
       password,
       role_id,
       status,
-    } = req.body;
+    } = req.body || {};
 
-    // 💥 Vérifier que role_id est fourni
     if (!role_id) {
-      console.log('❌ Aucun role_id fourni');
       return res.status(400).json({ message: "Le champ 'role_id' est obligatoire." });
     }
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email et mot de passe sont requis." });
+    }
 
-    // 🔍 Vérification unicité email
     const existing = await User.findOne({ where: { email } });
     if (existing) {
-      console.log('⚠️ Email déjà utilisé:', email);
       return res.status(400).json({ message: 'Email déjà utilisé.' });
     }
 
-    // 🔐 Vérification du rôle
     const role = await Role.findOne({ where: { id: role_id, status: 'actif' } });
     if (!role) {
-      console.log('❌ Rôle introuvable ou inactif:', role_id);
       return res.status(400).json({ message: 'Rôle introuvable ou inactif.' });
     }
 
-    console.log('✅ Rôle récupéré:', role.name);
     const creatorRoleName = creator?.role || 'inconnu';
-    console.log('🔐 Rôle du créateur:', creatorRoleName);
-
-    if ([ 'admin', 'superadmin' ].includes(role.name) && creatorRoleName !== 'superadmin') {
-      console.log('⛔ Tentative non autorisée de créer un compte sensible');
-      return res.status(403).json({ message: '⛔ Seul un superadmin peut créer ce type de compte.' });
+    if (['admin', 'superadmin'].includes(role.name) && creatorRoleName !== 'superadmin') {
+      return res.status(403).json({ message: 'Seul un superadmin peut créer ce type de compte.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = await User.create({
       first_name,
       last_name,
@@ -62,45 +65,65 @@ exports.register = async (req, res) => {
       status: status || 'active',
     });
 
-    console.log('✅ Utilisateur créé avec succès:', user.email);
-    await logAction(req, `create_user:${user.email}`, { user_id: user.id });
-    res.status(201).json({ message: '✅ Utilisateur créé avec succès', user });
+    await safeLog(req, `create_user:${user.email}`, { user_id: user.id });
+
+    const ms = Date.now() - start;
+    console.log(`[REGISTER] OK ${email} en ${ms}ms`);
+    return res.status(201).json({ message: 'Utilisateur créé avec succès', user });
   } catch (err) {
-    console.error('🔥 Erreur serveur dans register:', err);
-    res.status(500).json({ message: "Erreur serveur lors de l'enregistrement." });
+    console.error('[REGISTER] 500', err);
+    return res.status(500).json({ message: "Erreur serveur lors de l'enregistrement." });
   }
 };
 
-// 🔐 Controller de connexion
+// ------------------------- LOGIN -------------------------
 exports.login = async (req, res) => {
+  const start = Date.now();
   try {
-    console.log('🔐 Tentative de connexion:', req.body.email);
-    const { email, password, remember } = req.body;
+    const { email, password, remember } = req.body || {};
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email et mot de passe sont requis.' });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      console.error('[LOGIN] JWT_SECRET manquant dans les variables d’environnement');
+      return res.status(500).json({ message: 'Configuration JWT manquante.' });
+    }
 
     const user = await User.findOne({
       where: { email },
-      include: [{ model: Role, as: 'role' }],
+      include: [{ model: Role, as: 'role', attributes: ['id', 'name', 'status'] }],
     });
 
     if (!user) {
-      console.log('❌ Utilisateur introuvable');
       return res.status(401).json({ message: 'Email ou mot de passe incorrect.' });
     }
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) {
-      console.log('❌ Mot de passe invalide pour:', email);
+    if (!user.password) {
+      console.error('[LOGIN] Hash de mot de passe manquant en base pour', email);
+      return res.status(500).json({ message: 'Compte mal configuré (mot de passe absent).' });
+    }
+
+    const ok = await bcrypt.compare(password, user.password).catch((e) => {
+      console.error('[LOGIN] Erreur bcrypt.compare:', e?.message || e);
+      return false;
+    });
+
+    if (!ok) {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect.' });
     }
 
     if (user.status !== 'active') {
-      console.log('⛔ Compte non actif:', user.status);
       return res.status(403).json({ message: `Compte ${user.status}.` });
     }
 
-    console.log('✅ Connexion réussie. Rôle chargé:', user.role?.name);
+    // Optionnel: tu peux aussi bloquer si role inactif
+    if (!user.role || user.role.status !== 'actif') {
+      return res.status(403).json({ message: 'Rôle inactif ou non autorisé.' });
+    }
 
-    // 🧩 Injection manuelle pour permettre logUserAction de fonctionner
+    // Injecte un req.user minimal pour les logs
     req.user = {
       id: user.id,
       email: user.email,
@@ -109,17 +132,16 @@ exports.login = async (req, res) => {
     };
 
     const token = createToken(
-      {
-        id: user.id,
-        email: user.email,
-        role_id: user.role?.id,
-      },
-      remember ? '7d' : '24h'
+      { id: user.id, email: user.email, role_id: user.role_id },
+      remember ? '7d' : (process.env.JWT_EXPIRES_IN || '24h')
     );
 
-    await logAction(req, 'login', { user_id: user.id });
+    await safeLog(req, 'login', { user_id: user.id });
 
-    res.json({
+    const ms = Date.now() - start;
+    console.log(`[LOGIN] OK ${email} en ${ms}ms`);
+
+    return res.json({
       message: 'Connexion réussie',
       token,
       user: {
@@ -131,29 +153,28 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('🔥 Erreur dans login:', err);
-    res.status(500).json({ message: 'Erreur lors de la connexion.' });
+    const ms = Date.now() - start;
+    console.error('[LOGIN] 500 en', ms, 'ms ->', err?.message || err);
+    return res.status(500).json({ message: 'Erreur lors de la connexion.' });
   }
 };
 
-// 📤 Demande de code de réinitialisation
+// ------------------------- REQUEST RESET -------------------------
 exports.requestReset = async (req, res) => {
   try {
-    console.log('📧 Demande de reset pour:', req.body.email);
-    const { email } = req.body;
+    const { email } = req.body || {};
     if (!email) {
-      console.log('❌ Email requis');
-      return res.status(400).json({ message: "L'adresse e-mail est requise" });
+      return res.status(400).json({ message: "L'adresse e-mail est requise." });
     }
 
     const emailRegex = /^\S+@\S+\.\S+$/;
     if (!emailRegex.test(email)) {
-      console.log('❌ Format email invalide');
-      return res.status(400).json({ message: "Format d'e-mail incorrect" });
+      return res.status(400).json({ message: "Format d'e-mail incorrect." });
     }
 
     const user = await User.findOne({ where: { email } });
 
+    // On répond toujours "OK" même si user n'existe pas (pas d’info leak)
     if (user) {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expires = new Date(Date.now() + 15 * 60 * 1000);
@@ -162,42 +183,45 @@ exports.requestReset = async (req, res) => {
       user.reset_expires_at = expires;
       await user.save();
 
-      await sendResetCode(email, code);
+      try {
+        await sendResetCode(email, code);
+      } catch (e) {
+        console.error('[REQUEST RESET] Erreur mailer:', e?.message || e);
+        // On n’échoue pas pour autant ; on peut logguer
+      }
 
-      req.user = { id: user.id };
-      await logAction(req, 'request_reset_code', { user_id: user.id });
+      // logAction avec user connu
+      req.user = { id: user.id, email: user.email };
+      await safeLog(req, 'request_reset_code', { user_id: user.id });
     }
 
-    res.json({
+    return res.json({
       message:
-        "Si un compte est associé, un lien a été envoyé à votre adresse e-mail.",
+        "Si un compte est associé, un code a été envoyé à votre adresse e-mail.",
     });
   } catch (error) {
-    console.error('🔥 Erreur requestReset:', error);
-    res.status(500).json({ message: 'Erreur serveur.' });
+    console.error('[REQUEST RESET] 500', error?.message || error);
+    return res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
 
-// 🔁 Réinitialisation du mot de passe
+// ------------------------- RESET PASSWORD -------------------------
 exports.resetPassword = async (req, res) => {
   try {
-    console.log('🔁 Reset avec code:', req.body.code);
-    const { code, password } = req.body;
+    const { code, password } = req.body || {};
     if (!code || !password) {
-      console.log('❌ Champs requis');
-      return res.status(400).json({ message: 'Champs requis' });
+      return res.status(400).json({ message: 'Code et nouveau mot de passe sont requis.' });
     }
 
     const user = await User.findOne({
       where: {
         reset_token: code,
-        reset_expires_at: { [db.Sequelize.Op.gt]: new Date() },
+        reset_expires_at: { [Op.gt]: new Date() },
       },
     });
 
     if (!user) {
-      console.log('❌ Code invalide ou expiré');
-      return res.status(400).json({ message: 'Code invalide ou expiré' });
+      return res.status(400).json({ message: 'Code invalide ou expiré.' });
     }
 
     const hashed = await bcrypt.hash(password, 10);
@@ -208,23 +232,24 @@ exports.resetPassword = async (req, res) => {
     user.last_password_reset_at = new Date();
     await user.save();
 
-    req.user = { id: user.id };
-    await logAction(req, 'reset_password', { user_id: user.id });
+    req.user = { id: user.id, email: user.email };
+    await safeLog(req, 'reset_password', { user_id: user.id });
 
-    res.json({ message: 'Mot de passe réinitialisé avec succès' });
+    return res.json({ message: 'Mot de passe réinitialisé avec succès.' });
   } catch (error) {
-    console.error('🔥 Erreur resetPassword:', error);
-    res.status(500).json({ message: 'Erreur serveur.' });
+    console.error('[RESET PASSWORD] 500', error?.message || error);
+    return res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
 
+// ------------------------- GET ME -------------------------
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      include: [{ model: Role, as: 'role' }],
+      include: [{ model: Role, as: 'role', attributes: ['id', 'name', 'status'] }],
     });
-    if (!user) return res.status(404).json({ message: 'Utilisateur introuvable' });
-    res.json({
+    if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' });
+    return res.json({
       id: user.id,
       first_name: user.first_name,
       last_name: user.last_name,
@@ -232,51 +257,54 @@ exports.getMe = async (req, res) => {
       role: user.role?.name,
     });
   } catch (err) {
-    res.status(500).json({ message: 'Erreur lors de la récupération du profil', error: err.message });
+    console.error('[GET ME] 500', err?.message || err);
+    return res.status(500).json({ message: 'Erreur lors de la récupération du profil.' });
   }
 };
 
+// ------------------------- CHANGE PASSWORD -------------------------
 exports.changePassword = async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword } = req.body || {};
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Champs requis' });
+      return res.status(400).json({ message: 'Champs requis.' });
     }
     if (currentPassword === newPassword) {
-      return res.status(400).json({ message: 'Le nouveau mot de passe doit être différent' });
+      return res.status(400).json({ message: 'Le nouveau mot de passe doit être différent.' });
     }
+
     const user = await User.findByPk(req.user.id);
-    if (!user) return res.status(404).json({ message: 'Utilisateur introuvable' });
-    const match = await bcrypt.compare(currentPassword, user.password);
-    if (!match) {
-      return res.status(400).json({ message: 'Mot de passe actuel invalide' });
+    if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' });
+
+    const ok = await bcrypt.compare(currentPassword, user.password);
+    if (!ok) {
+      return res.status(400).json({ message: 'Mot de passe actuel invalide.' });
     }
-    const hashed = await bcrypt.hash(newPassword, 10);
-    user.password = hashed;
+
+    user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
-    await logAction(req, 'change_password', { user_id: user.id });
-    res.json({ message: 'Mot de passe mis à jour' });
+
+    await safeLog(req, 'change_password', { user_id: user.id });
+    return res.json({ message: 'Mot de passe mis à jour.' });
   } catch (err) {
-    res.status(500).json({ message: 'Erreur lors du changement de mot de passe', error: err.message });
+    console.error('[CHANGE PASSWORD] 500', err?.message || err);
+    return res.status(500).json({ message: 'Erreur lors du changement de mot de passe.' });
   }
 };
 
-// 📜 Historique des réinitialisations
+// ------------------------- RESET HISTORY -------------------------
 exports.getUsersWithResetHistory = async (req, res) => {
   try {
-    console.log('📜 Récupération historique reset');
     const users = await User.findAll({
-      where: { last_password_reset_at: { [db.Sequelize.Op.not]: null } },
+      where: { last_password_reset_at: { [Op.not]: null } },
       attributes: ['id', 'email', 'first_name', 'last_name', 'last_password_reset_at'],
       order: [['last_password_reset_at', 'DESC']],
     });
 
-    await logAction(req, 'view_reset_history');
-
-    res.json(users);
+    await safeLog(req, 'view_reset_history');
+    return res.json(users);
   } catch (error) {
-    console.error('Erreur récupération des utilisateurs avec reset:', error);
-    res.status(500).json({ message: 'Erreur serveur.' });
+    console.error('[RESET HISTORY] 500', error?.message || error);
+    return res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
-

@@ -83,20 +83,30 @@ const getGeneratedScript = async (req, res) => {
   }
 };
 
+// controllers/scripts/scriptController.js
 const analyzeScript = async (req, res) => {
   const { script } = req.body;
+  const { id } = req.params;
+
   if (!script) return res.status(400).json({ message: 'Script manquant.' });
+
   try {
     const aiResponse = await analyzeAndImproveScript(script, {
       entityType: 'script',
-      entityId: req.params.id,
+      entityId: id || null,
     });
-    res.status(200).json({ analysis: aiResponse });
+    return res.status(200).json({ analysis: aiResponse });
   } catch (err) {
-    console.error('Erreur analyzeScript:', err);
-    res.status(500).json({ message: "Échec de l'analyse IA." });
+    // Log détaillé pour debug
+    console.error('Erreur analyzeScript:', err?.message || err, err?.stack);
+    // Remonte un message exploitable par le front (sans leak technique)
+    return res.status(502).json({
+      message: "Échec de l'analyse IA.",
+      detail: 'upstream_ai_unavailable', // utile côté front pour afficher un message dédié / retry
+    });
   }
 };
+
 
 const deleteScript = async (req, res) => {
   try {

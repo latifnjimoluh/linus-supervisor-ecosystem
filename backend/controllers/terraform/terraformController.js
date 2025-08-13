@@ -82,15 +82,14 @@ exports.deploy = async (req, res) => {
 
     // Vérif nom VM déjà existant (sur le premier nom demandé)
     const proxmoxCreds = {
-      apiUrl: payload.proxmox_api_url,
-      tokenId: payload.proxmox_api_token_id,
-      tokenName: payload.proxmox_api_token_name,
-      tokenSecret: payload.proxmox_api_token_secret,
+      proxmox_api_url: payload.proxmox_api_url,
+      proxmox_api_token_id: payload.proxmox_api_token_id,
+      proxmox_api_token_name: payload.proxmox_api_token_name,
+      proxmox_api_token_secret: payload.proxmox_api_token_secret,
+      proxmox_node: payload.proxmox_node, // facultatif mais utile
     };
     const nameAlreadyExists = await checkIfVMNameExists(proxmoxCreds, vmName);
-    if (nameAlreadyExists) {
-      return res.status(400).json({ message: `❌ Le nom de VM '${vmName}' existe déjà.` });
-    }
+
 
     // Vérification des capacités du nœud (disque, RAM, CPU)
     try {
