@@ -7,12 +7,13 @@ exports.getAllPermissions = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
-    const sort = req.query.sort || 'name';
+    const sort = req.query.sort || 'key';
     const direction = req.query.order === 'desc' ? 'DESC' : 'ASC';
     const where = {};
     if (req.query.q) {
       const q = req.query.q;
       where[Op.or] = [
+        { key: { [Op.iLike]: `%${q}%` } },
         { name: { [Op.iLike]: `%${q}%` } },
         { description: { [Op.iLike]: `%${q}%` } },
       ];
@@ -56,7 +57,7 @@ exports.getPermissionById = async (req, res) => {
     const json = permission.toJSON();
     json.created_at = permission.created_at ? permission.created_at.toISOString() : null;
     json.updated_at = permission.updated_at ? permission.updated_at.toISOString() : null;
-    console.log('📤 Permission retrieved', permission.name);
+    console.log('📤 Permission retrieved', permission.key);
     res.json(json);
   } catch (error) {
     console.error('Erreur getPermissionById:', error);
@@ -76,19 +77,20 @@ exports.createPermission = async (req, res) => {
     const created = [];
 
     for (const p of permissions) {
-      if (!p.name || !p.description) {
-        console.log('❌ name/description manquants');
-        return res.status(400).json({ message: "Champs 'name' et 'description' requis." });
+      if (!p.key || !p.name) {
+        console.log('❌ key/name manquants');
+        return res.status(400).json({ message: "Champs 'key' et 'name' requis." });
       }
 
-      const existing = await Permission.findOne({ where: { name: p.name } });
+      const existing = await Permission.findOne({ where: { key: p.key } });
       if (existing) {
-        console.log(`🔁 Permission '${p.name}' déjà existante`);
+        console.log(`🔁 Permission '${p.key}' déjà existante`);
         created.push(existing);
         continue;
       }
 
       const newPerm = await Permission.create({
+        key: p.key,
         name: p.name,
         description: p.description,
       });
@@ -108,12 +110,13 @@ exports.updatePermission = async (req, res) => {
   console.log('📥 updatePermission called', req.params.id, req.body);
   try {
     const { id } = req.params;
-    const { name, description } = req.body;
+    const { key, name, description } = req.body;
     const permission = await Permission.findByPk(id);
     if (!permission) {
       console.log('⚠️ Permission non trouvée');
       return res.status(404).json({ message: 'Permission non trouvée' });
     }
+    if (key) permission.key = key;
     if (name) permission.name = name;
     if (description) permission.description = description;
     await permission.save();
@@ -126,7 +129,7 @@ exports.updatePermission = async (req, res) => {
 };
 
 exports.deletePermission = async (req, res) => {
-  console.log('📥 deletePermission called', req.params.id);
+    console.log('📥 deletePermission called', req.params.id);
   try {
     const { id } = req.params;
     const permission = await Permission.findByPk(id);

@@ -11,6 +11,15 @@ module.exports = (sequelize, DataTypes) => {
     details: {
       type: DataTypes.TEXT,
     },
+    host: {
+      type: DataTypes.STRING,
+    },
+    level: {
+      type: DataTypes.STRING,
+    },
+    source: {
+      type: DataTypes.STRING,
+    },
   }, {
     tableName: 'logs',
     underscored: true,

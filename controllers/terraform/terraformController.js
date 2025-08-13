@@ -98,11 +98,28 @@ exports.deploy = async (req, res) => {
       };
       const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-      // Disque
+      const diskRequested = parseInt(String(payload.disk_size).replace(/\D/g, ''), 10);
+
+      // Taille minimale du template
+      const vmListUrl = `${payload.proxmox_api_url}/cluster/resources?type=vm`;
+      const vmListResp = await axios.get(vmListUrl, { httpsAgent, headers });
+      const tmplInfo = Array.isArray(vmListResp.data?.data)
+        ? vmListResp.data.data.find(
+            (v) => v.template === 1 && v.name === payload.template_name
+          )
+        : null;
+      const tmplDisk = tmplInfo ? Math.floor((tmplInfo.maxdisk || 0) / (1024 ** 3)) : 0;
+      if (tmplDisk && Number.isFinite(diskRequested) && diskRequested < tmplDisk) {
+        return res.status(400).json({
+          message: `Taille disque minimale : ${tmplDisk} Go pour le template ${payload.template_name}`,
+          min_disk: tmplDisk,
+        });
+      }
+
+      // Disque disponible
       const storageUrl = `${payload.proxmox_api_url}/nodes/${payload.proxmox_node}/storage/${payload.vm_storage}/status`;
       const storageResp = await axios.get(storageUrl, { httpsAgent, headers });
       const diskAvail = Math.floor((storageResp.data?.data?.avail || 0) / (1024 ** 3));
-      const diskRequested = parseInt(String(payload.disk_size).replace(/\D/g, ''), 10);
       if (Number.isFinite(diskRequested) && diskRequested > diskAvail) {
         return res.status(400).json({
           message: `Espace disponible : ${diskAvail} Go – Taille VM demandée : ${diskRequested} Go`,
@@ -185,7 +202,7 @@ exports.deploy = async (req, res) => {
       started_at: startTime.toISOString(),
     };
 
-    // Préparer le log file + entrée DB "in_progress"
+    // Préparer le log file + entrée DB "pending"
     const logsDir = path.resolve(__dirname, '../../logs');
     if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
     const logPath = path.resolve(logsDir, `deploy-${instanceId}.log`);
@@ -223,7 +240,7 @@ exports.deploy = async (req, res) => {
         vcpu_sockets: payload.vcpu_sockets || 1,
         disk_size: payload.disk_size || '20G',
       },
-      status: 'in_progress',
+      status: 'pending',
     });
 
     // 🔁 Répond IMMÉDIATEMENT pour débloquer l'UI
@@ -243,7 +260,7 @@ exports.deploy = async (req, res) => {
           success,
           vm_id: vmInfo?.vm_ids?.[vmName] || null,
           vm_ip: vmInfo?.vm_ips?.[vmName] || null,
-          status: success ? 'completed' : 'failed',
+          status: success ? 'success' : 'failed',
         });
 
         await logAction(req, 'Déploiement Terraform', {

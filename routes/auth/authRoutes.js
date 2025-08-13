@@ -3,6 +3,7 @@ const router = express.Router();
 const authController = require('../../controllers/auth/authController');
 const { verifyToken, checkPermission } = require('../../middlewares/auth');
 const { logRequest } = require('../../middlewares/log');
+const loginLimiter = require('../../middlewares/loginLimiter');
 
 console.log('🚦 authRoutes initialisé');
 
@@ -11,7 +12,7 @@ router.post('/register', verifyToken, checkPermission('user.create'), logRequest
   next();
 }, authController.register);
 
-router.post('/login', logRequest, (req, res, next) => {
+router.post('/login', loginLimiter(), logRequest, (req, res, next) => {
   console.log('➡️ [Route] POST /auth/login');
   next();
 }, authController.login);
@@ -25,6 +26,16 @@ router.post('/reset-password', logRequest, (req, res, next) => {
   console.log('➡️ [Route] POST /auth/reset-password');
   next();
 }, authController.resetPassword);
+
+router.post('/logout', verifyToken, logRequest, (req, res, next) => {
+  console.log('➡️ [Route] POST /auth/logout');
+  next();
+}, authController.logout);
+
+router.post('/refresh', logRequest, (req, res, next) => {
+  console.log('➡️ [Route] POST /auth/refresh');
+  next();
+}, authController.refresh);
 
 router.get('/me', verifyToken, logRequest, (req, res, next) => {
   console.log('➡️ [Route] GET /auth/me');

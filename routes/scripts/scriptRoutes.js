@@ -9,6 +9,7 @@ const {
   analyzeScript,
   deleteScript,
   restoreScript,
+  updateScript,
 } = require('../../controllers/scripts/scriptController');
 
 const { verifyToken, checkPermission } = require('../../middlewares/auth');
@@ -58,5 +59,12 @@ router.post(
   checkPermission('script.restore'),
   restoreScript
 );
+
+router.put(
+  '/:id',
+  checkPermission('script.update'),
+  updateScript
+);
+
 
 module.exports = router;

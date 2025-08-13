@@ -1,7 +1,9 @@
 // controllers/auth/authController.js
 const bcrypt = require('bcryptjs'); // ✅ préfère bcryptjs en environnements type Render
+const jwt = require('jsonwebtoken');
+const { randomUUID } = require('crypto');
 const db = require('../../models');
-const { User, Role } = db;
+const { User, Role, RefreshToken } = db;
 const { Op } = db.Sequelize;
 const { createToken } = require('../../middlewares/auth');
 const { sendResetCode } = require('../../utils/mailer');
@@ -62,7 +64,7 @@ exports.register = async (req, res) => {
       phone,
       password: hashedPassword,
       role_id,
-      status: status || 'active',
+      status: status || 'actif',
     });
 
     await safeLog(req, `create_user:${user.email}`, { user_id: user.id });
@@ -80,7 +82,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   const start = Date.now();
   try {
-    const { email, password, remember } = req.body || {};
+    const { email, password, remember, device_id } = req.body || {};
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email et mot de passe sont requis.' });
@@ -114,7 +116,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect.' });
     }
 
-    if (user.status !== 'active') {
+    if (user.status !== 'actif') {
       return res.status(403).json({ message: `Compte ${user.status}.` });
     }
 
@@ -133,15 +135,37 @@ exports.login = async (req, res) => {
 
     const token = createToken(
       { id: user.id, email: user.email, role_id: user.role_id },
-      remember ? '7d' : (process.env.JWT_EXPIRES_IN || '24h')
+      process.env.JWT_EXPIRES_IN || '15m'
     );
+
+    let refreshToken;
+    let finalDeviceId = device_id;
+    if (remember) {
+      const jti = randomUUID();
+      const payload = { id: user.id, email: user.email, role_id: user.role_id, device_id: finalDeviceId };
+      refreshToken = jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+        jwtid: jti,
+      });
+      const decoded = jwt.decode(refreshToken);
+      const expiresAt = decoded && decoded.exp ? new Date(decoded.exp * 1000) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      if (!finalDeviceId) {
+        finalDeviceId = randomUUID();
+      }
+      await RefreshToken.create({
+        jti,
+        user_id: user.id,
+        device_id: finalDeviceId,
+        expires_at: expiresAt,
+      });
+    }
 
     await safeLog(req, 'login', { user_id: user.id });
 
     const ms = Date.now() - start;
     console.log(`[LOGIN] OK ${email} en ${ms}ms`);
 
-    return res.json({
+    const response = {
       message: 'Connexion réussie',
       token,
       user: {
@@ -151,7 +175,12 @@ exports.login = async (req, res) => {
         email: user.email,
         role: user.role?.name,
       },
-    });
+    };
+    if (refreshToken) {
+      response.refreshToken = refreshToken;
+      response.device_id = finalDeviceId;
+    }
+    return res.json(response);
   } catch (err) {
     const ms = Date.now() - start;
     console.error('[LOGIN] 500 en', ms, 'ms ->', err?.message || err);
@@ -306,5 +335,56 @@ exports.getUsersWithResetHistory = async (req, res) => {
   } catch (error) {
     console.error('[RESET HISTORY] 500', error?.message || error);
     return res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+// ------------------------- LOGOUT -------------------------
+exports.logout = async (req, res) => {
+  try {
+    const { refreshToken } = req.body || {};
+    if (refreshToken) {
+      try {
+        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        await RefreshToken.update({ revoked: true }, { where: { jti: decoded.jti } });
+      } catch (e) {
+        console.error('[LOGOUT] refresh invalide', e?.message || e);
+      }
+    }
+    await safeLog(req, 'logout', { user_id: req.user?.id });
+    return res.json({ message: 'Déconnexion réussie' });
+  } catch (err) {
+    console.error('[LOGOUT] 500', err?.message || err);
+    return res.status(500).json({ message: 'Erreur lors de la déconnexion.' });
+  }
+};
+
+exports.refresh = async (req, res) => {
+  try {
+    const { refreshToken, device_id } = req.body || {};
+    if (!refreshToken || !device_id) {
+      return res.status(400).json({ message: 'Refresh token ou device_id manquant.' });
+    }
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    if (decoded.device_id !== device_id) {
+      return res.status(401).json({ message: 'Device non reconnu.' });
+    }
+    const stored = await RefreshToken.findOne({
+      where: { jti: decoded.jti, user_id: decoded.id, device_id, revoked: false },
+    });
+    if (!stored) {
+      return res.status(401).json({ message: 'Refresh token invalide.' });
+    }
+    if (new Date(stored.expires_at) < new Date()) {
+      return res.status(401).json({ message: 'Refresh token expiré.' });
+    }
+    const token = createToken({
+      id: decoded.id,
+      email: decoded.email,
+      role_id: decoded.role_id,
+    });
+    return res.json({ token });
+  } catch (err) {
+    console.error('[REFRESH] échec', err?.message || err);
+    return res.status(401).json({ message: 'Échec du rafraîchissement.' });
   }
 };

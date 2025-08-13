@@ -136,6 +136,47 @@ const restoreScript = async (req, res) => {
   }
 };
 
+const updateScript = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { category, service_type, description, content, status } = req.body;
+
+    const script = await GeneratedScript.findByPk(id);
+    if (!script) {
+      return res.status(404).json({ message: "Script introuvable" });
+    }
+
+    // Mise à jour des champs simples
+    if (category !== undefined) script.category = category;
+    if (service_type !== undefined) script.service_type = service_type;
+    if (description !== undefined) script.description = description;
+    if (status !== undefined) script.status = status;
+
+    // Mise à jour du contenu du fichier si fourni
+    if (content !== undefined) {
+      let absPath = script.abs_path;
+      if (!absPath && script.script_path) {
+        absPath = path.join(__dirname, `../../..${script.script_path}`);
+      }
+
+      if (absPath) {
+        fs.writeFileSync(absPath, content, "utf-8");
+      } else {
+        return res.status(400).json({ message: "Chemin du script introuvable pour mise à jour." });
+      }
+    }
+
+    await script.save();
+    await logAction(req, `update_script:${script.id}`);
+
+    res.json({ message: "Script mis à jour avec succès", script });
+  } catch (err) {
+    console.error("Erreur updateScript:", err);
+    res.status(500).json({ message: "Erreur serveur lors de la mise à jour du script." });
+  }
+};
+
+
 module.exports = {
   preview,
   listGeneratedScripts,
@@ -144,4 +185,6 @@ module.exports = {
   analyzeScript,
   deleteScript,
   restoreScript,
+  updateScript // ⬅ ajout ici
 };
+

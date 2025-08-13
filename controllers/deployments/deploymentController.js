@@ -47,9 +47,10 @@ exports.getById = async (req, res) => {
 
     return res.json({
       id: dep.id,
+      instance_id: dep.instance_id,
       vm_name: dep.vm_name,
       template: dep.service_name,
-      status: dep.status || (dep.success ? "completed" : "failed"),
+      status: dep.status || (dep.success === null ? "pending" : dep.success ? "success" : "failed"),
       started_at: dep.started_at,
       ended_at: dep.ended_at,
       log,
@@ -59,6 +60,33 @@ exports.getById = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Erreur lors de la récupération du déploiement", error: err.message });
+  }
+};
+
+exports.getLast = async (req, res) => {
+  try {
+    const dep = await Deployment.findOne({
+      where: { user_id: req.user.id },
+      order: [["started_at", "DESC"]],
+    });
+    if (!dep) {
+      return res.status(404).json({ message: "Aucun déploiement trouvé" });
+    }
+    return res.json({
+      id: dep.id,
+      instance_id: dep.instance_id,
+      vm_name: dep.vm_name,
+      template: dep.service_name,
+      status: dep.status || (dep.success === null ? "pending" : dep.success ? "success" : "failed"),
+      started_at: dep.started_at,
+      ended_at: dep.ended_at,
+    });
+  } catch (err) {
+    console.error("getLast error:", err);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération du dernier déploiement",
+      error: err.message,
+    });
   }
 };
 

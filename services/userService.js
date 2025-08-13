@@ -36,7 +36,7 @@ async function findByEmail(email) {
 
 async function createUser(data) {
   const hashed = await bcrypt.hash(data.password, 10);
-  return User.create({ ...data, password: hashed, status: data.status || 'active' });
+  return User.create({ ...data, password: hashed, status: data.status || 'actif' });
 }
 
 module.exports = { getAllUsers, getUserById, createUser, findByEmail };

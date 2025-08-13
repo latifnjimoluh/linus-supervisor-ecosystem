@@ -1,10 +1,14 @@
 module.exports = (sequelize, DataTypes) => {
   console.log('📦 Initialisation du modèle Permission');
   const Permission = sequelize.define('Permission', {
-    name: {
+    key: {
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     description: {
       type: DataTypes.STRING,

@@ -246,7 +246,7 @@ exports.getOverview = async (req, res) => {
         const monitor = ip ? latest[ip] : null;
 
         let status = vm.status === 'running' ? 'running' : vm.status === 'stopped' ? 'stopped' : 'error';
-        let os = 'unknown';
+        let hostname = vm.name || dep.vm_name || `VM ${vm.vmid}`;
         let cpu_usage = 0;
         let memory_usage = 0;
         let memory_total = 0;
@@ -273,7 +273,7 @@ exports.getOverview = async (req, res) => {
           status = status === 'running' && hasAlert ? 'error' : status;
 
           const system = monitor.system_status || {};
-          os = system.os || system.hostname || os;
+          hostname = system.hostname || system.os || hostname;
           cpu_usage = system.cpu_usage || system.cpu?.percent || cpu_usage;
           const mem = system.memory || {};
           memory_total = mem.total_kb || mem.total || 0;
@@ -294,7 +294,7 @@ exports.getOverview = async (req, res) => {
           name: vm.name || dep.vm_name || `VM ${vm.vmid}`,
           ip: ip || 'N/A',
           status,
-          os,
+          hostname,
           cpu_usage,
           memory_usage,
           memory_total,

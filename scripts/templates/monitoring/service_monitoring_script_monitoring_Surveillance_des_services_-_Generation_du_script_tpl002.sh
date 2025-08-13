@@ -41,4 +41,7 @@ cat <<JSON > ${SERVICES_JSON_PATH}
 JSON
 EOS
 
+chown root:root ${SERVICES_JSON_PATH}
+chmod 644 ${SERVICES_JSON_PATH}
+chown root:root ${SERVICES_SCRIPT_PATH}
 chmod +x ${SERVICES_SCRIPT_PATH}

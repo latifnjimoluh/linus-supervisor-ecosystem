@@ -1,7 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-# === Variables substituées par le moteur de template ===
+sudo chown -R nexus:nexus /opt/monitoring
+sudo chmod 775 /opt/monitoring
+
+# === testVariables substituées par le moteur de template ===
 SCRIPT_PATH="/opt/monitoring/monitoring.sh"
 STATUS_SCRIPT_PATH="/opt/monitoring/status.sh"
 SERVICES_SCRIPT_PATH="/opt/monitoring/services_status.sh"

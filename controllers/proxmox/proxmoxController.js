@@ -517,7 +517,15 @@ exports.deleteVMDirect = async (req, res) => {
     }
 
     vm_name = vmInfo.name;
-    vm_ip = await getVMIP(client, vm_id);
+    try {
+      vm_ip = await getVMIP(client, vm_id);
+    } catch (e) {
+      const dep = await Deployment.findOne({
+        where: { vm_id, instance_id },
+        attributes: ['vm_ip'],
+      });
+      vm_ip = dep?.vm_ip || null;
+    }
 
     const status = await getVMStatus(client, vm_id);
     logOutput += `Statut initial: ${status}\n`;
@@ -556,8 +564,13 @@ exports.deleteVMDirect = async (req, res) => {
     fs.writeFileSync(logPath, logOutput);
 
     await Deployment.update(
-      { operation_type: "destroy" },
-      { where: { vm_id, instance_id } }
+      {
+        operation_type: "destroy",
+        vm_ip,
+        status: "success",
+        log_path: logPath,
+      },
+      { where: { instance_id } }
     );
 
     await Delete.create({
@@ -584,8 +597,13 @@ exports.deleteVMDirect = async (req, res) => {
     fs.writeFileSync(logPath, logOutput + `\nErreur : ${error.message}`);
 
     await Deployment.update(
-      { operation_type: "destroy" },
-      { where: { vm_id, instance_id } }
+      {
+        operation_type: "destroy",
+        vm_ip,
+        status: "failed",
+        log_path: logPath,
+      },
+      { where: { instance_id } }
     );
 
     await Delete.create({
