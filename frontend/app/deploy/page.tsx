@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getStatusBadge } from "@/components/status-badge"
 import {
   Select,
   SelectContent,
@@ -421,15 +422,7 @@ export default function DeployPage() {
             <Link href={`/deployments/${last.instance_id}`}>
               <Button variant="outline" className="flex items-center gap-2">
                 Reprendre dernier déploiement
-                {(last.status === "success") ? (
-                  <Badge variant="success">Terminé</Badge>
-                ) : last.status === "failed" ? (
-                  <Badge variant="destructive">Échec</Badge>
-                ) : (
-                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <span className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" /> En cours…
-                  </span>
-                )}
+                {getStatusBadge(last.status)}
               </Button>
             </Link>
           )}

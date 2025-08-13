@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -13,6 +13,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { loginUser } from "@/services/api";
 
+// ✅ import du hook d’erreurs global
+import { useErrors } from "@/hooks/use-errors";
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,42 +23,67 @@ export default function LoginPage() {
   const [passwordShake, setPasswordShake] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [remember, setRemember] = useState(false);
+
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/dashboard";
+
+  // ✅ accès au store d’erreurs
+  const { setError, clearError } = useErrors();
+
+  const pwdRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const msg = localStorage.getItem("logout_message");
     if (msg) {
       const variant = msg.toLowerCase().includes("expir") ? "warning" : "success";
-      toast({ title: msg, variant });
+      toast({ title: msg, variant, duration: 4000 }); // durée explicite
       localStorage.removeItem("logout_message");
     }
-  }, [toast]);
+    // on s’assure de partir sans reliquat d’erreur
+    clearError("auth");
+  }, [toast, clearError]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     setIsLoading(true);
+    // Nettoie une éventuelle erreur précédente avant de tenter à nouveau
+    clearError("auth");
+
     try {
       const data = await loginUser(email, password, remember);
-      toast({ title: "Connexion réussie", description: data.message, variant: "success" });
+
+      // ✅ on purge l’erreur “auth” s’il en restait une (ex: tentative précédente)
+      clearError("auth");
+
+      toast({
+        title: "Connexion réussie",
+        description: data.message,
+        variant: "success",
+        duration: 3000,
+      });
+
       router.push(redirectTo);
     } catch (error: any) {
-      const status = error.response?.status;
+      const status = error?.response?.status;
       const message =
-        error.response?.data?.message ||
-        (status === 429
-          ? "Trop de tentatives. Réessayez plus tard."
-          : "Identifiants incorrects.");
-      toast({
-        title: "Erreur de connexion",
-        description: message,
-        variant: "destructive",
+        error?.response?.data?.message ||
+        (status === 429 ? "Trop de tentatives. Réessayez plus tard." : "Identifiants incorrects.");
+
+      // ✅ on pousse l’erreur dans le provider global avec TTL (auto-dismiss)
+      setError("auth", {
+        message,
+        detailsUrl: "/logs",  // si tu as une page de logs ; sinon enlève
+        ttlMs: 6000,          // disparaît tout seul après 6s
       });
+
+      // feedback UI local (shake + focus)
       setPasswordShake(true);
       setTimeout(() => setPasswordShake(false), 500);
+      pwdRef.current?.focus();
     } finally {
       setIsLoading(false);
     }
@@ -82,6 +110,7 @@ export default function LoginPage() {
                 className="rounded-xl focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="password">Mot de passe</Label>
               <motion.div
@@ -90,6 +119,7 @@ export default function LoginPage() {
                 transition={{ duration: 0.2, ease: "easeInOut" }}
               >
                 <Input
+                  ref={pwdRef}
                   id="password"
                   type={showPassword ? "text" : "password"}
                   required
@@ -109,6 +139,7 @@ export default function LoginPage() {
                 </Button>
               </motion.div>
             </div>
+
             <div className="flex items-center space-x-2">
               <input
                 id="remember"
@@ -117,10 +148,9 @@ export default function LoginPage() {
                 checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
               />
-              <Label htmlFor="remember" className="text-sm">
-                Se souvenir de moi
-              </Label>
+              <Label htmlFor="remember" className="text-sm">Se souvenir de moi</Label>
             </div>
+
             <Button type="submit" className="w-full rounded-xl" disabled={isLoading}>
               {isLoading ? (
                 <span className="flex items-center">
@@ -131,10 +161,9 @@ export default function LoginPage() {
                 "Connexion"
               )}
             </Button>
+
             <div className="text-center text-sm">
-              <Link href="/reset" className="text-primary hover:underline">
-                Mot de passe oublié ?
-              </Link>
+              <Link href="/reset" className="text-primary hover:underline">Mot de passe oublié ?</Link>
             </div>
           </form>
         </CardContent>
@@ -142,4 +171,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

@@ -19,7 +19,7 @@ type KbStats = {
   path?: string;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 const KB_STATS_URL = `${API_BASE}/kb/stats`;
 const KB_RELOAD_URL = `${API_BASE}/kb/reload`;
 

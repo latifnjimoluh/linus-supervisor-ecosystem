@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Search, Plus, Code, Filter, Copy, Check, Edit, Sparkles } from "lucide-react"
+import { Search, Plus, Code, Filter, Copy, Check, Edit, Sparkles, Trash2, RotateCcw, Tag } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
+import dynamic from "next/dynamic"
+import { useTheme } from "next-themes"
 
 import { BackButton } from "@/components/back-button"
 import { Button } from "@/components/ui/button"
@@ -27,6 +29,7 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+
 import {
   fetchTemplatesAndScripts,
   deleteTemplate,
@@ -34,6 +37,7 @@ import {
   analyzeTemplate,
   type Template,
 } from "@/lib/templates"
+
 import {
   getScriptContent,
   deleteScript,
@@ -41,8 +45,7 @@ import {
   analyzeScript,
   type Script,
 } from "@/lib/scripts"
-import dynamic from "next/dynamic"
-import { useTheme } from "next-themes"
+
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
@@ -55,6 +58,7 @@ interface ScriptsTemplatesBrowserProps {
 
 type TabKey = "scripts" | "templates"
 type CategoryFilter = "ALL" | string
+type StatusFilter = "actif" | "supprime" | "all"
 
 export default function ScriptsTemplatesBrowser({
   defaultTab = "templates",
@@ -67,7 +71,7 @@ export default function ScriptsTemplatesBrowser({
   const [copied, setCopied] = React.useState(false)
   const [items, setItems] = React.useState<ScriptOrTemplate[]>([])
   const [categoryFilter, setCategoryFilter] = React.useState<CategoryFilter>("ALL")
-  const [statusFilter, setStatusFilter] = React.useState<'actif' | 'supprime' | 'all'>('actif')
+  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("actif")
   const { toast } = useToast()
   const { theme } = useTheme()
 
@@ -99,7 +103,10 @@ export default function ScriptsTemplatesBrowser({
       t.name.toLowerCase().includes(q) ||
       (t.description ?? "").toLowerCase().includes(q)
     const inCategory = categoryFilter === "ALL" ? true : t.category === categoryFilter
-    return inText && inCategory
+    // filtre status côté client au cas où
+    const inStatus =
+      statusFilter === "all" ? true : (t.status ?? "actif") === statusFilter
+    return inText && inCategory && inStatus
   })
 
   const filteredScripts = filteredBase.filter((t) => t.type === "script")
@@ -123,25 +130,36 @@ export default function ScriptsTemplatesBrowser({
       setItemContent("")
       getScriptContent(item.id)
         .then((content) => setItemContent(content))
+        .catch(() => setItemContent("# Erreur: impossible de récupérer le contenu"))
         .finally(() => setLoading(false))
     } else {
+      // template = JSON déjà en base
       setItemContent(item.template_content)
     }
   }
 
   const analyzeItem = async (item: ScriptOrTemplate): Promise<string> => {
-    const content =
-      item.type === 'template' ? item.template_content : await getScriptContent(item.id)
-    const res =
-      item.type === 'template'
-        ? await analyzeTemplate(content, item.id)
-        : await analyzeScript(content, item.id)
-    return res.analysis
+    try {
+      const content =
+        item.type === "template" ? item.template_content : await getScriptContent(item.id)
+      const res =
+        item.type === "template"
+          ? await analyzeTemplate(content, item.id)
+          : await analyzeScript(content, item.id)
+      return res.analysis
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.message === "Échec de l'analyse IA."
+          ? "Le service d'analyse IA est momentanément indisponible."
+          : "Impossible d'analyser cet élément."
+      toast({ title: "Analyse IA", description: msg, variant: "destructive" })
+      return msg
+    }
   }
 
   const handleDelete = async (item: ScriptOrTemplate) => {
     try {
-      if (item.type === 'template') await deleteTemplate(item.id)
+      if (item.type === "template") await deleteTemplate(item.id)
       else await deleteScript(item.id)
       toast({ title: 'Élément supprimé', variant: 'success' })
       refreshItems()
@@ -152,7 +170,7 @@ export default function ScriptsTemplatesBrowser({
 
   const handleRestore = async (item: ScriptOrTemplate) => {
     try {
-      if (item.type === 'template') await restoreTemplate(item.id)
+      if (item.type === "template") await restoreTemplate(item.id)
       else await restoreScript(item.id)
       toast({ title: 'Élément réactivé', variant: 'success' })
       refreshItems()
@@ -164,129 +182,150 @@ export default function ScriptsTemplatesBrowser({
   const renderGrid = (itemsToShow: ScriptOrTemplate[]) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <AnimatePresence>
-        {itemsToShow.map((item) => (
-          <motion.div
-            key={`${item.type}-${item.id}`}
-            layout
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-          >
-            <Card data-item-type={item.type} className="h-full flex flex-col hover:shadow-lg transition-shadow rounded-2xl">
-              <CardHeader>
-                <CardTitle className="text-lg">{item.name}</CardTitle>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <Badge variant="secondary">{item.category || "Non catégorisé"}</Badge>
-                  <Badge variant={item.type === "template" ? "default" : "outline"}>
-                    {item.type === "template" ? "Paramétrable" : "Script simple"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-              </CardContent>
-              <div className="p-4 border-t flex flex-wrap gap-2">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="secondary" size="sm" onClick={() => handleViewCode(item)}>
-                      <Code className="mr-2 h-4 w-4" /> Voir le code
-                    </Button>
-                  </DialogTrigger>
-                  {selectedItem?.id === item.id && (
-                    <DialogContent className="max-w-3xl max-h-[70vh] overflow-y-auto">
+        {itemsToShow.map((item) => {
+          const isScript = item.type === "script"
+          const editHref =
+            isScript ? `/editor?id=${item.id}&tab=scripts` : `/editor?id=${item.id}&tab=templates`
+          const status = (item.status ?? "actif") as StatusFilter
+          return (
+            <motion.div
+              key={`${item.type}-${item.id}`}
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+            >
+              <Card data-item-type={item.type} className="h-full flex flex-col hover:shadow-lg transition-shadow rounded-2xl">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    {item.name}
+                  </CardTitle>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Badge variant="secondary">{item.category || "Non catégorisé"}</Badge>
+                    {"service_type" in item && item.service_type && (
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Tag className="h-3 w-3" /> {item.service_type}
+                      </Badge>
+                    )}
+                    <Badge variant={isScript ? "outline" : "default"}>
+                      {isScript ? "Script simple" : "Paramétrable"}
+                    </Badge>
+                    <Badge variant={status === "actif" ? "success" : status === "supprime" ? "destructive" : "secondary"}>
+                      {status === "actif" ? "Actif" : status === "supprime" ? "Supprimé" : "—"}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1">
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                </CardContent>
+
+                <div className="p-4 border-t flex flex-wrap gap-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="secondary" size="sm" onClick={() => handleViewCode(item)}>
+                        <Code className="mr-2 h-4 w-4" /> Voir le code
+                      </Button>
+                    </DialogTrigger>
+                    {selectedItem?.id === item.id && (
+                      <DialogContent className="max-w-3xl max-h-[70vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>{selectedItem.name}</DialogTitle>
+                          <DialogDescription>
+                            {isScript
+                              ? "Aperçu du contenu du script."
+                              : "Aperçu du contenu du template et de ses champs."}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="relative mt-4">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="absolute top-2 right-2 h-7 w-7 p-0"
+                            onClick={() => copyContent(itemContent)}
+                            aria-label="Copier"
+                          >
+                            {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                          </Button>
+                          <div className="rounded-lg border overflow-hidden">
+                            <MonacoEditor
+                              value={loading ? "Chargement..." : itemContent}
+                              language={isScript ? "bash" : "json"}
+                              theme={theme === "dark" ? "vs-dark" : "vs-light"}
+                              height="60vh"
+                              options={{
+                                readOnly: true,
+                                minimap: { enabled: true },
+                                fontSize: 12,
+                                automaticLayout: true,
+                                wordWrap: "on",
+                                scrollBeyondLastLine: false,
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {selectedItem?.type === "template" &&
+                          "fields_schema" in selectedItem &&
+                          selectedItem.fields_schema && (
+                            <div className="mt-4">
+                              <h3 className="font-semibold mb-2">Champs de configuration :</h3>
+                              <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                                {selectedItem.fields_schema.fields.map((field: any, index: number) => (
+                                  <li key={index}>
+                                    <strong>{field.label}</strong> ({field.name}): {field.type}{" "}
+                                    {field.required ? "(Requis)" : "(Optionnel)"}{" "}
+                                    {field.default !== undefined && `(Défaut: ${String(field.default)})`}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                      </DialogContent>
+                    )}
+                  </Dialog>
+
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={editHref}>
+                      <Edit className="mr-2 h-4 w-4" /> Éditer
+                    </Link>
+                  </Button>
+
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Sparkles className="mr-2 h-4 w-4" /> Analyse IA
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md max-h-[70vh] overflow-y-auto">
                       <DialogHeader>
-                        <DialogTitle>{selectedItem.name}</DialogTitle>
-                        <DialogDescription>
-                          {selectedItem.type === "script"
-                            ? "Aperçu du contenu du script."
-                            : "Aperçu du contenu du template et de ses champs."}
+                        <DialogTitle className="sr-only">Analyse IA</DialogTitle>
+                        <DialogDescription className="sr-only">
+                          Résultat de l'analyse IA pour {item.name}
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="relative mt-4">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="absolute top-2 right-2 h-7 w-7 p-0"
-                          onClick={() => copyContent(itemContent)}
-                          aria-label="Copier"
-                        >
-                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                        </Button>
-                        <div className="rounded-lg border overflow-hidden">
-                          <MonacoEditor
-                            value={loading ? "Chargement..." : itemContent}
-                            language={selectedItem.type === "template" ? "json" : "bash"}
-                            theme={theme === "dark" ? "vs-dark" : "vs-light"}
-                            height="60vh"
-                            options={{
-                              readOnly: true,
-                              minimap: { enabled: true },
-                              fontSize: 12,
-                              automaticLayout: true,
-                              wordWrap: "on",
-                              scrollBeyondLastLine: false,
-                            }}
-                          />
-                        </div>
-                      </div>
-                      {selectedItem.type === "template" &&
-                        "fields_schema" in selectedItem &&
-                        selectedItem.fields_schema && (
-                          <div className="mt-4">
-                            <h3 className="font-semibold mb-2">Champs de configuration :</h3>
-                            <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                              {selectedItem.fields_schema.fields.map((field, index) => (
-                                <li key={index}>
-                                  <strong>{field.label}</strong> ({field.name}): {field.type}{" "}
-                                  {field.required ? "(Requis)" : "(Optionnel)"}{" "}
-                                  {field.default !== undefined && `(Défaut: ${String(field.default)})`}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
+                      <AssistantAIBlock
+                        title={`Analyse IA de ${item.name}`}
+                        context={`${item.type}:${item.id}`}
+                        onAnalyze={() => analyzeItem(item)}
+                        className="w-full"
+                      />
                     </DialogContent>
-                  )}
-                </Dialog>
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/editor?id=${item.id}`}>
-                    <Edit className="mr-2 h-4 w-4" /> Éditer
-                  </Link>
-                </Button>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Sparkles className="mr-2 h-4 w-4" /> Analyse IA
+                  </Dialog>
+
+                  {status === "actif" ? (
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(item)}>
+                      <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md max-h-[70vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="sr-only">Analyse IA</DialogTitle>
-                      <DialogDescription className="sr-only">
-                        Résultat de l'analyse IA pour {item.name}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <AssistantAIBlock
-                      title={`Analyse IA de ${item.name}`}
-                      context={`${item.type}:${item.id}`}
-                      onAnalyze={() => analyzeItem(item)}
-                      className="w-full"
-                    />
-                  </DialogContent>
-                </Dialog>
-                {item.status === 'actif' ? (
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(item)}>
-                    Supprimer
-                  </Button>
-                ) : (
-                  <Button variant="secondary" size="sm" onClick={() => handleRestore(item)}>
-                    Réactiver
-                  </Button>
-                )}
-              </div>
-            </Card>
-          </motion.div>
-        ))}
+                  ) : (
+                    <Button variant="secondary" size="sm" onClick={() => handleRestore(item)}>
+                      <RotateCcw className="mr-2 h-4 w-4" /> Réactiver
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            </motion.div>
+          )
+        })}
       </AnimatePresence>
     </div>
   )
@@ -323,7 +362,8 @@ export default function ScriptsTemplatesBrowser({
             ))}
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
           <SelectTrigger className="w-full md:w-[180px]">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4" />

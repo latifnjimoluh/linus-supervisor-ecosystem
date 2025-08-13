@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { fetchDeployment, fetchLastDeployment } from "@/services/deployments"
 import { getAuthToken, refreshAuthToken, logoutUser } from "@/services/api"
+import { getStatusBadge } from "@/components/status-badge"
 import { useErrors } from "@/hooks/use-errors"
 import { ErrorBanner } from "./error-banner"
 
@@ -138,17 +139,19 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
           <Link href={`/deployments/${last.instance_id}`}>
             <Button variant="outline" className="flex items-center gap-2">
               Dernier déploiement
-              {last.status === "success" ? (
-                <Badge variant="success">Terminé</Badge>
-              ) : last.status === "failed" ? (
-                <Badge variant="destructive">Échec</Badge>
-              ) : staleMsg ? (
-                <span className="flex items-center text-sm text-muted-foreground">{staleMsg}</span>
-              ) : (
-                <span className="flex items-center text-sm text-muted-foreground">
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" /> En cours…
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {getStatusBadge(last.status)}
+                {["pending", "running"].includes(last.status) && (
+                  staleMsg ? (
+                    <span className="text-sm text-muted-foreground">{staleMsg}</span>
+                  ) : (
+                    <span className="flex items-center text-sm text-muted-foreground">
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" /> En cours…
+                    </span>
+                  )
+                )}
+              </div>
+
             </Button>
           </Link>
         )}

@@ -28,7 +28,7 @@ export function useChatStream(threadId: string) {
   const send = useCallback(
     (message: string, handlers: Handlers) => {
       const start = async () => {
-        const url = `/api/chat/stream?threadId=${encodeURIComponent(threadId)}&message=${encodeURIComponent(message)}`;
+        const url = `/chat/stream?threadId=${encodeURIComponent(threadId)}&message=${encodeURIComponent(message)}`;
         let token = getAuthToken();
         if (!token) {
           token = await refreshAuthToken();
