@@ -180,6 +180,10 @@ export default function AccountSettingsPage() {
                 <Label htmlFor="role">Rôle</Label>
                 <Input id="role" value={account?.role?.name || ""} readOnly />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="role-desc">Description du rôle</Label>
+                <Input id="role-desc" value={account?.role?.description || ""} readOnly />
+              </div>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="language">Langue</Label>
                 <Select defaultValue="fr">

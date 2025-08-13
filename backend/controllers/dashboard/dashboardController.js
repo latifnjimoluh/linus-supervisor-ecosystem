@@ -263,7 +263,96 @@ exports.getDeploymentStats = async (req, res) => {
   try {
     const period = req.query.period || 'day';
     const stats = await collectDeploymentStats(period);
-    res.json(stats);
+
+    const allDeployments = await Deployment.findAll({ raw: true });
+    const allDeletes = await Delete.findAll({ raw: true });
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+
+    const within = (d, from) => d.started_at && new Date(d.started_at) >= from;
+    const successRate7dDeploys = allDeployments.filter((d) => within(d, sevenDaysAgo));
+    const successRate30dDeploys = allDeployments.filter((d) => within(d, thirtyDaysAgo));
+    const successRate7d = successRate7dDeploys.length
+      ? successRate7dDeploys.filter((d) => d.success === true).length / successRate7dDeploys.length
+      : 0;
+    const successRate30d = successRate30dDeploys.length
+      ? successRate30dDeploys.filter((d) => d.success === true).length / successRate30dDeploys.length
+      : 0;
+
+    const durationSecs = allDeployments
+      .filter((d) => d.started_at && d.ended_at)
+      .map((d) => (new Date(d.ended_at) - new Date(d.started_at)) / 1000)
+      .sort((a, b) => a - b);
+    const medianDeploymentTimeSec = durationSecs.length
+      ? durationSecs[Math.floor(durationSecs.length / 2)]
+      : 0;
+
+    const failureMap = {};
+    allDeployments
+      .filter((d) => d.success === false)
+      .forEach((d) => {
+        const key = d.service_name || 'unknown';
+        failureMap[key] = (failureMap[key] || 0) + 1;
+      });
+    const topFailureCauses = Object.entries(failureMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([cause, count]) => ({ cause, count }));
+
+    const deploymentsByZone = { LAN: 0, DMZ: 0, WAN: 0, MGMT: 0 };
+    allDeployments.forEach((d) => {
+      const zone = (d.zone || 'LAN').toUpperCase();
+      deploymentsByZone[zone] = (deploymentsByZone[zone] || 0) + 1;
+    });
+
+    const depByInstance = {};
+    allDeployments.forEach((d) => {
+      if (d.instance_id) depByInstance[d.instance_id] = d;
+    });
+    const destroyDurations = allDeletes
+      .map((del) => {
+        const dep = depByInstance[del.instance_id];
+        if (dep && dep.started_at && del.deleted_at) {
+          return (new Date(del.deleted_at) - new Date(dep.started_at)) / 1000;
+        }
+        return null;
+      })
+      .filter((v) => v != null);
+    const avgDestroyTimeSec = destroyDurations.length
+      ? destroyDurations.reduce((a, b) => a + b, 0) / destroyDurations.length
+      : 0;
+
+    const settings = await UserSetting.findOne({ where: { user_id: req.user.id } });
+    let storageCapacity = [];
+    if (settings) {
+      const headers = {
+        Authorization: `PVEAPIToken=${settings.proxmox_api_token_id}!${settings.proxmox_api_token_name}=${settings.proxmox_api_token_secret}`,
+      };
+      try {
+        const storagesUrl = `${settings.proxmox_api_url}/cluster/resources?type=storage`;
+        const resp = await axios.get(storagesUrl, { httpsAgent, headers });
+        storageCapacity = (resp.data?.data || []).map((s) => ({
+          datastore: s.storage,
+          free: s.maxdisk - s.used,
+          total: s.maxdisk,
+        }));
+      } catch (e) {
+        storageCapacity = [];
+      }
+    }
+
+    res.json({
+      ...stats,
+      successRate7d,
+      successRate30d,
+      medianDeploymentTimeSec,
+      topFailureCauses,
+      storageCapacity,
+      deploymentsByZone,
+      avgDestroyTimeSec,
+    });
   } catch (err) {
     res.status(500).json({ message: 'Erreur lors du calcul des statistiques', error: err.message });
   }
@@ -342,12 +431,13 @@ exports.getInfrastructureMap = async (req, res) => {
     });
     // Layout configuration for each zone expressed as ratios of the map container
     const zoneLayouts = {
+      MGMT: { left: 0.05, top: 0.02, width: 0.4, height: 0.06 },
       LAN: { left: 0.05, top: 0.1, width: 0.4, height: 0.8 },
       DMZ: { left: 0.55, top: 0.1, width: 0.4, height: 0.4 },
       WAN: { left: 0.55, top: 0.55, width: 0.4, height: 0.35 },
       DEFAULT: { left: 0, top: 0, width: 1, height: 1 },
     };
-    const zoneCounters = { LAN: 0, DMZ: 0, WAN: 0, DEFAULT: 0 };
+    const zoneCounters = { MGMT: 0, LAN: 0, DMZ: 0, WAN: 0, DEFAULT: 0 };
 
     // Determine position for each server within its zone using a simple grid
     const positioned = servers.map((s) => {

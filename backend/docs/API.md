@@ -4,7 +4,9 @@ All routes except `POST /auth/login` require a Bearer token obtained from the lo
 
 
 ## Auth
-- `POST /auth/login` – authenticate a user and receive a JWT
+- `POST /auth/login` – authenticate a user and receive a JWT; include `remember` and `device_id` to also get a long-lived refresh token
+- `POST /auth/refresh` – exchange a refresh token for a new access token
+- `POST /auth/logout` – revoke the current session token and associated refresh token
 - `POST /auth/register` – create a new user (requires token)
 - `POST /auth/request-reset` – send a password reset code to user email
 - `POST /auth/reset-password` – reset password using the provided code
@@ -38,7 +40,15 @@ All routes except `POST /auth/login` require a Bearer token obtained from the lo
 
 ## Logs
 - `GET /logs` – list system logs with pagination and search
-- `GET /logs/export` – download logs as CSV or JSON
+- `GET /logs/export` – download logs as ZIP, TXT or JSON
+
+## Chat
+- `GET /chat/stream?threadId=ID&message=...` – stream chatbot responses via Server-Sent Events. Each token arrives as `data:` frames and an `event: end` signals completion.
+
+## Alerts
+- `GET /alerts` – list alerts with pagination and filters
+- `GET /alerts/:id` – retrieve a single alert
+- `POST /alerts/:id/ack` – acknowledge an alert
 
 ## User Settings
 - `GET /settings/me` – retrieve settings for the authenticated user

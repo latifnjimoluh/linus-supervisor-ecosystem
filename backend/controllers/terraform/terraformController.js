@@ -98,11 +98,28 @@ exports.deploy = async (req, res) => {
       };
       const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-      // Disque
+      const diskRequested = parseInt(String(payload.disk_size).replace(/\D/g, ''), 10);
+
+      // Taille minimale du template
+      const vmListUrl = `${payload.proxmox_api_url}/cluster/resources?type=vm`;
+      const vmListResp = await axios.get(vmListUrl, { httpsAgent, headers });
+      const tmplInfo = Array.isArray(vmListResp.data?.data)
+        ? vmListResp.data.data.find(
+            (v) => v.template === 1 && v.name === payload.template_name
+          )
+        : null;
+      const tmplDisk = tmplInfo ? Math.floor((tmplInfo.maxdisk || 0) / (1024 ** 3)) : 0;
+      if (tmplDisk && Number.isFinite(diskRequested) && diskRequested < tmplDisk) {
+        return res.status(400).json({
+          message: `Taille disque minimale : ${tmplDisk} Go pour le template ${payload.template_name}`,
+          min_disk: tmplDisk,
+        });
+      }
+
+      // Disque disponible
       const storageUrl = `${payload.proxmox_api_url}/nodes/${payload.proxmox_node}/storage/${payload.vm_storage}/status`;
       const storageResp = await axios.get(storageUrl, { httpsAgent, headers });
       const diskAvail = Math.floor((storageResp.data?.data?.avail || 0) / (1024 ** 3));
-      const diskRequested = parseInt(String(payload.disk_size).replace(/\D/g, ''), 10);
       if (Number.isFinite(diskRequested) && diskRequested > diskAvail) {
         return res.status(400).json({
           message: `Espace disponible : ${diskAvail} Go – Taille VM demandée : ${diskRequested} Go`,

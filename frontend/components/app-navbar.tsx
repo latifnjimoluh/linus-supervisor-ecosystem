@@ -10,7 +10,7 @@ import { ModeToggle } from "@/components/mode-toggle"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { logout } from "@/actions/auth"
+import { logoutUser } from "@/services/api"
 
 interface AppNavbarProps {
   user?: {
@@ -25,7 +25,7 @@ interface AppNavbarProps {
 
 export function AppNavbar({ user }: AppNavbarProps) {
   const handleLogout = async () => {
-    await logout()
+    await logoutUser("Déconnecté")
   }
 
   if (!user) {

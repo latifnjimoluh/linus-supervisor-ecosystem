@@ -22,8 +22,8 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM('active', 'inactif', 'blocked'),
-      defaultValue: 'active',
+      type: DataTypes.ENUM('actif', 'inactif', 'blocked'),
+      defaultValue: 'actif',
     },
     reset_token: {
       type: DataTypes.STRING,

@@ -33,6 +33,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { ErrorMessage } from "@/components/ui/error-message"
+import { InlineBanner } from "@/components/ui/inline-banner"
 import {
   fetchTemplatesAndScripts,
   updateTemplate,
@@ -153,17 +154,15 @@ export default function CodeEditorPage() {
       setTemplateCategory(selectedTemplate.category)
       setTemplateService(selectedTemplate.service_type)
       try {
-        setTemplateContent(
-          JSON.stringify(
-            JSON.parse(selectedTemplate.template_content),
-            null,
-            2
-          )
+        const content = JSON.stringify(
+          JSON.parse(selectedTemplate.template_content),
+          null,
+          2
         )
+        handleTemplateChange(content)
       } catch {
-        setTemplateContent(selectedTemplate.template_content)
+        handleTemplateChange(selectedTemplate.template_content)
       }
-      setTemplateStatus("idle")
       setTemplateView("code")
     }
   }, [selectedTemplate])
@@ -187,6 +186,16 @@ export default function CodeEditorPage() {
       }
     })
     setSyntaxErrors(errors)
+  }
+
+  const handleTemplateChange = (value: string) => {
+    setTemplateContent(value)
+    try {
+      JSON.parse(value)
+      setTemplateStatus("ok")
+    } catch {
+      setTemplateStatus("error")
+    }
   }
 
   const saveScript = async () => {
@@ -586,13 +595,12 @@ export default function CodeEditorPage() {
               </div>
 
               {syntaxErrors.length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4 text-red-600" />
-                    <span className="font-medium text-red-600">
-                      Erreurs de syntaxe
-                    </span>
-                  </div>
+                <>
+                  <InlineBanner
+                    kind="destructive"
+                    title="Erreurs de syntaxe"
+                    className="mb-2"
+                  />
                   <ul className="space-y-1">
                     {syntaxErrors.map((error, index) => (
                       <li key={index}>
@@ -600,7 +608,7 @@ export default function CodeEditorPage() {
                       </li>
                     ))}
                   </ul>
-                </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -800,9 +808,9 @@ export default function CodeEditorPage() {
                       <TabsContent value="code">
                         <div className="relative rounded-xl overflow-hidden">
                           <MonacoEditor
-                            value={templateContent}
-                            language="json"
-                            onChange={(value) => setTemplateContent(value || "")}
+                              value={templateContent}
+                              language="json"
+                              onChange={(value) => handleTemplateChange(value || "")}
                             height="500px"
                             theme={theme === "dark" ? "vs-dark" : "vs-light"}
                             options={{

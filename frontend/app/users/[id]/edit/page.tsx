@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, User, Mail, Shield, Loader2 } from 'lucide-react'
+import { capitalize } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -179,7 +180,14 @@ export default function EditUserPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {roles.map(role => (
-                        <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
+                        <SelectItem key={role.id} value={String(role.id)}>
+                          <div className="flex flex-col">
+                            <span className="capitalize">{capitalize(role.name)}</span>
+                            {role.description && (
+                              <span className="text-xs text-muted-foreground">{role.description}</span>
+                            )}
+                          </div>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

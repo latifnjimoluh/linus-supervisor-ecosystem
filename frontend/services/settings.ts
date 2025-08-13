@@ -27,7 +27,7 @@ export interface AccountInfo {
   last_name: string;
   email: string;
   phone?: string;
-  role?: { id: number; name: string };
+  role?: { id: number; name: string; description?: string };
   language?: string | null;
   settings?: UserSettings | null;
 }

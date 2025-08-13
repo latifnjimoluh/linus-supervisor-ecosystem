@@ -38,6 +38,16 @@ exports.createTemplate = async (req, res) => {
   const { name, service_type, category, description, template_content, fields_schema } = req.body;
 
   try {
+    let content = template_content;
+    if (typeof content === 'string' && content.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(content);
+        content = JSON.stringify(parsed, null, 2);
+      } catch (e) {
+        return res.status(400).json({ message: 'Template JSON invalide' });
+      }
+    }
+
     const safeName = sanitizeName(name);
     const safeCategory = sanitizeName(category);
     const safeServiceType = sanitizeName(service_type);
@@ -50,14 +60,14 @@ exports.createTemplate = async (req, res) => {
     const filepath = path.join(categoryDir, filename);
     const script_path = `/scripts/templates/${safeCategory}/${filename}`;
 
-    fs.writeFileSync(filepath, template_content);
+    fs.writeFileSync(filepath, content);
 
     const tpl = await ServiceTemplate.create({
       name,
       service_type,
       category,
       description,
-      template_content,
+      template_content: content,
       script_path,
       abs_path: filepath,
       fields_schema,
@@ -321,7 +331,18 @@ exports.updateTemplate = async (req, res) => {
       console.log('⚠️ Template non trouvé');
       return res.status(404).json({ message: 'Template non trouvé' });
     }
-    await tpl.update(req.body);
+
+    let updates = { ...req.body };
+    if (typeof updates.template_content === 'string' && updates.template_content.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(updates.template_content);
+        updates.template_content = JSON.stringify(parsed, null, 2);
+      } catch (e) {
+        return res.status(400).json({ message: 'Template JSON invalide' });
+      }
+    }
+
+    await tpl.update(updates);
     await logAction(req, `update_template:${tpl.id}`);
     console.log('✅ Template mis à jour', tpl.id);
     res.json({ message: 'Template mis à jour', template: tpl });

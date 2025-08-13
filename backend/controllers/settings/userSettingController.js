@@ -26,7 +26,7 @@ exports.getAccountInfo = async (req, res) => {
   const userId = req.user?.id;
   try {
     const user = await User.findByPk(userId, {
-      include: [{ model: Role, as: 'role', attributes: ['id', 'name'] }],
+      include: [{ model: Role, as: 'role', attributes: ['id', 'name', 'description'] }],
     });
     if (!user) {
       return res.status(404).json({ message: 'Utilisateur introuvable.' });

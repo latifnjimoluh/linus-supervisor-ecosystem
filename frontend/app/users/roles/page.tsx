@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { listRoles, createRole, updateRole, deleteRole, Role } from "@/services/roles"
+import { capitalize } from "@/lib/utils"
 
 type RoleForm = {
   name: string
@@ -273,7 +274,7 @@ export default function RolesPage() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
                       <Shield className="h-5 w-5" />
-                      {role.name}
+                      {capitalize(role.name)}
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       {role.is_system && (
@@ -324,13 +325,13 @@ export default function RolesPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Supprimer le rôle</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Êtes-vous sûr de vouloir supprimer le rôle "{role.name}" ? Cette action est irréversible.
+                            Êtes-vous sûr de vouloir supprimer le rôle "{capitalize(role.name)}" ? Cette action est irréversible.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Annuler</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => handleDeleteRole(role.id, role.name)}
+                            onClick={() => handleDeleteRole(role.id, capitalize(role.name))}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
                             Supprimer

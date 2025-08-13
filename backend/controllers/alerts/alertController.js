@@ -39,6 +39,17 @@ exports.listAlerts = async (req, res) => {
   }
 };
 
+exports.getAlert = async (req, res) => {
+  try {
+    const alert = await Alert.findByPk(req.params.id);
+    if (!alert) return res.status(404).json({ message: 'Alerte introuvable.' });
+    res.json(alert);
+  } catch (error) {
+    console.error('Erreur récupération alerte:', error);
+    res.status(500).json({ message: "Erreur serveur lors de la récupération de l'alerte." });
+  }
+};
+
 exports.updateAlert = async (req, res) => {
   const { id } = req.params;
   try {
@@ -54,5 +65,21 @@ exports.updateAlert = async (req, res) => {
   } catch (error) {
     console.error('Erreur mise à jour alerte:', error);
     res.status(500).json({ message: "Erreur serveur lors de la mise à jour de l'alerte." });
+  }
+};
+
+exports.ackAlert = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const alert = await Alert.findByPk(id);
+    if (!alert) {
+      return res.status(404).json({ message: 'Alerte introuvable.' });
+    }
+    alert.status = 'acknowledged';
+    await alert.save();
+    res.json({ message: 'Alerte acquittée', alert });
+  } catch (error) {
+    console.error('Erreur acquittement alerte:', error);
+    res.status(500).json({ message: "Erreur serveur lors de l'acquittement de l'alerte." });
   }
 };

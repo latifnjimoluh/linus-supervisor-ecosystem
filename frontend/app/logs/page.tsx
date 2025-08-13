@@ -60,7 +60,7 @@ export default function LogsPage() {
   const [page, setPage] = React.useState(1)
   const [pageSize, setPageSize] = React.useState(10)
   const [total, setTotal] = React.useState(0)
-  const [exportFormat, setExportFormat] = React.useState<"csv" | "json" | "">("")
+  const [exportFormat, setExportFormat] = React.useState<"zip" | "txt" | "json" | "">("")
   const { toast } = useToast()
 
   const fetchLogs = React.useCallback(async () => {
@@ -169,13 +169,14 @@ export default function LogsPage() {
             Actualiser
           </Button>
           <div className="flex items-center gap-2">
-            <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "csv" | "json")}>
+            <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "zip" | "txt" | "json")}>
               <SelectTrigger className="w-32 rounded-xl">
                 <Download className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Format" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="zip">ZIP</SelectItem>
+                <SelectItem value="txt">TXT</SelectItem>
                 <SelectItem value="json">JSON</SelectItem>
               </SelectContent>
             </Select>

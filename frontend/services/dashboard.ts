@@ -20,6 +20,13 @@ export const getDashboard = async (): Promise<DashboardData> => {
 export interface DeploymentStatsResponse {
   totals: { deployed: number; success: number; failed: number; deleted: number };
   timeline: Array<{ period: string; deployed: number; deleted: number; success: number; failed: number }>;
+  successRate7d: number;
+  successRate30d: number;
+  medianDeploymentTimeSec: number;
+  topFailureCauses: Array<{ cause: string; count: number }>;
+  storageCapacity: Array<{ datastore: string; free: number; total: number }>;
+  deploymentsByZone: Record<string, number>;
+  avgDestroyTimeSec: number;
 }
 
 export const getDeploymentStats = async (

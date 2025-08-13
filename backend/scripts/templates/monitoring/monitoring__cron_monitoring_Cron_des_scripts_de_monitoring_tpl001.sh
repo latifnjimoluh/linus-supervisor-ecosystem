@@ -56,21 +56,22 @@ remove_mark() {
 
 ok=1
 if exists_and_exec "$STATUS_SCRIPT_PATH"; then
-  add_cron_once "$STATUS_CRON_EXPR" "bash $STATUS_SCRIPT_PATH >/opt/monitoring/status.log 2>&1" "$MARK_STATUS"
+  add_cron_once "$STATUS_CRON_EXPR" "sudo bash $STATUS_SCRIPT_PATH >/opt/monitoring/status.log 2>&1" "$MARK_STATUS"
 else
   ok=0
 fi
 
 if exists_and_exec "$SERVICES_SCRIPT_PATH"; then
-  add_cron_once "$SERVICES_CRON_EXPR" "bash $SERVICES_SCRIPT_PATH >/opt/monitoring/services_status.log 2>&1" "$MARK_SERVICES"
+  add_cron_once "$SERVICES_CRON_EXPR" "sudo bash $SERVICES_SCRIPT_PATH >/opt/monitoring/services_status.log 2>&1" "$MARK_SERVICES"
 else
   ok=0
 fi
 
 if [[ "$ok" -eq 1 ]]; then
-  # Exécuter une première fois pour générer les JSON immédiatement
-  bash "$STATUS_SCRIPT_PATH" || true
-  bash "$SERVICES_SCRIPT_PATH" || true
+  # Exécuter une première fois tous les scripts pour générer les JSON immédiatement
+  for script in /opt/monitoring/*.sh; do
+    sudo bash "$script" || true
+  done
   # Se retirer du crontab
   remove_mark "$MARK_BOOT"
 fi

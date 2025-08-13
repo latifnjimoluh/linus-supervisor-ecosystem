@@ -79,6 +79,7 @@ exports.getUsersPermissions = async (req, res, next) => {
         { email: { [Op.iLike]: `%${q}%` } },
         { '$role.name$': { [Op.iLike]: `%${q}%` } },
         { '$role.permissions.name$': { [Op.iLike]: `%${q}%` } },
+        { '$role.permissions.key$': { [Op.iLike]: `%${q}%` } },
       ],
     } : {};
 

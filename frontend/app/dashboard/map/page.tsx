@@ -16,22 +16,23 @@ const simulateMapAIAnalysis = async (context: string): Promise<string> => {
   await new Promise(resolve => setTimeout(resolve, 2000))
 
   const prompt = `Tu es un assistant réseau. À partir des statistiques suivantes, résume l'état des zones et signale les priorités : ${context}`
-  const match = context.match(/Serveurs affichés: (\d+), LAN: (\d+), WAN: (\d+), DMZ: (\d+), OK: (\d+), Alerte: (\d+), Hors supervision: (\d+)/)
+  const match = context.match(/Serveurs affichés: (\d+), LAN: (\d+), WAN: (\d+), DMZ: (\d+), MGMT: (\d+), OK: (\d+), Alerte: (\d+), Hors supervision: (\d+)/)
   const total = match ? parseInt(match[1]) : 0
   const lan = match ? parseInt(match[2]) : 0
   const wan = match ? parseInt(match[3]) : 0
   const dmz = match ? parseInt(match[4]) : 0
-  const ok = match ? parseInt(match[5]) : 0
-  const alert = match ? parseInt(match[6]) : 0
-  const unsupervised = match ? parseInt(match[7]) : 0
+  const mgmt = match ? parseInt(match[5]) : 0
+  const ok = match ? parseInt(match[6]) : 0
+  const alert = match ? parseInt(match[7]) : 0
+  const unsupervised = match ? parseInt(match[8]) : 0
 
-  return `🤖 **Analyse IA de la carte d'infrastructure**\n\n${total} serveurs : LAN ${lan}, WAN ${wan}, DMZ ${dmz}. Statuts — OK ${ok}, Alerte ${alert}, Hors supervision ${unsupervised}.\n\n**Actions recommandées :**\n- Inspecter les ${alert} serveur(s) en alerte\n- Vérifier la supervision de ${unsupervised} hôte(s)\n\n*Prompt utilisé :* ${prompt}`
+  return `🤖 **Analyse IA de la carte d'infrastructure**\n\n${total} serveurs : LAN ${lan}, WAN ${wan}, DMZ ${dmz}, MGMT ${mgmt}. Statuts — OK ${ok}, Alerte ${alert}, Hors supervision ${unsupervised}.\n\n**Actions recommandées :**\n- Inspecter les ${alert} serveur(s) en alerte\n- Vérifier la supervision de ${unsupervised} hôte(s)\n\n*Prompt utilisé :* ${prompt}`
 }
 
 export default function InfrastructureMapPage() {
   const [servers, setServers] = React.useState<InfrastructureServer[]>([])
   const [loading, setLoading] = React.useState(true)
-  const [filterZone, setFilterZone] = React.useState<"all" | "LAN" | "WAN" | "DMZ">("all")
+  const [filterZone, setFilterZone] = React.useState<"all" | "LAN" | "WAN" | "DMZ" | "MGMT">("all")
   const router = useRouter()
 
   const fetchServers = React.useCallback(() => {
@@ -50,13 +51,13 @@ export default function InfrastructureMapPage() {
     !server.isTemplate && (filterZone === "all" || server.zone === filterZone)
   )
 
-  const zoneSummary = { LAN: 0, WAN: 0, DMZ: 0 }
+  const zoneSummary = { LAN: 0, WAN: 0, DMZ: 0, MGMT: 0 }
   const statusSummary = { ok: 0, alert: 0, unsupervised: 0 }
   filteredServers.forEach(s => {
     zoneSummary[s.zone]++
     statusSummary[s.status]++
   })
-  const aiContext = `Serveurs affichés: ${filteredServers.length}, LAN: ${zoneSummary.LAN}, WAN: ${zoneSummary.WAN}, DMZ: ${zoneSummary.DMZ}, OK: ${statusSummary.ok}, Alerte: ${statusSummary.alert}, Hors supervision: ${statusSummary.unsupervised}`
+  const aiContext = `Serveurs affichés: ${filteredServers.length}, LAN: ${zoneSummary.LAN}, WAN: ${zoneSummary.WAN}, DMZ: ${zoneSummary.DMZ}, MGMT: ${zoneSummary.MGMT}, OK: ${statusSummary.ok}, Alerte: ${statusSummary.alert}, Hors supervision: ${statusSummary.unsupervised}`
 
   const getStatusIcon = (status: InfrastructureServer['status']) => {
     switch (status) {
@@ -72,6 +73,7 @@ export default function InfrastructureMapPage() {
       case "LAN": return "border-blue-500/50 bg-blue-500/10"
       case "WAN": return "border-purple-500/50 bg-purple-500/10"
       case "DMZ": return "border-orange-500/50 bg-orange-500/10"
+      case "MGMT": return "border-green-500/50 bg-green-500/10"
       default: return "border-gray-500/50 bg-gray-500/10"
     }
   }
@@ -142,6 +144,13 @@ export default function InfrastructureMapPage() {
           >
             DMZ
           </Button>
+          <Button
+            variant={filterZone === "MGMT" ? "default" : "outline"}
+            onClick={() => setFilterZone("MGMT")}
+            className="rounded-xl"
+          >
+            MGMT
+          </Button>
         </CardContent>
       </Card>
 
@@ -164,6 +173,12 @@ export default function InfrastructureMapPage() {
           ) : (
             <div className="relative w-full h-[600px] border rounded-xl overflow-hidden bg-gradient-to-br from-background to-muted/20">
               {/* Zone containers */}
+              <div className={cn("absolute border-2 rounded-xl p-4", getZoneColor("MGMT"))} style={{ top: '2%', left: '5%', width: '40%', height: '6%' }}>
+                <h3 className="font-bold text-lg mb-4">MGMT (Management)</h3>
+                {filteredServers.filter(s => s.zone === "MGMT").length === 0 && (
+                  <p className="text-muted-foreground text-sm">Aucun serveur dans cette zone.</p>
+                )}
+              </div>
               <div className={cn("absolute border-2 rounded-xl p-4", getZoneColor("LAN"))} style={{ top: '10%', left: '5%', width: '40%', height: '80%' }}>
                 <h3 className="font-bold text-lg mb-4">LAN (Réseau Local)</h3>
                 {filteredServers.filter(s => s.zone === "LAN").length === 0 && (
@@ -282,6 +297,9 @@ export default function InfrastructureMapPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="h-4 w-4 border-2 border-orange-500/50 bg-orange-500/10 rounded" /> Zone DMZ
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 border-2 border-green-500/50 bg-green-500/10 rounded" /> Zone MGMT
           </div>
         </CardContent>
       </Card>
