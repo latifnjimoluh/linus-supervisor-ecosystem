@@ -13,6 +13,9 @@ router.use((req, res, next) => {
 
 router.use(verifyToken, logRequest);
 
+router.get('/alerts', checkPermission('settings.get'), settingsController.getAlertThresholds);
+router.post('/alerts', checkPermission('settings.create'), settingsController.createAlertThresholds);
+router.put('/alerts', checkPermission('settings.update'), settingsController.updateAlertThresholds);
 router.get('/me', checkPermission('settings.get'), settingsController.getUserSettings);
 router.post('/me', checkPermission('settings.create'), settingsController.createUserSettings);
 router.put('/me', checkPermission('settings.update'), settingsController.updateUserSettings);

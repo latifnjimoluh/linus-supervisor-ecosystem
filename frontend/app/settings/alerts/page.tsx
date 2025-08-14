@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { useAlertThresholds } from "@/hooks/use-alert-thresholds"
 
 export default function AlertSettingsPage() {
-  const { cpu, ram, setCpu, setRam } = useAlertThresholds()
+  const { cpu, ram, save } = useAlertThresholds()
   const [localCpu, setLocalCpu] = React.useState(cpu)
   const [localRam, setLocalRam] = React.useState(ram)
 
@@ -22,8 +22,7 @@ export default function AlertSettingsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setCpu(localCpu)
-    setRam(localRam)
+    save(localCpu, localRam)
   }
 
   return (

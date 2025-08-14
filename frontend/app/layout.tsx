@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { ToastProvider } from "@/hooks/use-toast";
 import { ErrorProvider } from "@/hooks/use-errors";
+import { LanguageProvider } from "@/hooks/use-language";
 import { AppLayout } from "../components/app-layout";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -22,8 +23,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ErrorProvider>
           <ToastProvider>
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-              <AppLayout>{children}</AppLayout>
-              <Toaster />
+              <LanguageProvider>
+                <AppLayout>{children}</AppLayout>
+                <Toaster />
+              </LanguageProvider>
             </ThemeProvider>
           </ToastProvider>
         </ErrorProvider>

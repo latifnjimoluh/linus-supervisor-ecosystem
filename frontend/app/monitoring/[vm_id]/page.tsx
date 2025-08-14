@@ -520,15 +520,16 @@ export default function VMDetailsPage() {
         </TooltipProvider>
 
         <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <AlertDialog>
+          <AlertDialog>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="destructive"
                     disabled={actionLoading !== null}
                     aria-label="Supprimer"
                     className="rounded-xl h-10 w-10 md:w-auto md:px-4"
+                    onClick={() => console.log(`Delete VM button clicked for ${vmData?.name}`)}
                   >
                     {actionLoading === "delete" ? (
                       <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
@@ -538,27 +539,27 @@ export default function VMDetailsPage() {
                     <span className="hidden md:inline">Supprimer</span>
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Supprimer la VM</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Êtes-vous sûr de vouloir supprimer la VM "{vmData?.name}" ? Cette action est irréversible.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => handleVMAction("delete")}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Supprimer
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </TooltipTrigger>
-            <TooltipContent>Supprimer</TooltipContent>
-          </Tooltip>
+              </TooltipTrigger>
+              <TooltipContent>Supprimer</TooltipContent>
+            </Tooltip>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer la VM</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Êtes-vous sûr de vouloir supprimer la VM "{vmData?.name}" ? Cette action est irréversible.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => handleVMAction("delete")}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TooltipProvider>
         {lastSync && (
           <div className="flex items-center text-xs text-muted-foreground">

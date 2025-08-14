@@ -7,6 +7,8 @@ const { User, Role, RefreshToken } = db;
 const { Op } = db.Sequelize;
 const { createToken } = require('../../middlewares/auth');
 const { sendResetCode } = require('../../utils/mailer');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
 
 // Petit helper: jamais laisser un logAction faire échouer la route
 async function safeLog(req, action, meta = {}) {
@@ -82,7 +84,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   const start = Date.now();
   try {
-    const { email, password, remember, device_id } = req.body || {};
+    const { email, password, remember, device_id, otp } = req.body || {};
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email et mot de passe sont requis.' });
@@ -132,6 +134,20 @@ exports.login = async (req, res) => {
       role: user.role?.name,
       role_id: user.role_id,
     };
+
+    if (user.two_factor_enabled) {
+      if (!otp) {
+        return res.status(401).json({ message: 'Code 2FA requis.' });
+      }
+      const verifiedOtp = speakeasy.totp.verify({
+        secret: user.two_factor_secret,
+        encoding: 'base32',
+        token: otp,
+      });
+      if (!verifiedOtp) {
+        return res.status(401).json({ message: 'Code 2FA invalide.' });
+      }
+    }
 
     const token = createToken(
       { id: user.id, email: user.email, role_id: user.role_id },
@@ -386,5 +402,66 @@ exports.refresh = async (req, res) => {
   } catch (err) {
     console.error('[REFRESH] échec', err?.message || err);
     return res.status(401).json({ message: 'Échec du rafraîchissement.' });
+  }
+};
+
+// ------------------------- 2FA SETUP -------------------------
+exports.setup2FA = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur introuvable.' });
+    }
+    const secret = speakeasy.generateSecret({ name: `Linusupervisor (${user.email})` });
+    user.two_factor_secret = secret.base32;
+    user.two_factor_enabled = false;
+    await user.save();
+    const qr = await qrcode.toDataURL(secret.otpauth_url);
+    return res.json({ secret: secret.base32, qr });
+  } catch (err) {
+    console.error('[2FA setup] 500', err?.message || err);
+    return res.status(500).json({ message: 'Erreur lors de la génération du secret 2FA.' });
+  }
+};
+
+// ------------------------- 2FA VERIFY -------------------------
+exports.verify2FA = async (req, res) => {
+  try {
+    const { token } = req.body || {};
+    const user = await User.findByPk(req.user.id);
+    if (!user || !user.two_factor_secret) {
+      return res.status(400).json({ message: '2FA non configurée.' });
+    }
+    const verified = speakeasy.totp.verify({
+      secret: user.two_factor_secret,
+      encoding: 'base32',
+      token,
+    });
+    if (!verified) {
+      return res.status(400).json({ message: 'Code 2FA invalide.' });
+    }
+    user.two_factor_enabled = true;
+    await user.save();
+    return res.json({ message: '2FA activée.' });
+  } catch (err) {
+    console.error('[2FA verify] 500', err?.message || err);
+    return res.status(500).json({ message: 'Erreur lors de la vérification du code 2FA.' });
+  }
+};
+
+// ------------------------- 2FA DISABLE -------------------------
+exports.disable2FA = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur introuvable.' });
+    }
+    user.two_factor_secret = null;
+    user.two_factor_enabled = false;
+    await user.save();
+    return res.json({ message: '2FA désactivée.' });
+  } catch (err) {
+    console.error('[2FA disable] 500', err?.message || err);
+    return res.status(500).json({ message: 'Erreur lors de la désactivation du 2FA.' });
   }
 };

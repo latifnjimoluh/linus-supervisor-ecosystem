@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useErrors } from "@/hooks/use-errors"
 import { ErrorBanner } from "@/components/error-banner"
-import { changePassword, requestPasswordReset, resetPasswordWithCode } from "@/services/auth"
+import { changePassword, requestPasswordReset, resetPasswordWithCode, setup2FA, verify2FA, disable2FA } from "@/services/auth"
 import {
   AccountInfo,
   createMySettings,
@@ -42,6 +42,7 @@ export default function AccountSettingsPage() {
   const [instanceInfoPath, setInstanceInfoPath] = useState("")
   const [proxmoxHost, setProxmoxHost] = useState("")
   const [proxmoxSshUser, setProxmoxSshUser] = useState("")
+  const [twoFAEnabled, setTwoFAEnabled] = useState(false)
 
   useEffect(() => {
     getAccountInfo().then((data) => {
@@ -59,6 +60,7 @@ export default function AccountSettingsPage() {
       } else {
         setHasSettings(false)
       }
+      setTwoFAEnabled(data?.two_factor_enabled ?? false)
     })
   }, [])
 
@@ -101,6 +103,26 @@ export default function AccountSettingsPage() {
       setResetNewPassword("")
       setResetConfirmPassword("")
       setResetSent(false)
+    } catch (err: any) {
+      setError("account", { message: err?.response?.data?.message || err.message })
+    }
+  }
+
+  const handleToggle2FA = async (checked: boolean) => {
+    try {
+      if (checked) {
+        const { secret } = await setup2FA()
+        alert(`Secret 2FA : ${secret}`)
+        const code = window.prompt("Entrez le code de votre application d'authentification")
+        if (!code) return
+        await verify2FA(code)
+        setTwoFAEnabled(true)
+        toast({ title: "2FA activée", variant: "success" })
+      } else {
+        await disable2FA()
+        setTwoFAEnabled(false)
+        toast({ title: "2FA désactivée", variant: "success" })
+      }
     } catch (err: any) {
       setError("account", { message: err?.response?.data?.message || err.message })
     }
@@ -349,7 +371,7 @@ export default function AccountSettingsPage() {
                       Ajoutez une couche de sécurité supplémentaire à votre compte.
                     </p>
                   </div>
-                  <Switch id="2fa" />
+                  <Switch id="2fa" checked={twoFAEnabled} onCheckedChange={handleToggle2FA} />
                 </div>
               </div>
             </CardContent>

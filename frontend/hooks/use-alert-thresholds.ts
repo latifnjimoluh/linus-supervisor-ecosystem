@@ -1,50 +1,32 @@
 import * as React from "react"
-
-const CPU_KEY = "alert_threshold_cpu"
-const RAM_KEY = "alert_threshold_ram"
-const EVENT_NAME = "alert-thresholds-change"
-
-function read(key: string, fallback: number) {
-  if (typeof window === "undefined") return fallback
-  const v = window.localStorage.getItem(key)
-  return v ? Number(v) : fallback
-}
+import { getAlertThresholds, createAlertThresholds, updateAlertThresholds } from "@/services/settings"
 
 export function useAlertThresholds() {
-  const [cpu, setCpu] = React.useState(() => read(CPU_KEY, 10))
-  const [ram, setRam] = React.useState(() => read(RAM_KEY, 10))
+  const [cpu, setCpu] = React.useState(10)
+  const [ram, setRam] = React.useState(10)
+  const [exists, setExists] = React.useState(false)
 
   React.useEffect(() => {
-    const handler = () => {
-      setCpu(read(CPU_KEY, 10))
-      setRam(read(RAM_KEY, 10))
-    }
-    if (typeof window !== "undefined") {
-      window.addEventListener(EVENT_NAME, handler)
-      window.addEventListener("storage", handler)
-    }
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener(EVENT_NAME, handler)
-        window.removeEventListener("storage", handler)
+    ;(async () => {
+      const data = await getAlertThresholds()
+      if (data) {
+        setCpu(data.alert_cpu_threshold ?? 10)
+        setRam(data.alert_ram_threshold ?? 10)
+        setExists(true)
       }
-    }
+    })()
   }, [])
 
-  const updateCpu = (v: number) => {
-    setCpu(v)
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(CPU_KEY, String(v))
-      window.dispatchEvent(new Event(EVENT_NAME))
+  const save = async (cpuVal: number, ramVal: number) => {
+    if (exists) {
+      await updateAlertThresholds({ alert_cpu_threshold: cpuVal, alert_ram_threshold: ramVal })
+    } else {
+      await createAlertThresholds({ alert_cpu_threshold: cpuVal, alert_ram_threshold: ramVal })
+      setExists(true)
     }
-  }
-  const updateRam = (v: number) => {
-    setRam(v)
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(RAM_KEY, String(v))
-      window.dispatchEvent(new Event(EVENT_NAME))
-    }
+    setCpu(cpuVal)
+    setRam(ramVal)
   }
 
-  return { cpu, ram, setCpu: updateCpu, setRam: updateRam }
+  return { cpu, ram, save }
 }

@@ -333,8 +333,14 @@ exports.getOverview = async (req, res) => {
           });
           a.id = record.id;
           a.description = description;
-          if (created && process.env.ALERT_EMAIL_TO) {
-            const recipients = process.env.ALERT_EMAIL_TO.split(',').map((e) => e.trim()).filter(Boolean);
+          if (created) {
+            const recipients = [req.user?.email]
+              .concat(
+                process.env.ALERT_EMAIL_TO
+                  ? process.env.ALERT_EMAIL_TO.split(',').map((e) => e.trim())
+                  : []
+              )
+              .filter(Boolean);
             await sendAlertEmail(recipients, {
               server: serverName,
               service: a.type,

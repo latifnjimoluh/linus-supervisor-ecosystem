@@ -19,6 +19,8 @@ export interface UserSettings {
   instanceinfopath?: string;
   proxmox_host?: string;
   proxmox_ssh_user?: string;
+  alert_cpu_threshold?: number;
+  alert_ram_threshold?: number;
 }
 
 export interface AccountInfo {
@@ -29,6 +31,7 @@ export interface AccountInfo {
   phone?: string;
   role?: { id: number; name: string; description?: string };
   language?: string | null;
+  two_factor_enabled?: boolean;
   settings?: UserSettings | null;
 }
 
@@ -57,6 +60,32 @@ export const updateStoragePreferences = async (data: {
   vm_storage: string;
 }): Promise<UserSettings> => {
   const res = await api.put("/settings/storage", data);
+  return res.data;
+};
+
+export const getAlertThresholds = async (): Promise<{ alert_cpu_threshold: number; alert_ram_threshold: number } | null> => {
+  try {
+    const res = await api.get("/settings/alerts");
+    return res.data;
+  } catch (err) {
+    console.error("getAlertThresholds error", err);
+    return null;
+  }
+};
+
+export const createAlertThresholds = async (data: {
+  alert_cpu_threshold: number;
+  alert_ram_threshold: number;
+}): Promise<UserSettings> => {
+  const res = await api.post("/settings/alerts", data);
+  return res.data;
+};
+
+export const updateAlertThresholds = async (data: {
+  alert_cpu_threshold: number;
+  alert_ram_threshold: number;
+}): Promise<UserSettings> => {
+  const res = await api.put("/settings/alerts", data);
   return res.data;
 };
 

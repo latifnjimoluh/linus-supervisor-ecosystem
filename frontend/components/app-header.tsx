@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { ModeToggle } from "@/components/mode-toggle"
+import { LanguageSwitcher } from "@/components/language-switcher"
 import { Menu, Bell, User, Settings, LogOut, HelpCircle, Loader2 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -13,6 +14,7 @@ import { getAuthToken, refreshAuthToken, logoutUser } from "@/services/api"
 import { getStatusBadge } from "@/components/status-badge"
 import { useErrors } from "@/hooks/use-errors"
 import { ErrorBanner } from "./error-banner"
+import { useLanguage } from "@/hooks/use-language"
 
 interface AppHeaderProps {
   title?: string
@@ -20,6 +22,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
+  const { t, lang } = useLanguage()
   const [last, setLast] = React.useState<null | { instance_id: string; status: string; updatedAt: number }>(null)
   const esRef = React.useRef<EventSource | null>(null)
   const [staleMsg, setStaleMsg] = React.useState<string | null>(null)
@@ -105,8 +108,12 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
     if (!last) return
     const check = () => {
       if (["running", "pending"].includes(last.status) && Date.now() - last.updatedAt > 15000) {
-        const t = new Date(last.updatedAt).toLocaleTimeString()
-        setStaleMsg(`Toujours en cours… (dernière mise à jour ${t})`)
+        const timeStr = new Date(last.updatedAt).toLocaleTimeString()
+        setStaleMsg(
+          lang === "fr"
+            ? `Toujours en cours… (dernière mise à jour ${timeStr})`
+            : `Still running… (last update ${timeStr})`
+        )
       } else {
         setStaleMsg(null)
       }
@@ -131,14 +138,14 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
           onClick={onToggleSidebar}
         >
           <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
-          <span className="sr-only">Toggle sidebar</span>
+          <span className="sr-only">{t("toggleSidebar")}</span>
         </Button>
         {title && <h1 className="text-base font-medium sm:text-lg">{title}</h1>}
         <div className="flex-1" />
         {last && (
           <Link href={`/deployments/${last.instance_id}`}>
             <Button variant="outline" className="flex items-center gap-2">
-              Dernier déploiement
+              {t("lastDeployment")}
               <div className="flex items-center gap-2">
                 {getStatusBadge(last.status)}
                 {["pending", "running"].includes(last.status) && (
@@ -146,7 +153,7 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
                     <span className="text-sm text-muted-foreground">{staleMsg}</span>
                   ) : (
                     <span className="flex items-center text-sm text-muted-foreground">
-                      <Loader2 className="mr-1 h-4 w-4 animate-spin" /> En cours…
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" /> {t("inProgress")}
                     </span>
                   )
                 )}
@@ -158,13 +165,14 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
         <Link href="/help#search">
           <Button variant="ghost" size="icon" className="rounded-full">
             <HelpCircle className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="sr-only">Besoin d'aide ?</span>
+            <span className="sr-only">{t("needHelp")}</span>
           </Button>
         </Link>
         <Button variant="ghost" size="icon" className="rounded-full">
           <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
-          <span className="sr-only">Notifications</span>
+          <span className="sr-only">{t("notifications")}</span>
         </Button>
+        <LanguageSwitcher />
         <ModeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -173,30 +181,30 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
                 <AvatarImage src="/placeholder-user.jpg" alt="User Avatar" />
                 <AvatarFallback>LS</AvatarFallback>
               </Avatar>
-              <span className="sr-only">Toggle user menu</span>
+            <span className="sr-only">Toggle user menu</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("myAccount")}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/profile" className="flex items-center">
-                <User className="mr-2 h-4 w-4" /> Profil
+                <User className="mr-2 h-4 w-4" /> {t("profile")}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/settings" className="flex items-center">
-                <Settings className="mr-2 h-4 w-4" /> Paramètres
+                <Settings className="mr-2 h-4 w-4" /> {t("settings")}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/help" className="flex items-center">
-                <HelpCircle className="mr-2 h-4 w-4" /> Aide
+                <HelpCircle className="mr-2 h-4 w-4" /> {t("help")}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="flex items-center text-destructive focus:text-destructive">
-              <LogOut className="mr-2 h-4 w-4" /> Déconnexion
+              <LogOut className="mr-2 h-4 w-4" /> {t("logout")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

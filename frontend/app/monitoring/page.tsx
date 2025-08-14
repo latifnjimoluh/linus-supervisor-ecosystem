@@ -418,9 +418,9 @@ export default function MonitoringPage() {
                           </TooltipProvider>
 
                           <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <AlertDialog>
+                            <AlertDialog>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
                                   <AlertDialogTrigger asChild>
                                     <Button
                                       variant="destructive"
@@ -428,6 +428,7 @@ export default function MonitoringPage() {
                                       disabled={actionLoading === vm.id}
                                       aria-label="Supprimer"
                                       className="rounded-xl h-10 w-full md:px-4"
+                                      onClick={() => console.log(`Delete VM button clicked for ${vm.name}`)}
                                     >
                                       {actionLoading === vm.id ? (
                                         <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
@@ -437,27 +438,27 @@ export default function MonitoringPage() {
                                       <span className="hidden md:inline">Supprimer</span>
                                     </Button>
                                   </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Supprimer la VM</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Êtes-vous sûr de vouloir supprimer la VM "{vm.name}" ? Cette action est irréversible.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleVMDelete(vm)}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      >
-                                        Supprimer
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </TooltipTrigger>
-                              <TooltipContent>Supprimer</TooltipContent>
-                            </Tooltip>
+                                </TooltipTrigger>
+                                <TooltipContent>Supprimer</TooltipContent>
+                              </Tooltip>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Supprimer la VM</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Êtes-vous sûr de vouloir supprimer la VM "{vm.name}" ? Cette action est irréversible.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleVMDelete(vm)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Supprimer
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </TooltipProvider>
                         </div>
 

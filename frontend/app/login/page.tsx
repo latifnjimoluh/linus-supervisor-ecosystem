@@ -19,6 +19,7 @@ import { useErrors } from "@/hooks/use-errors";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [passwordShake, setPasswordShake] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +55,7 @@ export default function LoginPage() {
     clearError("auth");
 
     try {
-      const data = await loginUser(email, password, remember);
+      const data = await loginUser(email, password, remember, otp);
 
       // ✅ on purge l’erreur “auth” s’il en restait une (ex: tentative précédente)
       clearError("auth");
@@ -138,6 +139,16 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </motion.div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="otp">Code 2FA</Label>
+              <Input
+                id="otp"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                className="rounded-xl focus-visible:ring-2 focus-visible:ring-primary"
+              />
             </div>
 
             <div className="flex items-center space-x-2">

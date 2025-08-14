@@ -23,3 +23,18 @@ export const resetPasswordWithCode = async (
   const res = await api.post("/auth/reset-password", { code, password });
   return res.data;
 };
+
+export const setup2FA = async (): Promise<{ secret: string; qr: string }> => {
+  const res = await api.post("/auth/2fa/setup");
+  return res.data;
+};
+
+export const verify2FA = async (token: string): Promise<any> => {
+  const res = await api.post("/auth/2fa/verify", { token });
+  return res.data;
+};
+
+export const disable2FA = async (): Promise<any> => {
+  const res = await api.post("/auth/2fa/disable");
+  return res.data;
+};
