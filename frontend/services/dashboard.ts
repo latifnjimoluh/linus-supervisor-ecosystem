@@ -25,7 +25,7 @@ export interface DeploymentStatsResponse {
   successRate30d: number;
   medianDeploymentTimeSec: number;
   topFailureCauses: Array<{ cause: string; count: number }>;
-  storageCapacity: Array<{ datastore: string; free: number; total: number }>;
+  storageCapacity: Array<{ datastore: string; total_bytes: number; used_bytes: number }>;
   deploymentsByZone: Record<string, number>;
   avgDestroyTimeSec: number;
 }

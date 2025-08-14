@@ -404,8 +404,8 @@ exports.getDeploymentStats = async (req, res) => {
       const resp = await axios.get(storagesUrl, { httpsAgent, headers });
       storageCapacity = (resp.data?.data || []).map((s) => ({
         datastore: s.storage,
-        free: s.maxdisk - s.used,
-        total: s.maxdisk,
+        total_bytes: s.maxdisk,
+        used_bytes: s.used,
       }));
     } catch {
       storageCapacity = [];

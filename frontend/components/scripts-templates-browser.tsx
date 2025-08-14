@@ -56,6 +56,8 @@ export type ScriptOrTemplate = Template | Script
 
 interface ScriptsTemplatesBrowserProps {
   defaultTab?: "scripts" | "templates"
+  highlightId?: number
+  highlightType?: "script" | "template"
 }
 
 type TabKey = "scripts" | "templates"
@@ -64,6 +66,8 @@ type StatusFilter = "actif" | "supprime" | "all"
 
 export default function ScriptsTemplatesBrowser({
   defaultTab = "templates",
+  highlightId,
+  highlightType,
 }: ScriptsTemplatesBrowserProps) {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [selectedItem, setSelectedItem] = React.useState<ScriptOrTemplate | null>(null)
@@ -77,6 +81,19 @@ export default function ScriptsTemplatesBrowser({
   const { toast } = useToast()
   const { setError, clearError } = useErrors()
   const { theme } = useTheme()
+  const [highlight, setHighlight] = React.useState<{
+    id: number
+    type: "script" | "template"
+  } | null>(
+    highlightId && highlightType ? { id: highlightId, type: highlightType } : null,
+  )
+
+  React.useEffect(() => {
+    if (highlight) {
+      const t = setTimeout(() => setHighlight(null), 3000)
+      return () => clearTimeout(t)
+    }
+  }, [highlight])
 
   const refreshItems = React.useCallback(() => {
     fetchTemplatesAndScripts(statusFilter)
@@ -190,6 +207,8 @@ export default function ScriptsTemplatesBrowser({
           const editHref =
             isScript ? `/editor?id=${item.id}&tab=scripts` : `/editor?id=${item.id}&tab=templates`
           const status = (item.status ?? "actif") as StatusFilter
+          const isHighlighted =
+            highlight && highlight.id === item.id && highlight.type === item.type
           return (
             <motion.div
               key={`${item.type}-${item.id}`}
@@ -197,7 +216,7 @@ export default function ScriptsTemplatesBrowser({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="flex h-full"
+              className={`flex h-full ${isHighlighted ? "ring-2 ring-primary animate-pulse" : ""}`}
             >
               <Card
                 data-item-type={item.type}

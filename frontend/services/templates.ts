@@ -66,7 +66,7 @@ export const restoreTemplate = async (
 export const generateScript = async (
   template_id: number,
   config_data: Record<string, string | number>
-): Promise<{ script: string; fileName: string; contentType: string }> => {
+): Promise<{ script: string; fileName: string; contentType: string; id: number }> => {
   const res = await api.post("/templates/generate", {
     template_id,
     config_data,

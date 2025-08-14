@@ -32,6 +32,7 @@ import { cn, formatKB, formatPercent, formatDate } from "@/lib/utils"
 import { fetchVmDetails, collectMonitoringData } from "@/services/monitoring"
 import { startProxmoxVM, stopProxmoxVM, deleteProxmoxVM } from "@/services/vms"
 import { BackButton } from "@/components/back-button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface VMDetails {
   id: string
@@ -132,6 +133,23 @@ export default function VMDetailsPage() {
   const [loading, setLoading] = React.useState(true)
   const [actionLoading, setActionLoading] = React.useState<string | null>(null)
   const [collectUsername, setCollectUsername] = React.useState("")
+  const [lastSync, setLastSync] = React.useState<Date | null>(null)
+  const lastAutoToastRef = React.useRef(0)
+
+  const USERNAME_KEY = "monitoring_collect_username"
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem(USERNAME_KEY)
+    if (saved) setCollectUsername(saved)
+  }, [])
+
+  function throttledToast(variant: "info" | "warning", description: string) {
+    const now = Date.now()
+    if (now - lastAutoToastRef.current > 30 * 60 * 1000) {
+      toast({ title: "Collecte", description, variant })
+      lastAutoToastRef.current = now
+    }
+  }
 
   // --- Helper d'explication d'erreurs de collecte ---
   function explainCollectError(raw?: unknown) {
@@ -225,6 +243,7 @@ export default function VMDetailsPage() {
         last_monitoring: monitor.retrieved_at ? formatDate(monitor.retrieved_at) : '',
       }
       setVmData(mapped)
+      if (monitor.retrieved_at) setLastSync(new Date(monitor.retrieved_at))
     } catch (e) {
       console.error('Erreur de récupération du monitoring', e)
       setVmData(null)
@@ -236,6 +255,25 @@ export default function VMDetailsPage() {
   React.useEffect(() => {
     fetchVMData()
   }, [fetchVMData])
+
+  React.useEffect(() => {
+    if (!vmData?.ip) return
+    const id = setInterval(async () => {
+      const username = localStorage.getItem(USERNAME_KEY)
+      if (!username) {
+        throttledToast('info', 'Username requis (non mémorisé)')
+        return
+      }
+      try {
+        await collectMonitoringData(vmData.ip, username)
+        await fetchVMData()
+        setLastSync(new Date())
+      } catch (e) {
+        throttledToast('warning', 'Erreur lors de la collecte automatique')
+      }
+    }, 10 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [vmData?.ip, fetchVMData])
 
   const handleVMAction = async (action: string) => {
     setActionLoading(action)
@@ -259,7 +297,9 @@ export default function VMDetailsPage() {
           if (!vmData?.ip) throw new Error('VM IP inconnue')
           if (!collectUsername) throw new Error('Username requis')
           await collectMonitoringData(vmData.ip, collectUsername)
+          localStorage.setItem(USERNAME_KEY, collectUsername)
           await fetchVMData()
+          setLastSync(new Date())
           message = 'Collecte des métriques effectuée avec succès'
           break
         default:
@@ -358,21 +398,42 @@ export default function VMDetailsPage() {
           <BackButton href="/monitoring" />
           <h1 className="text-4xl font-semibold whitespace-normal break-words">{vmData.name}</h1>
         </div>
-        <Button
-          onClick={fetchVMData}
-          variant="outline"
-          className="rounded-xl h-9 sm:h-10 px-3.5 sm:px-4 whitespace-nowrap"
-        >
-          <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
-          Actualiser
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={fetchVMData}
+                variant="outline"
+                aria-label="Actualiser"
+                className="rounded-xl h-10 w-10 md:w-auto md:px-4 whitespace-nowrap"
+              >
+                <RefreshCw className={cn("h-4 w-4 md:mr-2", loading && "animate-spin")} />
+                <span className="hidden md:inline">Actualiser</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Actualiser</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground">IP:</span>
         <code className="bg-muted px-2 py-1 rounded font-mono text-xs sm:text-sm whitespace-normal break-words break-all">{vmData.ip}</code>
-        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(vmData.ip)}>
-          <Copy className="h-3 w-3" />
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => copyToClipboard(vmData.ip)}
+                aria-label="Copier IP"
+                className="h-10 w-10"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Copier IP</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <Badge
           variant={getStatusColor(vmData.status)}
           className="inline-flex items-center px-2.5 py-1 rounded-md font-mono text-xs sm:text-[13px] max-w-full break-all"
@@ -385,46 +446,49 @@ export default function VMDetailsPage() {
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3">
         {vmData.status === "stopped" && (
-          <Button
-            onClick={() => handleVMAction("start")}
-            disabled={actionLoading !== null}
-            className="rounded-xl h-9 sm:h-10 px-3.5 sm:px-4"
-          >
-            {actionLoading === "start" ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="mr-2 h-4 w-4" />
-            )}
-            Démarrer
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => handleVMAction("start")}
+                  disabled={actionLoading !== null}
+                  aria-label="Démarrer"
+                  className="rounded-xl h-10 w-10 md:w-auto md:px-4"
+                >
+                  {actionLoading === "start" ? (
+                    <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4 md:mr-2" />
+                  )}
+                  <span className="hidden md:inline">Démarrer</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Démarrer</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
 
         {vmData.status === "running" && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="secondary"
-                disabled={actionLoading !== null}
-                className="rounded-xl h-9 sm:h-10 px-3.5 sm:px-4"
-              >
-                <Square className="mr-2 h-4 w-4" />
-                Arrêter
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Arrêter la VM</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Êtes-vous sûr de vouloir arrêter la VM "{vmData.name}" ?
-                  Cette action interrompra tous les services en cours.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleVMAction("stop")}>Arrêter</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      disabled={actionLoading !== null}
+                      aria-label="Arrêter"
+                      className="rounded-xl h-10 w-10 md:w-auto md:px-4"
+                    >
+                      <Square className="h-4 w-4 md:mr-2" />
+                      <span className="hidden md:inline">Arrêter</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                </AlertDialog>
+              </TooltipTrigger>
+              <TooltipContent>Arrêter</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
 
         <Input
@@ -433,48 +497,58 @@ export default function VMDetailsPage() {
           onChange={(e) => setCollectUsername(e.target.value)}
           className="w-full sm:w-48"
         />
-        <Button
-          onClick={() => handleVMAction("collect")}
-          variant="outline"
-          disabled={actionLoading !== null || !collectUsername}
-          className="rounded-xl h-9 sm:h-10 px-3.5 sm:px-4"
-        >
-          {actionLoading === "collect" ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
-          )}
-          Forcer collecte
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={() => handleVMAction("collect")}
+                variant="outline"
+                disabled={actionLoading !== null || !collectUsername}
+                aria-label="Forcer collecte"
+                className="rounded-xl h-10 w-10 md:w-auto md:px-4"
+              >
+                {actionLoading === "collect" ? (
+                  <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 md:mr-2" />
+                )}
+                <span className="hidden md:inline">Forcer collecte</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Forcer collecte</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="destructive"
-              disabled={actionLoading !== null}
-              className="rounded-xl h-9 sm:h-10 px-3.5 sm:px-4"
-            >
-              {actionLoading === "delete" ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="mr-2 h-4 w-4" />
-              )}
-              Supprimer
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Supprimer la VM</AlertDialogTitle>
-              <AlertDialogDescription>
-                Cette action est irréversible. Supprimer la VM "{vmData.name}" ?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Annuler</AlertDialogCancel>
-              <AlertDialogAction onClick={() => handleVMAction('delete')}>Supprimer</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    disabled={actionLoading !== null}
+                    aria-label="Supprimer"
+                    className="rounded-xl h-10 w-10 md:w-auto md:px-4"
+                  >
+                    {actionLoading === "delete" ? (
+                      <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 md:mr-2" />
+                    )}
+                    <span className="hidden md:inline">Supprimer</span>
+                  </Button>
+                </AlertDialogTrigger>
+              </AlertDialog>
+            </TooltipTrigger>
+            <TooltipContent>Supprimer</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        {lastSync && (
+          <div className="flex items-center text-xs text-muted-foreground">
+            <RefreshCw className="h-4 w-4 mr-1" aria-hidden="true" />
+            Synchro il y a {Math.floor((Date.now() - lastSync.getTime()) / 60000)} min
+          </div>
+        )}
       </div>
 
       {/* VM Info and Metrics */}
