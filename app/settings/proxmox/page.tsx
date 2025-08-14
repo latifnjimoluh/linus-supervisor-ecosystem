@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Eye, EyeOff } from "lucide-react"
 import useAuth from "@/hooks/useAuth"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 import {
   createMySettings,
   getMySettings,
@@ -21,6 +23,7 @@ import { listProxmoxStorages, ProxmoxStorage } from "@/services/vms"
 export default function ProxmoxSettingsPage() {
   useAuth("/settings/proxmox")
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
 
   const [loading, setLoading] = useState(true)
   const [hasSettings, setHasSettings] = useState(false)
@@ -87,16 +90,13 @@ export default function ProxmoxSettingsPage() {
         toast({ title: "Paramètres enregistrés", variant: "success" })
       }
     } catch (err: any) {
-      toast({
-        title: "Erreur",
-        description: err.message || "Impossible d'enregistrer les paramètres",
-        variant: "destructive",
-      })
+      setError("proxmox", { message: err.message || "Impossible d'enregistrer les paramètres" })
     }
   }
 
   return (
     <div className="space-y-6">
+      <ErrorBanner id="proxmox" />
       <div className="flex items-center gap-3">
         <BackButton href="/settings" label="Retour" />
         <div>

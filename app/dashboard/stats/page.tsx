@@ -5,20 +5,27 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getDeploymentStats, getDashboardInsights, type DeploymentStatsResponse } from "@/services/dashboard"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
+import { Badge } from "@/components/ui/badge"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   LineChart,
   Line,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
+  BarChart,
+  Bar,
   PieChart,
   Pie,
   Cell,
-  BarChart,
-  Bar,
 } from "recharts"
 
 export default function DashboardStatsPage() {
@@ -77,7 +84,7 @@ export default function DashboardStatsPage() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="period" />
               <YAxis allowDecimals={false} />
-              <Tooltip />
+              <RechartsTooltip />
               <Legend />
               <Line type="monotone" dataKey="deployed" name="Déployés" stroke="#16a34a" />
               <Line type="monotone" dataKey="deleted" name="Supprimés" stroke="#dc2626" />
@@ -96,7 +103,7 @@ export default function DashboardStatsPage() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="period" />
               <YAxis allowDecimals={false} />
-              <Tooltip />
+              <RechartsTooltip />
               <Legend />
               <Bar dataKey="success" name="Succès" stackId="a" fill="#16a34a" />
               <Bar dataKey="failed" name="Échecs" stackId="a" fill="#dc2626" />
@@ -115,7 +122,7 @@ export default function DashboardStatsPage() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="zone" />
               <YAxis allowDecimals={false} />
-              <Tooltip />
+              <RechartsTooltip />
               <Bar dataKey="count" name="Déploiements" fill="#3b82f6" />
             </BarChart>
           </ResponsiveContainer>
@@ -132,7 +139,7 @@ export default function DashboardStatsPage() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="cause" />
               <YAxis allowDecimals={false} />
-              <Tooltip />
+              <RechartsTooltip />
               <Bar dataKey="count" name="Échecs" fill="#dc2626" />
             </BarChart>
           </ResponsiveContainer>
@@ -141,18 +148,72 @@ export default function DashboardStatsPage() {
 
       <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
         <CardHeader>
-          <CardTitle>Capacité stockage restante</CardTitle>
+          <CardTitle>Capacité de stockage restante</CardTitle>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={stats?.storageCapacity.map(s => ({ datastore: s.datastore, free: Math.round(s.free / (1024**3)) })) || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="datastore" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="free" name="Go libres" fill="#10b981" />
-            </BarChart>
-          </ResponsiveContainer>
+        <CardContent className="space-y-4">
+          {stats?.storageCapacity?.map((s) => {
+            const freeBytes = s.total_bytes - s.used_bytes
+            const freeGb = Math.round(freeBytes / (1024 ** 3))
+            const totalGb = Math.round(s.total_bytes / (1024 ** 3))
+            const usedGb = Math.round(s.used_bytes / (1024 ** 3))
+            const freePct = s.total_bytes ? Math.round((freeBytes / s.total_bytes) * 100) : 0
+            const usedPct = s.total_bytes ? Math.round((s.used_bytes / s.total_bytes) * 100) : 0
+            let badgeVariant: "success" | "warning" | "destructive" | "secondary"
+            let badgeText = ""
+            if (!s.total_bytes) {
+              badgeVariant = "secondary"
+              badgeText = "N/A"
+            } else if (freePct >= 30) {
+              badgeVariant = "success"
+              badgeText = "OK"
+            } else if (freePct >= 10) {
+              badgeVariant = "warning"
+              badgeText = "Attention"
+            } else {
+              badgeVariant = "destructive"
+              badgeText = "Critique"
+            }
+            const summary = s.total_bytes
+              ? `${freeGb} GB • ${freePct}% restants`
+              : "N/A"
+            return (
+              <TooltipProvider key={s.datastore}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="space-y-1"
+                      aria-label={`${s.datastore} : ${summary}${s.total_bytes ? ` sur ${totalGb} GB` : ""}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{s.datastore}</span>
+                        <Badge variant={badgeVariant}>{badgeText}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 flex-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+                          <div
+                            className="h-full bg-neutral-500 dark:bg-neutral-400"
+                            style={{ width: `${usedPct}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-muted-foreground">{summary}</span>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {s.total_bytes ? (
+                      <div className="space-y-1">
+                        <p>Total : {totalGb} GB</p>
+                        <p>Utilisé : {usedGb} GB ({usedPct}%)</p>
+                        <p>Restant : {freeGb} GB ({freePct}%)</p>
+                      </div>
+                    ) : (
+                      <p>Données de capacité indisponibles</p>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )
+          })}
         </CardContent>
       </Card>
 
@@ -176,7 +237,7 @@ export default function DashboardStatsPage() {
                 <Cell fill="#16a34a" />
                 <Cell fill="#dc2626" />
               </Pie>
-              <Tooltip />
+              <RechartsTooltip />
             </PieChart>
           </ResponsiveContainer>
         </CardContent>

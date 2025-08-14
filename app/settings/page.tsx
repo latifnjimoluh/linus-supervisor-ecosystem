@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { User, FileText, Server, HardDrive } from 'lucide-react'
+import { User, FileText, Server, HardDrive, AlertTriangle } from 'lucide-react'
 
 import { BackButton } from "@/components/back-button"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
@@ -21,6 +21,13 @@ const settingsCards = [
     icon: <FileText className="h-8 w-8 text-primary" />,
     href: "/settings/templates",
     cta: "Gérer",
+  },
+  {
+    title: "Seuils d'alertes",
+    description: "Définissez les seuils CPU et RAM pour les notifications.",
+    icon: <AlertTriangle className="h-8 w-8 text-primary" />,
+    href: "/settings/alerts",
+    cta: "Configurer",
   },
   {
     title: "Connexion Proxmox",

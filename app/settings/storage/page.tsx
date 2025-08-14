@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { BackButton } from "@/components/back-button"
 import {
   Select,
   SelectContent,
@@ -144,22 +145,20 @@ export default function StorageSettingsPage() {
   return (
     <div className="mx-auto w-full max-w-[1200px] p-4 sm:p-6 space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="outline" onClick={() => history.back()} className="rounded-xl px-3">
-          ← Retour
-        </Button>
+        <BackButton href="/settings" />
         <h1 className="text-3xl font-bold">Gestion du Stockage</h1>
       </div>
       <p className="text-muted-foreground">
         Configurez le stockage par défaut et consultez l’état du nœud.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 auto-rows-fr">
         {/* Système */}
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl h-full flex flex-col">
           <CardHeader>
             <CardTitle>Système</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm">
+          <CardContent className="space-y-3 text-sm flex-1">
             <div>
               <span className="font-medium">RAM : </span>
               {formatGB(sys?.ram_used_bytes)} / {formatGB(sys?.ram_total_bytes)}{" "}
@@ -194,11 +193,11 @@ export default function StorageSettingsPage() {
         </Card>
 
         {/* Stockage */}
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl h-full flex flex-col">
           <CardHeader>
             <CardTitle>Stockage</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 flex-1 flex flex-col">
             {/* Nœud */}
             <div>
               <div className="mb-1 text-sm">Nœud</div>
@@ -253,8 +252,8 @@ export default function StorageSettingsPage() {
               <div>Libre : {formatGB(current?.free_bytes)}</div>
             </div>
 
-            <div className="pt-2">
-              <Button className="w-full rounded-xl" onClick={handleSave} disabled={loading || !current}>
+            <div className="pt-2 mt-auto">
+              <Button className="w-full rounded-xl h-9 sm:h-10 px-3.5 sm:px-4" onClick={handleSave} disabled={loading || !current}>
                 Enregistrer
               </Button>
             </div>

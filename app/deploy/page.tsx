@@ -34,7 +34,10 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
+import { BackButton } from "@/components/back-button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Command,
@@ -120,6 +123,7 @@ type DeploymentFormData = z.infer<typeof deploymentSchema>
 // -------------------- Page --------------------
 export default function DeployPage() {
   const { toast } = useToast()
+  const { setError } = useErrors()
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [showTfvars, setShowTfvars] = React.useState(false)
@@ -139,6 +143,19 @@ export default function DeployPage() {
   const [diskMax, setDiskMax] = React.useState(500)
   const [memMax, setMemMax] = React.useState(16384)
   const [last, setLast] = React.useState<null | { instance_id: string; status: string }>(null)
+
+  const toastLockRef = React.useRef(false)
+  const emitToast = React.useCallback(
+    (t: { title: string; description?: string; variant?: "success" | "warning" | "info" | "default" }) => {
+      if (toastLockRef.current) return
+      toastLockRef.current = true
+      toast(t)
+      setTimeout(() => {
+        toastLockRef.current = false
+      }, 3000)
+    },
+    [toast]
+  )
 
   const {
     register,
@@ -257,28 +274,16 @@ export default function DeployPage() {
         setCapacityInfo(info)
         if (!info.disk.fits) {
           setValue("disk_size", info.disk.suggested, { shouldValidate: true })
-          toast({
-            title: "Espace insuffisant",
-            description: `Taille ajustée à ${info.disk.suggested} Go (disponible ${info.disk.available} Go)` ,
-            variant: "destructive",
-          })
+          setError("deploy", { message: `Taille ajustée à ${info.disk.suggested} Go (disponible ${info.disk.available} Go)`, ttlMs: 5000 })
         }
         if (!info.memory.fits) {
           setValue("memory_mb", info.memory.suggested, { shouldValidate: true })
-          toast({
-            title: "RAM insuffisante",
-            description: `RAM ajustée à ${info.memory.suggested} Mo (disponible ${info.memory.available} Mo)`,
-            variant: "destructive",
-          })
+          setError("deploy", { message: `RAM ajustée à ${info.memory.suggested} Mo (disponible ${info.memory.available} Mo)`, ttlMs: 5000 })
         }
         if (!info.cpu.fits) {
           setValue("vcpu_cores", info.cpu.suggested, { shouldValidate: true })
           setValue("vcpu_sockets", 1, { shouldValidate: true })
-          toast({
-            title: "CPU insuffisant",
-            description: `CPU ajusté à ${info.cpu.suggested} coeurs disponibles`,
-            variant: "destructive",
-          })
+          setError("deploy", { message: `CPU ajusté à ${info.cpu.suggested} coeurs disponibles`, ttlMs: 5000 })
         }
       })
       .catch(() => setCapacityInfo(null))
@@ -309,31 +314,13 @@ export default function DeployPage() {
       !capacityInfo.memory.fits ||
       !capacityInfo.cpu.fits
     ) {
-      toast({
-        title: "Capacité insuffisante",
-        description: "Veuillez ajuster les ressources avant de déployer.",
-        variant: "destructive",
-      })
+      setError("deploy", { message: "Capacité insuffisante. Veuillez ajuster les ressources avant de déployer." })
       return
     }
 
     setIsSubmitting(true)
-    toast({
-      title: "Déploiement en cours...",
-      description: `Lancement du déploiement pour ${data.vm_names}.`,
-      variant: "info",
-    })
-
     try {
       const cleaned = sanitizeVmNames(data.vm_names)
-      const joinedClean = cleaned.join(", ")
-      if (joinedClean !== data.vm_names) {
-        toast({
-          title: "Noms normalisés",
-          description: `Les noms ont été ajustés: ${joinedClean}`,
-        })
-      }
-
       const payload = {
         vm_names: cleaned,
         service_type: data.service_type,
@@ -351,11 +338,10 @@ export default function DeployPage() {
       }
 
       const res = await runDeployment(payload)
-
-      toast({
-        title: "Déploiement lancé !",
+      emitToast({
+        title: "Déploiement lancé",
         description: "Vous allez être redirigé vers la page de suivi.",
-        variant: "success",
+        variant: "info",
       })
 
       if (typeof window !== "undefined") {
@@ -363,11 +349,12 @@ export default function DeployPage() {
       }
       router.push(`/deployments/${res.instance_id}`)
     } catch (err: any) {
-      toast({
-        title: "Erreur de déploiement",
+      emitToast({
+        title: "Déploiement échoué",
         description: err?.response?.data?.message || err.message,
-        variant: "destructive",
+        variant: "warning",
       })
+      setError("deploy", { message: err?.response?.data?.message || err.message })
     } finally {
       setIsSubmitting(false)
     }
@@ -407,20 +394,27 @@ export default function DeployPage() {
   }.`
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col">
+      <ErrorBanner id="deploy" />
       <header className="sticky top-0 z-10 bg-background pb-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-              Créer une Machine Virtuelle
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Configurez et déployez vos VMs en quelques clics avec Terraform.
-            </p>
+          <div className="flex items-center gap-4">
+            <BackButton href="/dashboard" />
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                Créer une Machine Virtuelle
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Configurez et déployez vos VMs en quelques clics avec Terraform.
+              </p>
+            </div>
           </div>
           {last && (
             <Link href={`/deployments/${last.instance_id}`}>
-              <Button variant="outline" className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="rounded-xl h-9 sm:h-10 px-3.5 sm:px-4 flex items-center gap-2"
+              >
                 Reprendre dernier déploiement
                 {getStatusBadge(last.status)}
               </Button>
@@ -429,22 +423,20 @@ export default function DeployPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto mt-6">
-        {/* Grille responsive renforcée */}
+      <div className="flex-1 py-6">
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
         >
-        {/* Colonne principale du formulaire */}
-        <div className="lg:col-span-2 space-y-8 min-w-0">
-          <Card className="rounded-2xl shadow-sm overflow-hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+        <div className="lg:col-span-8 space-y-6">
+          <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+            <CardHeader className="p-5">
+              <CardTitle className="flex items-center gap-2 text-xl font-semibold">
                 <Server className="h-5 w-5" />
                 Informations Générales
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <CardContent className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="vm_names">Nom(s) de la VM</Label>
                 <Input
@@ -636,26 +628,25 @@ export default function DeployPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl shadow-sm overflow-hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+            <CardHeader className="p-5">
+              <CardTitle className="flex items-center gap-2 text-xl font-semibold">
                 <Cpu className="h-5 w-5" />
                 Spécifications Techniques
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <CardContent className="p-5 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Mémoire (RAM)</Label>
+                  <Label className="text-sm text-muted-foreground">Mémoire (RAM)</Label>
                   <Controller
                     name="memory_mb"
                     control={control}
                     render={({ field }) => (
                       <>
-                        <div className="flex items-center gap-2">
+                        <div className="grid grid-cols-[120px,1fr] items-center gap-3">
                           <Input
                             type="number"
-                            className="w-24"
                             value={field.value}
                             min={512}
                             max={memMax}
@@ -666,6 +657,7 @@ export default function DeployPage() {
                             }}
                           />
                           <Slider
+                            className="h-2 sm:h-2.5 rounded-full"
                             value={[field.value]}
                             min={512}
                             max={memMax}
@@ -681,16 +673,15 @@ export default function DeployPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Disque</Label>
+                  <Label className="text-sm text-muted-foreground">Disque</Label>
                   <Controller
                     name="disk_size"
                     control={control}
                     render={({ field }) => (
                       <>
-                        <div className="flex items-center gap-2">
+                        <div className="grid grid-cols-[120px,1fr] items-center gap-3">
                           <Input
                             type="number"
-                            className="w-24"
                             value={field.value}
                             min={diskMin}
                             max={diskMax}
@@ -701,6 +692,7 @@ export default function DeployPage() {
                             }}
                           />
                           <Slider
+                            className="h-2 sm:h-2.5 rounded-full"
                             value={[field.value]}
                             min={diskMin}
                             max={diskMax}
@@ -737,7 +729,7 @@ export default function DeployPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Coeurs vCPU</Label>
+                  <Label className="text-sm text-muted-foreground">Coeurs vCPU</Label>
                   <Controller
                     name="vcpu_cores"
                     control={control}
@@ -761,7 +753,7 @@ export default function DeployPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Sockets vCPU</Label>
+                  <Label className="text-sm text-muted-foreground">Sockets vCPU</Label>
                   <Controller
                     name="vcpu_sockets"
                     control={control}
@@ -788,14 +780,14 @@ export default function DeployPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl shadow-sm overflow-hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+            <CardHeader className="p-5">
+              <CardTitle className="flex items-center gap-2 text-xl font-semibold">
                 <Network className="h-5 w-5" />
                 Configuration Réseau
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-5 space-y-4">
               <div className="flex items-center space-x-2">
                 <Controller
                   name="use_static_ip"
@@ -845,15 +837,15 @@ export default function DeployPage() {
         </div>
 
         {/* Colonne latérale */}
-        <div className="lg:col-span-1 space-y-6 min-w-0 lg:sticky lg:top-0">
-          <Card className="rounded-2xl shadow-sm overflow-hidden">
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
+        <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
+          <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+            <CardHeader className="p-5">
+              <CardTitle className="text-xl font-semibold">Actions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-5 space-y-4">
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full rounded-xl h-9 sm:h-10 px-3.5 sm:px-4"
                 disabled={
                   !isValid ||
                   isSubmitting ||
@@ -865,38 +857,37 @@ export default function DeployPage() {
               >
                 {isSubmitting ? "Déploiement en cours..." : "Lancer le déploiement"}
               </Button>
-
-              <div className="min-w-0">
-                <AssistantAIBlock
-                  title="Suggestion IA"
-                  context={aiContext}
-                  onAnalyze={async () => {
-                    const config = {
-                      vm_names: sanitizeVmNames(formData.vm_names || ""),
-                      template_name: formData.template_name,
-                      service_type: formData.service_type,
-                      memory_mb: formData.memory_mb,
-                      vcpu_cores: formData.vcpu_cores,
-                      vcpu_sockets: formData.vcpu_sockets,
-                      disk_size: formData.disk_size,
-                      scripts:
-                        formData.script_refs?.map((s: any) => scriptMap.get(s.id)?.name) || [],
-                    }
-                    const { analysis } = await analyzeDeploymentConfig(config)
-                    return analysis
-                  }}
-                />
-              </div>
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl shadow-sm overflow-hidden">
+          <AssistantAIBlock
+            title="Analyse IA"
+            context={aiContext}
+            className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40"
+            onAnalyze={async () => {
+              const config = {
+                vm_names: sanitizeVmNames(formData.vm_names || ""),
+                template_name: formData.template_name,
+                service_type: formData.service_type,
+                memory_mb: formData.memory_mb,
+                vcpu_cores: formData.vcpu_cores,
+                vcpu_sockets: formData.vcpu_sockets,
+                disk_size: formData.disk_size,
+                scripts:
+                  formData.script_refs?.map((s: any) => scriptMap.get(s.id)?.name) || [],
+              }
+              const { analysis } = await analyzeDeploymentConfig(config)
+              return analysis
+            }}
+          />
+
+          <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
             <CardHeader
-              className="cursor-pointer"
+              className="p-5 cursor-pointer"
               onClick={() => setShowTfvars(!showTfvars)}
             >
               <div className="flex justify-between items-center">
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-xl font-semibold">
                   <FileJson className="h-5 w-5" />
                   Aperçu .tfvars.json
                 </CardTitle>
@@ -910,7 +901,7 @@ export default function DeployPage() {
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                 >
-                  <CardContent>
+                  <CardContent className="p-5">
                     <div className="relative bg-muted rounded-lg p-4">
                       <Button
                         size="sm"
@@ -924,7 +915,7 @@ export default function DeployPage() {
                           <Copy className="h-4 w-4" />
                         )}
                       </Button>
-                      <pre className="text-xs whitespace-pre-wrap overflow-auto max-h-60">
+                      <pre className="font-mono text-xs sm:text-sm whitespace-pre-wrap break-words max-h-72 overflow-y-auto">
                         <code>{generateTfvars()}</code>
                       </pre>
                     </div>
@@ -935,6 +926,7 @@ export default function DeployPage() {
           </Card>
         </div>
       </form>
+      <div className="h-8" />
     </div>
   </div>
   )

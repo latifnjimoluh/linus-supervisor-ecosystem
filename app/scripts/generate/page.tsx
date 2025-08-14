@@ -10,6 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 import { useTheme } from "next-themes"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
+import { ToastAction } from "@/components/ui/toast"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
@@ -20,10 +23,13 @@ export default function GenerateScriptPage({
 }) {
   const params = React.use(searchParams)
   const { theme } = useTheme()
+  const router = useRouter()
+  const { toast } = useToast()
   const [templates, setTemplates] = React.useState<Template[]>([])
   const [templateId, setTemplateId] = React.useState<number | null>(null)
   const [formData, setFormData] = React.useState<Record<string, string>>({})
   const [result, setResult] = React.useState("")
+  const redirectTimeout = React.useRef<NodeJS.Timeout | null>(null)
 
   React.useEffect(() => {
     listTemplates().then((t) => {
@@ -53,7 +59,33 @@ export default function GenerateScriptPage({
     if (!templateId) return
     const res = await generateScript(templateId, formData)
     setResult(res.script)
+    const detailUrl = `/editor?id=${res.id}&tab=scripts`
+    const listUrl = `/scripts?highlight=${res.id}`
+    redirectTimeout.current = setTimeout(() => {
+      router.push(listUrl)
+    }, 2500)
+    toast({
+      title: "Génération effectuée avec succès.",
+      duration: 3000,
+      action: (
+        <ToastAction
+          altText="Voir le détail maintenant"
+          onClick={() => {
+            if (redirectTimeout.current) clearTimeout(redirectTimeout.current)
+            router.push(detailUrl)
+          }}
+        >
+          Voir le détail maintenant
+        </ToastAction>
+      ),
+    })
   }
+
+  React.useEffect(() => {
+    return () => {
+      if (redirectTimeout.current) clearTimeout(redirectTimeout.current)
+    }
+  }, [])
 
   const jsonPreview = JSON.stringify(
     { template_id: templateId, config_data: formData },

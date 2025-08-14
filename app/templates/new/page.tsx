@@ -12,12 +12,16 @@ import { FieldSchemaField, createTemplate } from "@/lib/templates"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 import { useTheme } from "next-themes"
+import { useToast } from "@/hooks/use-toast"
+import { ToastAction } from "@/components/ui/toast"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
 export default function NewTemplatePage() {
   const router = useRouter()
   const { theme } = useTheme()
+  const { toast } = useToast()
+  const redirectTimeout = React.useRef<NodeJS.Timeout | null>(null)
   const [name, setName] = React.useState("")
   const [serviceType, setServiceType] = React.useState("")
   const [category, setCategory] = React.useState("")
@@ -57,9 +61,34 @@ export default function NewTemplatePage() {
       script_path: scriptPath,
       fields_schema: { fields },
     }
-    await createTemplate(payload)
-    router.push("/templates")
+    const tpl = await createTemplate(payload)
+    const detailUrl = `/editor?id=${tpl.id}&tab=templates`
+    const listUrl = `/templates?highlight=${tpl.id}`
+    redirectTimeout.current = setTimeout(() => {
+      router.push(listUrl)
+    }, 2500)
+    toast({
+      title: "Création du template effectuée avec succès.",
+      duration: 3000,
+      action: (
+        <ToastAction
+          altText="Voir le détail maintenant"
+          onClick={() => {
+            if (redirectTimeout.current) clearTimeout(redirectTimeout.current)
+            router.push(detailUrl)
+          }}
+        >
+          Voir le détail maintenant
+        </ToastAction>
+      ),
+    })
   }
+
+  React.useEffect(() => {
+    return () => {
+      if (redirectTimeout.current) clearTimeout(redirectTimeout.current)
+    }
+  }, [])
 
   const jsonPreview = React.useMemo(() => {
     return JSON.stringify(

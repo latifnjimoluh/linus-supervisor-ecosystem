@@ -37,6 +37,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 import { listTemplates, deleteTemplate, type Template } from "@/lib/templates"
 import dynamic from "next/dynamic"
 import { useTheme } from "next-themes"
@@ -48,6 +50,7 @@ export default function SettingsTemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] = React.useState<Template | null>(null)
   const [copied, setCopied] = React.useState(false)
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
   const { theme } = useTheme()
 
   React.useEffect(() => {
@@ -65,14 +68,16 @@ export default function SettingsTemplatesPage() {
     try {
       await deleteTemplate(id)
       setRows((prev) => prev.filter((t) => t.id !== id))
+      clearError("templates")
       toast({ title: "Supprimé", description: "Le template a été supprimé.", variant: "success" })
     } catch (e) {
-      toast({ title: "Erreur", description: "La suppression a échoué.", variant: "destructive" })
+      setError("templates", { message: "La suppression a échoué." })
     }
   }
 
   return (
     <div className="space-y-6">
+      <ErrorBanner id="templates" />
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <BackButton href="/settings" label="Retour" />

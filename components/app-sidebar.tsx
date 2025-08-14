@@ -23,6 +23,7 @@ import {
   History,
   TrendingUp,
   Info,
+  Book,
   HelpCircle,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
@@ -107,6 +108,7 @@ const navItems: NavItem[] = [
   },
   { label: "À propos", icon: Info, href: "/about" },
   { label: "Politique de confidentialité", icon: Shield, href: "/privacy" },
+  { label: "Guide", icon: Book, href: "/guide" },
   { label: "Aide", icon: HelpCircle, href: "/help" },
 ]
 
