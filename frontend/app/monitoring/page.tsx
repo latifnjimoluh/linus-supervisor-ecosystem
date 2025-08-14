@@ -22,9 +22,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import { useErrors } from "@/hooks/use-errors"
 import { ErrorBanner } from "@/components/error-banner"
+import { useAlertThresholds } from "@/hooks/use-alert-thresholds"
+import { MonitoringAlerts } from "@/components/monitoring-alerts"
 
 const simulateMonitoringAIAnalysis = async (context: string): Promise<string> => {
   await new Promise(resolve => setTimeout(resolve, 2000))
@@ -38,7 +41,9 @@ const simulateMonitoringAIAnalysis = async (context: string): Promise<string> =>
 }
 
 export default function MonitoringPage() {
-  const { data, isLoading, mutate } = useSWR<MonitoringOverview>("/monitoring", (url) => api.get(url).then((res) => res.data))
+  const { cpu, ram } = useAlertThresholds()
+  const queryKey = `/monitoring?cpu_threshold=${cpu}&ram_threshold=${ram}`
+  const { data, isLoading, mutate } = useSWR<MonitoringOverview>(queryKey, (url) => api.get(url).then((res) => res.data))
   const vms = data?.vms ?? []
   const templates = data?.templates ?? []
   const stats = data?.summary ?? { total: 0, running: 0, stopped: 0, error: 0 }
@@ -106,24 +111,41 @@ export default function MonitoringPage() {
   return (
     <div className="space-y-6">
       <ErrorBanner id="monitoring" />
+      <MonitoringAlerts vms={vms} />
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl sm:text-4xl font-semibold whitespace-normal break-words">Supervision des VMs</h1>
         <div className="flex flex-wrap gap-3">
-          <Button
-            onClick={() => mutate()}
-            variant="outline"
-            className="rounded-xl h-9 sm:h-10 px-3.5 sm:px-4 whitespace-nowrap"
-          >
-            <RefreshCw className={cn("mr-2 h-4 w-4", isLoading && "animate-spin")} />
-            <span>Actualiser</span>
-          </Button>
-          <Button asChild className="rounded-xl h-9 sm:h-10 px-3.5 sm:px-4 whitespace-nowrap">
-            <Link href="/deploy">
-              <Plus className="mr-2 h-4 w-4" />
-              <span>Créer VM</span>
-            </Link>
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => mutate()}
+                  variant="outline"
+                  aria-label="Actualiser"
+                  className="rounded-xl h-10 w-10 md:w-auto md:px-4 whitespace-nowrap"
+                >
+                  <RefreshCw className={cn("h-4 w-4 md:mr-2", isLoading && "animate-spin")} />
+                  <span className="hidden md:inline">Actualiser</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Actualiser</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button asChild className="rounded-xl h-10 w-10 md:w-auto md:px-4 whitespace-nowrap">
+                  <Link href="/deploy" aria-label="Créer VM" className="flex items-center justify-center">
+                    <Plus className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Créer VM</span>
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Créer VM</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -239,6 +261,20 @@ export default function MonitoringPage() {
                           >
                             {vm.status === "running" ? "En marche" : vm.status === "stopped" ? "Arrêtée" : "Erreur"}
                           </Badge>
+                          {vm.alerts && vm.alerts.length > 0 && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="warning" className="inline-flex items-center px-2.5 py-1 rounded-md font-mono text-xs sm:text-[13px]">
+                                    Alerte
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Seuil test {vm.alerts[0]?.threshold ?? 10}% (temporaire)
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
                       </div>
                       <CardDescription className="min-w-0 flex flex-wrap items-center gap-2">
@@ -250,7 +286,7 @@ export default function MonitoringPage() {
                           {vm.alerts.map((a) => (
                             <Badge
                               key={a.type}
-                              variant={a.state === 'WARNING' ? 'warning' : 'destructive'}
+                              variant="warning"
                               className="text-xs inline-flex items-center px-2.5 py-1 rounded-md"
                             >
                               {a.type} {a.value_percent}%
@@ -295,90 +331,117 @@ export default function MonitoringPage() {
                         {/* Actions */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
                           {vm.status === 'running' ? (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  disabled={actionLoading === vm.id}
-                                  className="rounded-xl w-full"
-                                >
-                                  {actionLoading === vm.id ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Square className="mr-2 h-4 w-4" />
-                                  )}
-                                  <span>Arrêter</span>
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Arrêter la VM</AlertDialogTitle>
-                                  <AlertDialogDescription>Êtes-vous sûr de vouloir arrêter "{vm.name}" ?</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleVMAction(vm, 'stop')}>Arrêter</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        disabled={actionLoading === vm.id}
+                                        aria-label="Arrêter"
+                                        className="rounded-xl h-10 w-full md:px-4"
+                                      >
+                                        {actionLoading === vm.id ? (
+                                          <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
+                                        ) : (
+                                          <Square className="h-4 w-4 md:mr-2" />
+                                        )}
+                                        <span className="hidden md:inline">Arrêter</span>
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                  </AlertDialog>
+                                </TooltipTrigger>
+                                <TooltipContent>Arrêter</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           ) : (
-                            <Button
-                              onClick={() => handleVMAction(vm, 'start')}
-                              disabled={actionLoading === vm.id}
-                              size="sm"
-                              className="rounded-xl w-full"
-                            >
-                              {actionLoading === vm.id ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <Play className="mr-2 h-4 w-4" />
-                              )}
-                              <span>Démarrer</span>
-                            </Button>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    onClick={() => handleVMAction(vm, 'start')}
+                                    disabled={actionLoading === vm.id}
+                                    size="sm"
+                                    aria-label="Démarrer"
+                                    className="rounded-xl h-10 w-full md:px-4"
+                                  >
+                                    {actionLoading === vm.id ? (
+                                      <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
+                                    ) : (
+                                      <Play className="h-4 w-4 md:mr-2" />
+                                    )}
+                                    <span className="hidden md:inline">Démarrer</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Démarrer</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
 
-                          <Button asChild size="sm" className="rounded-xl w-full">
-                            <Link href={`/monitoring/${vm.id}`}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              <span>Détails</span>
-                            </Link>
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button asChild size="sm" className="rounded-xl h-10 w-full md:px-4" aria-label="Détails">
+                                  <Link href={`/monitoring/${vm.id}`} className="flex items-center justify-center">
+                                    <Eye className="h-4 w-4 md:mr-2" />
+                                    <span className="hidden md:inline">Détails</span>
+                                  </Link>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Détails</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
 
-                          <Button asChild variant="outline" size="sm" className="rounded-xl w-full">
-                            <Link href={`/monitoring/${vm.id}/history`}>
-                              <BarChart3 className="h-4 w-4" />
-                              <span className="sr-only">Historique</span>
-                            </Link>
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  asChild
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-xl h-10 w-full md:px-4"
+                                >
+                                  <Link
+                                    href={`/monitoring/${vm.id}/history`}
+                                    aria-label="Historique"
+                                    className="flex items-center justify-center"
+                                  >
+                                    <BarChart3 className="h-4 w-4 md:mr-2" />
+                                    <span className="hidden md:inline">Historique</span>
+                                  </Link>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Historique</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
 
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                disabled={actionLoading === vm.id}
-                                className="rounded-xl w-full"
-                              >
-                                {actionLoading === vm.id ? (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                )}
-                                <span>Supprimer</span>
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Supprimer la VM</AlertDialogTitle>
-                                <AlertDialogDescription>Êtes-vous sûr de vouloir supprimer "{vm.name}" ?</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleVMDelete(vm)}>Supprimer</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      disabled={actionLoading === vm.id}
+                                      aria-label="Supprimer"
+                                      className="rounded-xl h-10 w-full md:px-4"
+                                    >
+                                      {actionLoading === vm.id ? (
+                                        <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="h-4 w-4 md:mr-2" />
+                                      )}
+                                      <span className="hidden md:inline">Supprimer</span>
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                </AlertDialog>
+                              </TooltipTrigger>
+                              <TooltipContent>Supprimer</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
 
                         <div className="text-xs text-muted-foreground pt-2 border-t whitespace-normal break-words break-all">

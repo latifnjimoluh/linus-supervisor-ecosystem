@@ -144,6 +144,19 @@ export default function DeployPage() {
   const [memMax, setMemMax] = React.useState(16384)
   const [last, setLast] = React.useState<null | { instance_id: string; status: string }>(null)
 
+  const toastLockRef = React.useRef(false)
+  const emitToast = React.useCallback(
+    (t: { title: string; description?: string; variant?: "success" | "warning" | "info" | "default" }) => {
+      if (toastLockRef.current) return
+      toastLockRef.current = true
+      toast(t)
+      setTimeout(() => {
+        toastLockRef.current = false
+      }, 3000)
+    },
+    [toast]
+  )
+
   const {
     register,
     handleSubmit,
@@ -306,22 +319,8 @@ export default function DeployPage() {
     }
 
     setIsSubmitting(true)
-    toast({
-      title: "Déploiement en cours...",
-      description: `Lancement du déploiement pour ${data.vm_names}.`,
-      variant: "info",
-    })
-
     try {
       const cleaned = sanitizeVmNames(data.vm_names)
-      const joinedClean = cleaned.join(", ")
-      if (joinedClean !== data.vm_names) {
-        toast({
-          title: "Noms normalisés",
-          description: `Les noms ont été ajustés: ${joinedClean}`,
-        })
-      }
-
       const payload = {
         vm_names: cleaned,
         service_type: data.service_type,
@@ -339,11 +338,10 @@ export default function DeployPage() {
       }
 
       const res = await runDeployment(payload)
-
-      toast({
-        title: "Déploiement lancé !",
+      emitToast({
+        title: "Déploiement lancé",
         description: "Vous allez être redirigé vers la page de suivi.",
-        variant: "success",
+        variant: "info",
       })
 
       if (typeof window !== "undefined") {
@@ -351,6 +349,11 @@ export default function DeployPage() {
       }
       router.push(`/deployments/${res.instance_id}`)
     } catch (err: any) {
+      emitToast({
+        title: "Déploiement échoué",
+        description: err?.response?.data?.message || err.message,
+        variant: "warning",
+      })
       setError("deploy", { message: err?.response?.data?.message || err.message })
     } finally {
       setIsSubmitting(false)

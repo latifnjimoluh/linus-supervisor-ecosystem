@@ -121,7 +121,7 @@ exports.generateScript = async (req, res) => {
 
     fs.writeFileSync(filepath, script);
 
-    await GeneratedScript.create({
+    const created = await GeneratedScript.create({
       template_id: tpl.id,
       category: tpl.category,
       service_type: tpl.service_type,
@@ -131,7 +131,12 @@ exports.generateScript = async (req, res) => {
     });
 
     await logAction(req, `generate_template_file:${tpl.id}:${filename}`);
-    res.json({ script, fileName: filename, contentType: 'text/x-shellscript' });
+    res.json({
+      script,
+      fileName: filename,
+      contentType: 'text/x-shellscript',
+      id: created.id,
+    });
   } catch (err) {
     console.error('Erreur generateScript:', err);
     res.status(500).json({ message: 'Erreur serveur.' });
