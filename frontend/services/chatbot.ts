@@ -17,10 +17,11 @@ export interface AskResponse {
   meta: { rid: string; durationMs: number };
 }
 
-const CHATBOT_URL = "/chatbot";
-const CHATBOT_STREAM_URL = "/chatbot/stream";
+/** URLs (alignées avec ton backend Express) */
+const CHATBOT_URL = "/chatbot/ask";
+const CHATBOT_STREAM_URL = "/chatbot/ask/stream";
 
-/** Appel simple (pas de streaming) */
+/** Non‑stream */
 export async function askChatbot(
   messages: Array<Pick<ChatMessage, "role" | "content">>
 ): Promise<AskResponse> {
@@ -28,19 +29,19 @@ export async function askChatbot(
   return res.data as AskResponse;
 }
 
-/** Paquet SSE envoyé par le backend */
+/** Paquet SSE */
 type ChatbotSSEPacket =
   | { meta?: any; delta?: string; done?: boolean }
   | { error: string; retryAfterSec?: number; info?: string };
 
-/** Callbacks pour le streaming */
+/** Handlers stream */
 export interface StreamHandlers {
   onDelta: (piece: string) => void;
   onDone?: (full: string, meta?: any) => void;
   onError?: (err: any) => void;
 }
 
-/** Streaming via fetch + ReadableStream */
+/** Stream via fetch + ReadableStream */
 export async function askChatbotStream(
   messages: Array<Pick<ChatMessage, "role" | "content">>,
   { onDelta, onDone, onError }: StreamHandlers
@@ -48,6 +49,7 @@ export async function askChatbotStream(
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const controller = new AbortController();
+
   let full = "";
 
   try {
@@ -78,11 +80,13 @@ export async function askChatbotStream(
 
         buffer += decoder.decode(value, { stream: true });
 
+        // Paquets SSE séparés par \n\n
         let boundary;
         while ((boundary = buffer.indexOf("\n\n")) !== -1) {
           const packet = buffer.slice(0, boundary);
           buffer = buffer.slice(boundary + 2);
 
+          // Heartbeat
           if (packet.startsWith(":")) continue;
 
           const lines = packet.split("\n");
@@ -115,6 +119,8 @@ export async function askChatbotStream(
           }
         }
       }
+
+      // Fin sans "done" explicite
       onDone?.(full);
     };
 
@@ -126,6 +132,7 @@ export async function askChatbotStream(
   return () => controller.abort();
 }
 
+/** Résout une URL absolue (si API sur un autre domaine/port) */
 function resolveAbsoluteUrl(path: string): string {
   const base =
     (typeof window !== "undefined" && (window as any)?.__API_BASE_URL__) ||

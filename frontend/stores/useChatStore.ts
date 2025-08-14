@@ -7,19 +7,34 @@ export interface ChatMessage {
   content: string;
 }
 
+type ChatStatus = "idle" | "loading" | "streaming";
+
 interface ChatState {
   isOpen: boolean;
   isExpanded: boolean;
-  status: "idle" | "loading" | "streaming";
+  status: ChatStatus;
+  /** ID du message assistant en cours de remplissage (stream) */
   streamingMessageId?: string;
   messages: ChatMessage[];
+
+  // UI
   open: () => void;
   close: () => void;
   toggleExpand: () => void;
+
+  // Messages
   addMessage: (m: ChatMessage) => void;
+  /** Prépare un message assistant vide et le marque comme “en streaming” */
   startStreamingMessage: (id: string) => void;
+  /** Ajoute un morceau de texte à un message existant */
   appendToMessage: (id: string, chunk: string) => void;
-  setStatus: (s: "idle" | "loading" | "streaming") => void;
+
+  // Statuts
+  setStatus: (s: ChatStatus) => void;
+  /** Passe en idle et nettoie l’ID de stream courant */
+  stopStream: () => void;
+
+  // Reset
   clear: () => void;
 }
 
@@ -32,6 +47,7 @@ export const useChatStore = create<ChatState>((set) => ({
 
   open: () => set({ isOpen: true }),
   close: () => set({ isOpen: false, isExpanded: false }),
+
   toggleExpand: () => set((s) => ({ isExpanded: !s.isExpanded })),
 
   addMessage: (m) => set((s) => ({ messages: [...s.messages, m] })),
@@ -39,6 +55,7 @@ export const useChatStore = create<ChatState>((set) => ({
   startStreamingMessage: (id) =>
     set((s) => ({
       streamingMessageId: id,
+      status: "streaming",
       messages: [...s.messages, { id, role: "assistant", content: "" }],
     })),
 
@@ -51,7 +68,18 @@ export const useChatStore = create<ChatState>((set) => ({
 
   setStatus: (status) => set({ status }),
 
-  clear: () => set({ messages: [], status: "idle", streamingMessageId: undefined }),
+  stopStream: () =>
+    set(() => ({
+      status: "idle",
+      streamingMessageId: undefined,
+    })),
+
+  clear: () =>
+    set({
+      messages: [],
+      status: "idle",
+      streamingMessageId: undefined,
+    }),
 }));
 
 export default useChatStore;
