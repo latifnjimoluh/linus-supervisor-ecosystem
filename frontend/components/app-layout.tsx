@@ -1,28 +1,29 @@
-"use client"
+"use client";
 
-import { usePathname } from "next/navigation"
-import * as React from "react"
+import { usePathname } from "next/navigation";
+import * as React from "react";
 
-import { AppHeader } from "@/components/app-header"
-import { AppSidebar } from "@/components/app-sidebar"
-import { ChatbotLauncher } from "@/components/chatbot-launcher"
-import { AuthGuard } from "@/components/auth-guard"
-import { ErrorBanner } from "./error-banner"
+import { AppHeader } from "@/components/app-header";
+import { AppSidebar } from "@/components/app-sidebar";
+import { AuthGuard } from "@/components/auth-guard";
+import { ErrorBanner } from "./error-banner";
+import { ChatButton } from "@/components/chat/ChatButton";
+import { ChatPanel } from "@/components/chat/ChatPanel";
 
 interface AppLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const pathname = usePathname()
-  const isLoginPage = pathname === "/" || pathname === "/login"
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false)
+  const pathname = usePathname();
+  const isLoginPage = pathname === "/" || pathname === "/login";
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
-  const toggleSidebar = () => setIsSidebarOpen((open) => !open)
-  const closeSidebar = () => setIsSidebarOpen(false)
+  const toggleSidebar = () => setIsSidebarOpen((open) => !open);
+  const closeSidebar = () => setIsSidebarOpen(false);
 
   if (isLoginPage) {
-    return <main className="flex min-h-screen w-full flex-col">{children}</main>
+    return <main className="flex min-h-screen w-full flex-col">{children}</main>;
   }
 
   return (
@@ -36,8 +37,11 @@ export function AppLayout({ children }: AppLayoutProps) {
             {children}
           </main>
         </div>
-        <ChatbotLauncher />
+        <ChatButton />
+        <ChatPanel />
       </div>
     </AuthGuard>
-  )
+  );
 }
+
+export default AppLayout;

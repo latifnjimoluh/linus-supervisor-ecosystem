@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, User, Mail, Shield, Loader2 } from 'lucide-react'
+import { User, Mail, Shield, Loader2 } from 'lucide-react'
 import { capitalize } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
@@ -11,8 +11,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 import { getUser, updateUser } from "@/services/users"
 import { listRoles, Role } from "@/services/roles"
+import { BackButton } from "@/components/back-button"
 
 interface EditUserForm {
   first_name: string
@@ -29,6 +32,7 @@ export default function EditUserPage() {
   const params = useParams()
   const id = Number(params.id)
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
   const [loading, setLoading] = React.useState(false)
   const [roles, setRoles] = React.useState<Role[]>([])
   const [formData, setFormData] = React.useState<EditUserForm>({
@@ -83,18 +87,15 @@ export default function EditUserPage() {
         status: formData.status,
         role_id: formData.role_id,
       })
+      clearError("user-edit")
       toast({
         title: "Utilisateur mis à jour",
         description: `Le compte de ${formData.first_name} ${formData.last_name} a été mis à jour`,
         variant: "success",
       })
       router.push("/users")
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la mise à jour de l'utilisateur",
-        variant: "destructive",
-      })
+    } catch (error: any) {
+      setError("user-edit", { message: "Erreur lors de la mise à jour de l'utilisateur" })
     } finally {
       setLoading(false)
     }
@@ -102,10 +103,9 @@ export default function EditUserPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/users")}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
+      <ErrorBanner id="user-edit" />
+      <div className="flex items-center gap-3">
+        <BackButton href="/users" />
         <h1 className="text-4xl font-semibold">Modifier un utilisateur</h1>
       </div>
 

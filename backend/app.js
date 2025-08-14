@@ -47,6 +47,12 @@ const routes = require('./routes');
 const app = express();
 logger.info("Initialisation de l'application Express");
 
+// Default API cache policy: prevent storing user-specific data
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  next();
+});
+
 // ------------------ 🔍 LOG ENV & CONFIG DB ------------------
 function mask(str) {
   if (!str) return '(unset)';

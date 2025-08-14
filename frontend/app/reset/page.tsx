@@ -9,26 +9,36 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
 import { requestPasswordReset } from "@/actions/auth"
+import { ErrorBanner } from "@/components/error-banner"
 
 export default function ResetPasswordPage() {
   const [state, action] = useActionState(requestPasswordReset, null)
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
 
   useEffect(() => {
     if (state) {
-      toast({
-        title: state.success ? "Demande envoyée" : "Erreur",
-        description: state.message,
-        variant: state.success ? "success" : "destructive",
-      })
+      if (state.success) {
+        clearError("reset")
+        toast({
+          title: "Demande envoyée",
+          description: state.message,
+          variant: "success",
+        })
+      } else {
+        setError("reset", { message: state.message, ttlMs: 6000 })
+      }
     }
-  }, [state, toast])
+  }, [state, toast, setError, clearError])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
-        <CardHeader className="text-center">
+      <div className="w-full max-w-md space-y-4">
+        <ErrorBanner id="reset" />
+        <Card className="w-full rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader className="text-center">
           <CardTitle className="text-2xl">Mot de passe oublié ?</CardTitle>
           <CardDescription>Saisissez votre email pour recevoir un lien de réinitialisation.</CardDescription>
         </CardHeader>
@@ -69,7 +79,8 @@ export default function ResetPasswordPage() {
             </div>
           </form>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   )
 }
