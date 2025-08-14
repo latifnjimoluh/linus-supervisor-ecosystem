@@ -1,10 +1,16 @@
 #!/bin/bash
 
-echo "🚀 Déploiement du serveur API - ${DOMAIN_NAME} (${IP_ADDRESS})"
+SERVER_IP=$(hostname -I | awk '{print $1}')
+echo "🚀 Déploiement du serveur API - ${DOMAIN_NAME} (${SERVER_IP})"
 APP_DIR="${APP_DIR}"
 VENVDIR="$APP_DIR/venv"
 PROXY_IP="${PROXY_IP}"
 API_USER="${API_USER}"
+
+# ✅ Ensure the API user exists
+if ! id -u "$API_USER" >/dev/null 2>&1; then
+  sudo useradd -m -s /bin/bash "$API_USER"
+fi
 
 # 1. Mise à jour système & dépendances
 echo "📦 Installation des paquets requis..."
@@ -15,6 +21,7 @@ sudo apt install curl -y
 echo "📁 Création du dossier $APP_DIR..."
 sudo mkdir -p "$APP_DIR"
 sudo chown -R $API_USER:$API_USER "$APP_DIR"
+sudo chmod 775 "$APP_DIR"
 
 # 3. Création d'un environnement virtuel Python
 echo "🐍 Initialisation de l’environnement virtuel..."

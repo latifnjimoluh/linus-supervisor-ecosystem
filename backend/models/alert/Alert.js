@@ -1,3 +1,6 @@
+/**
+ * Alert model storing monitoring alert records.
+ */
 module.exports = (sequelize, DataTypes) => {
   const Alert = sequelize.define(
     'Alert',

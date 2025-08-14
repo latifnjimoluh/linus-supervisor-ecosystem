@@ -344,6 +344,7 @@ CREATE TABLE public.monitorings (
     instance_id character varying(255),
     services_status json,
     system_status json,
+    logs_status json,
     retrieved_at timestamp with time zone DEFAULT now() NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL

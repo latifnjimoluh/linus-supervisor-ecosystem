@@ -3,7 +3,7 @@
 
 const axios = require("axios");
 const https = require("https");
-const { Deployment, Delete, Monitoring, UserSetting, Log, User } = require("../../models");
+const { Deployment, Delete, Monitoring, UserSetting, Log, User, Alert, Sequelize } = require("../../models");
 const { analyzeDeploymentStats } = require("../../services/iaService");
 const { randomUUID } = require("crypto");
 
@@ -221,7 +221,6 @@ exports.getDashboardData = async (req, res) => {
 
     // Compteurs
     let activeServices = 0;
-    let critical = 0;
     proxmoxVms.forEach((vm) => {
       const dep = deploymentMap[String(vm.vmid)];
       const ip = dep?.vm_ip;
@@ -229,13 +228,35 @@ exports.getDashboardData = async (req, res) => {
       if (monitor) {
         const services = monitor.services_status?.services || [];
         activeServices += services.filter((s) => s.active === "active").length;
-        critical += services.filter((s) => s.active !== "active").length;
       }
     });
 
     const totalVms = Array.from(liveVmidSet).length;
+
+    const alertRows = await Alert.findAll({
+      where: { status: "en_cours" },
+      attributes: ["severity", [Sequelize.fn("COUNT", Sequelize.col("id")), "count"]],
+      group: ["severity"],
+      raw: true,
+    });
+
+    let critical = 0;
+    let major = 0;
+    let minor = 0;
+    alertRows.forEach((row) => {
+      if (row.severity === "critique") critical = Number(row.count);
+      else if (row.severity === "majeure") major = Number(row.count);
+      else if (row.severity === "mineure") minor = Number(row.count);
+    });
+
+    const serversInAlert = await Alert.count({
+      where: { status: "en_cours" },
+      distinct: true,
+      col: "server",
+    });
+
     const systemHealth = totalVms
-      ? Math.max(0, 100 - Math.round((critical / totalVms) * 100))
+      ? Math.max(0, 100 - Math.round((serversInAlert / totalVms) * 100))
       : 100;
 
     // Logs
@@ -267,7 +288,7 @@ exports.getDashboardData = async (req, res) => {
     res.json({
       totalVms,
       activeServices,
-      alerts: { critical, major: 0, minor: 0 },
+      alerts: { critical, major, minor },
       systemHealth,
       networkTraffic: { incoming: 0, outgoing: 0 },
       recentActivity,

@@ -36,6 +36,10 @@ Run scripts from the repository root so shared dependencies are reused by both a
 ## Database schema
 The SQL schema used by the backend is documented in [sql/schema.sql](sql/schema.sql). It defines tables for users, roles, permissions, deployments, and monitoring records.
 
+### Manual SQL upgrade
+For existing deployments, run the commands in [sql/add_logs_and_alerts.sql](sql/add_logs_and_alerts.sql) to add the `logs_status` column to `monitorings` and create the `alerts` table.
+
+
 ### Deployment flow
 
 1. Build both apps from the root:
@@ -55,6 +59,10 @@ The SQL schema used by the backend is documented in [sql/schema.sql](sql/schema.
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | Paramètres de connexion base de données | _required_ |
 | `CORS_ORIGINS` | Liste d'origines autorisées séparées par des virgules | `http://localhost:5173` |
 | `SMTP_USER`, `SMTP_PASS` | Identifiants SMTP pour l'envoi de mails | _optional_ |
+| `ALERT_CPU_THRESHOLD` | Seuil CPU pour déclencher une alerte (%) | `10` |
+| `ALERT_RAM_THRESHOLD` | Seuil RAM pour déclencher une alerte (%) | `10` |
+| `ALERT_FRESHNESS_MINUTES` | Âge max des métriques avant d'être considérées obsolètes | `5` |
+| `ALERT_EMAIL_TO` | Destinataires email séparés par des virgules pour les nouvelles alertes | _optional_ |
 
 ## Testing with Postman
 A Postman collection is available in `postman_collection.json`. Import it and set the `baseUrl` and `token` variables. Login to obtain a token before accessing protected routes.
@@ -91,6 +99,8 @@ Define reusable service deployment templates. Each template stores its form sche
 - `PUT /templates/:id` – update a template
 - `DELETE /templates/:id` – deactivate a template
 - `POST /templates/generate` – generate a script from stored template content
+
+Templates include utilities for deploying web servers. For example, NGINX and Apache scripts automatically detect the VM's IP address and inject it into the generated homepage.
 
 ## Terraform Deployment
 Use `POST /terraform/deploy` to launch a Terraform run that clones a template VM and executes initialization, configuration, monitoring, and service-detection scripts. Script paths are stored in the database and selected by ID at deployment time.
