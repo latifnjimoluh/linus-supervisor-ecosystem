@@ -25,12 +25,14 @@ export interface MonitoringVm {
   created_at?: string | null;
   instance_id?: string | null;
   alerts?: Array<{
-    type: 'CPU' | 'RAM';
-    value_percent: number;
-    threshold: number;
-    state: string;
-    freshness: 'fresh' | 'stale';
-  }>;
+      id: number;
+      type: 'CPU' | 'RAM';
+      value_percent: number;
+      threshold: number;
+      state: string;
+      freshness: 'fresh' | 'stale';
+      description: string;
+    }>;
 }
 
 export interface MonitoringOverview {

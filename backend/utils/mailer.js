@@ -43,4 +43,34 @@ const sendResetCode = async (to, code) => {
   }
 };
 
-module.exports = { sendResetCode };
+/**
+ * Envoie un email lorsqu'une alerte est déclenchée.
+ * @param {string|string[]} to - Destinataires séparés par des virgules ou tableau
+ * @param {object} alert - Détails de l'alerte
+ * @param {string} alert.server - Nom du serveur ou IP
+ * @param {string} alert.service - Type d'alerte (CPU, RAM...)
+ * @param {number} alert.value - Valeur mesurée
+ * @param {number} alert.threshold - Seuil configuré
+ * @param {string} alert.description - Description détaillée
+ */
+const sendAlertEmail = async (to, alert) => {
+  const recipients = Array.isArray(to) ? to.join(',') : to;
+  if (!recipients) return;
+  const subject = `Alerte ${alert.service} sur ${alert.server}`;
+  const text =
+    `Une alerte ${alert.service} a été déclenchée sur ${alert.server}.
+Valeur : ${alert.value}% (seuil ${alert.threshold}%).
+${alert.description}`;
+  try {
+    await transporter.sendMail({
+      from: `"Linusupervision" <${process.env.SMTP_USER}>`,
+      to: recipients,
+      subject,
+      text,
+    });
+  } catch (err) {
+    console.error('❌ Échec envoi mail alerte :', err.message || err);
+  }
+};
+
+module.exports = { sendResetCode, sendAlertEmail };

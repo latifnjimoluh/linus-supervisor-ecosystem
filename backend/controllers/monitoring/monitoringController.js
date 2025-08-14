@@ -4,9 +4,10 @@ const axios = require('axios');
 const https = require('https');
 const ping = require('ping');
 const { getRemoteFileContent, getRemoteJSON } = require('../../utils/sshClient');
-const { Monitoring, UserSetting, Deployment } = require('../../models');
+const { Monitoring, UserSetting, Deployment, Alert } = require('../../models');
 const { Op } = require('sequelize');
 const { evaluateResourceAlerts } = require('../../services/alertEvaluator');
+const { sendAlertEmail } = require('../../utils/mailer');
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
@@ -50,6 +51,7 @@ exports.collectMonitoringData = async (req, res) => {
     statusPath: bodyStatusPath,
     servicesPath: bodyServicesPath,
     instanceInfoPath: bodyInstanceInfoPath,
+    logsPath: bodyLogsPath,
   } = req.body;
 
   const host = vm_ip;
@@ -72,6 +74,11 @@ exports.collectMonitoringData = async (req, res) => {
     settings?.servicespath ||
     process.env.SERVICES_JSON_PATH ||
     '/opt/monitoring/services_status.json';
+  const logsPath =
+    bodyLogsPath ||
+    settings?.logspath ||
+    process.env.LOGS_JSON_PATH ||
+    '/opt/monitoring/logs_status.json';
   const instanceInfoPath =
     bodyInstanceInfoPath ||
     settings?.instanceinfopath ||
@@ -127,12 +134,20 @@ exports.collectMonitoringData = async (req, res) => {
       filePath: statusPath,
     });
 
+    const logsStatus = await getRemoteJSON({
+      host,
+      username: sshUser,
+      privateKey,
+      filePath: logsPath,
+    });
+
     const record = await Monitoring.create({
       vm_ip: host,
       ip_address: systemStatus.ip_address,
       instance_id: instanceId,
       services_status: servicesStatus,
       system_status: systemStatus,
+      logs_status: logsStatus,
       retrieved_at: new Date(),
     });
 
@@ -305,6 +320,31 @@ exports.getOverview = async (req, res) => {
           },
           thresholdOverrides
         );
+
+        for (const a of alerts) {
+          const serverName = ip || `VM ${vm.vmid}`;
+          const description = `${a.type} usage ${a.value_percent}% (seuil ${a.threshold}%)`;
+          const [record, created] = await Alert.findOrCreate({
+            where: { server: serverName, service: a.type, status: 'en_cours' },
+            defaults: {
+              severity: 'critique',
+              description,
+            },
+          });
+          a.id = record.id;
+          a.description = description;
+          if (created && process.env.ALERT_EMAIL_TO) {
+            const recipients = process.env.ALERT_EMAIL_TO.split(',').map((e) => e.trim()).filter(Boolean);
+            await sendAlertEmail(recipients, {
+              server: serverName,
+              service: a.type,
+              value: a.value_percent,
+              threshold: a.threshold,
+              description,
+            });
+          }
+        }
+
         return {
           id: String(vm.vmid),
           name: vm.name || dep.vm_name || `VM ${vm.vmid}`,

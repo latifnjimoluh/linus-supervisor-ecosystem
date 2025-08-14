@@ -1,7 +1,7 @@
 const DEFAULT_THRESHOLDS = {
-  cpu: 10,
-  ram: 10,
-  freshnessMinutes: 5,
+  cpu: Number(process.env.ALERT_CPU_THRESHOLD) || 10,
+  ram: Number(process.env.ALERT_RAM_THRESHOLD) || 10,
+  freshnessMinutes: Number(process.env.ALERT_FRESHNESS_MINUTES) || 5,
 };
 
 /**

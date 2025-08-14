@@ -15,6 +15,9 @@ module.exports = (sequelize, DataTypes) => {
     system_status: {
       type: DataTypes.JSONB,
     },
+    logs_status: {
+      type: DataTypes.JSONB,
+    },
     retrieved_at: {
       type: DataTypes.DATE,
       allowNull: false,

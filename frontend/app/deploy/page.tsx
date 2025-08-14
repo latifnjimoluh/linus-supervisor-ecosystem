@@ -86,6 +86,22 @@ const clamp = (value: number, min: number, max: number) => {
   return Math.min(Math.max(value, min), max)
 }
 
+const sanitizeIp = (input: string) => {
+  return input
+    .replace(/[^0-9.]/g, "")
+    .split(".")
+    .slice(0, 4)
+    .map((oct) => {
+      const num = parseInt(oct.slice(0, 3), 10)
+      if (Number.isNaN(num)) return ""
+      return Math.min(num, 255).toString()
+    })
+    .join(".")
+}
+
+const IPV4_REGEX =
+  /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/
+
 // -------------------- Zod Schema --------------------
 const deploymentSchema = z
   .object({
@@ -107,8 +123,18 @@ const deploymentSchema = z
     vcpu_sockets: z.number().min(1, "Minimum 1 socket requis."),
     disk_size: z.number().min(10, "Minimum 10 Go de disque requis."),
     use_static_ip: z.boolean(),
-    static_ip: z.string().optional(),
-    gateway: z.string().optional(),
+    static_ip: z
+      .string()
+      .optional()
+      .refine((val) => !val || IPV4_REGEX.test(val), {
+        message: "Adresse IP invalide.",
+      }),
+    gateway: z
+      .string()
+      .optional()
+      .refine((val) => !val || IPV4_REGEX.test(val), {
+        message: "Passerelle invalide.",
+      }),
   })
   .refine(
     (data) => !data.use_static_ip || (data.use_static_ip && data.static_ip),
@@ -815,7 +841,13 @@ export default function DeployPage() {
                       <Input
                         id="static_ip"
                         placeholder="192.168.1.100"
-                        {...register("static_ip")}
+                        inputMode="numeric"
+                        {...register("static_ip", {
+                          onChange: (e) => {
+                            const sanitized = sanitizeIp(e.target.value)
+                            setValue("static_ip", sanitized)
+                          },
+                        })}
                       />
                       {errors.static_ip && (
                         <ErrorMessage>{errors.static_ip.message}</ErrorMessage>
@@ -826,7 +858,13 @@ export default function DeployPage() {
                       <Input
                         id="gateway"
                         placeholder="192.168.1.1"
-                        {...register("gateway")}
+                        inputMode="numeric"
+                        {...register("gateway", {
+                          onChange: (e) => {
+                            const sanitized = sanitizeIp(e.target.value)
+                            setValue("gateway", sanitized)
+                          },
+                        })}
                       />
                     </div>
                   </motion.div>
