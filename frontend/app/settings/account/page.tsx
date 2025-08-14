@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 import { changePassword, requestPasswordReset, resetPasswordWithCode } from "@/services/auth"
 import {
   AccountInfo,
@@ -23,6 +25,7 @@ import {
 export default function AccountSettingsPage() {
   const { setTheme } = useTheme()
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
   const [account, setAccount] = useState<AccountInfo | null>(null)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -61,7 +64,7 @@ export default function AccountSettingsPage() {
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      toast({ title: "Les mots de passe ne correspondent pas", variant: "destructive" })
+      setError("account", { message: "Les mots de passe ne correspondent pas" })
       return
     }
     try {
@@ -71,7 +74,7 @@ export default function AccountSettingsPage() {
       setNewPassword("")
       setConfirmPassword("")
     } catch (err: any) {
-      toast({ title: "Erreur", description: err?.response?.data?.message || err.message, variant: "destructive" })
+      setError("account", { message: err?.response?.data?.message || err.message })
     }
   }
 
@@ -82,13 +85,13 @@ export default function AccountSettingsPage() {
       setResetSent(true)
       toast({ title: "Code envoyé", description: "Vérifiez votre e-mail", variant: "success" })
     } catch (err: any) {
-      toast({ title: "Erreur", description: err?.response?.data?.message || err.message, variant: "destructive" })
+      setError("account", { message: err?.response?.data?.message || err.message })
     }
   }
 
   const handleResetPassword = async () => {
     if (resetNewPassword !== resetConfirmPassword) {
-      toast({ title: "Les mots de passe ne correspondent pas", variant: "destructive" })
+      setError("account", { message: "Les mots de passe ne correspondent pas" })
       return
     }
     try {
@@ -99,7 +102,7 @@ export default function AccountSettingsPage() {
       setResetConfirmPassword("")
       setResetSent(false)
     } catch (err: any) {
-      toast({ title: "Erreur", description: err?.response?.data?.message || err.message, variant: "destructive" })
+      setError("account", { message: err?.response?.data?.message || err.message })
     }
   }
 
@@ -123,12 +126,13 @@ export default function AccountSettingsPage() {
       setAccount((prev) => (prev ? { ...prev, settings: { ...(prev.settings || {}), ...payload } } : prev))
       toast({ title: "Paramètres mis à jour", variant: "success" })
     } catch (err: any) {
-      toast({ title: "Erreur", description: err?.response?.data?.message || err.message, variant: "destructive" })
+      setError("account", { message: err?.response?.data?.message || err.message })
     }
   }
 
   return (
     <div className="space-y-6">
+      <ErrorBanner id="account" />
       <div className="flex items-center gap-3">
         <BackButton href="/settings" label="Retour" />
         <div>

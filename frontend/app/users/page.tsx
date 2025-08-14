@@ -2,21 +2,20 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Plus, Search, Filter, RefreshCw, User, Edit, Trash2, Lock, CheckCircle, XCircle, Mail, Shield, Loader2, Eye, MoreVertical } from 'lucide-react'
-import { motion } from "framer-motion"
+import { Plus, Search, RefreshCw, User, CheckCircle, XCircle, Shield, Loader2 } from 'lucide-react'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 import { listUsers, patchUser, deleteUser, getUser, User as UserAccount } from "@/services/users"
 import { listRoles, Role } from "@/services/roles"
 import { capitalize } from "@/lib/utils"
+import UserCard from "@/components/user-card"
+import UserDetailsDialog from "@/components/user-details-dialog"
 
 export default function UsersPage() {
   const [users, setUsers] = React.useState<UserAccount[]>([])
@@ -29,6 +28,7 @@ export default function UsersPage() {
   const [detailOpen, setDetailOpen] = React.useState(false)
   const [detailUser, setDetailUser] = React.useState<UserAccount | null>(null)
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
 
   // juste sous les imports
   type ApiUser = UserAccount & {
@@ -106,17 +106,14 @@ export default function UsersPage() {
           message = "Action effectuée avec succès"
       }
 
+      clearError("users-actions")
       toast({
         title: "Action réussie",
         description: message,
         variant,
       })
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue",
-        variant: "destructive",
-      })
+      setError("users-actions", { message: "Une erreur est survenue" })
     } finally {
       setActionLoading(null)
     }
@@ -133,10 +130,6 @@ export default function UsersPage() {
     }
   }
 
-
-  const getRoleBadgeVariant = (roleId: number) => {
-    return "default"
-  }
 
   const getRoleLabel = (roleId: number) => {
     const role = roles.find(r => r.id === roleId)
@@ -157,18 +150,26 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
+      <ErrorBanner id="users-actions" />
       {/* Header */}
-      <div className="sticky top-0 z-10 flex flex-col gap-3 bg-background pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="font-semibold text-[clamp(1.5rem,5vw,2.5rem)]">Gestion des utilisateurs</h1>
-        <div className="flex gap-3">
-          <Button onClick={fetchUsers} variant="outline" size="sm" className="rounded-xl">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl sm:text-4xl font-semibold">Gestion des utilisateurs</h1>
+        <div className="flex flex-wrap gap-3">
+          <Button
+            onClick={fetchUsers}
+            variant="outline"
+            className="rounded-xl h-9 sm:h-10 px-3.5 sm:px-4"
+          >
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Actualiser
+            <span>Actualiser</span>
           </Button>
-          <Button asChild className="rounded-xl">
+          <Button
+            asChild
+            className="rounded-xl h-9 sm:h-10 px-3.5 sm:px-4"
+          >
             <Link href="/users/create">
               <Plus className="mr-2 h-4 w-4" />
-              Créer un utilisateur
+              <span>Créer un utilisateur</span>
             </Link>
           </Button>
         </div>
@@ -176,7 +177,7 @@ export default function UsersPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -187,54 +188,54 @@ export default function UsersPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Actifs</p>
-                <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+                <p className="text-2xl font-bold text-success">{stats.active}</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              <CheckCircle className="h-8 w-8 text-success" />
             </div>
           </CardContent>
         </Card>
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Inactifs</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.inactive}</p>
+                <p className="text-2xl font-bold text-warning">{stats.inactive}</p>
               </div>
-              <XCircle className="h-8 w-8 text-yellow-600" />
+              <XCircle className="h-8 w-8 text-warning" />
             </div>
           </CardContent>
         </Card>
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Admins</p>
-                <p className="text-2xl font-bold text-red-600">{stats.admins}</p>
+                <p className="text-2xl font-bold text-secondary">{stats.admins}</p>
               </div>
-              <Shield className="h-8 w-8 text-red-600" />
+              <Shield className="h-8 w-8 text-secondary" />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters */}
-      <div className="flex w-full gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] sm:flex-wrap sm:overflow-visible">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Rechercher par nom ou email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-11 rounded-xl pl-10"
+            className="pl-10 rounded-xl"
           />
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="h-11 min-w-[160px] w-48 rounded-xl">
+          <SelectTrigger className="w-full rounded-xl">
             <SelectValue placeholder="Filtrer par rôle" />
           </SelectTrigger>
           <SelectContent>
@@ -252,7 +253,7 @@ export default function UsersPage() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-11 min-w-[160px] w-48 rounded-xl">
+          <SelectTrigger className="w-full rounded-xl">
             <SelectValue placeholder="Filtrer par statut" />
           </SelectTrigger>
           <SelectContent>
@@ -263,7 +264,7 @@ export default function UsersPage() {
         </Select>
       </div>
 
-      {/* Users Table */}
+      {/* Users List */}
       <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -274,155 +275,24 @@ export default function UsersPage() {
             {filteredUsers.length} utilisateur(s) trouvé(s) sur {users.length} au total
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin" />
               <span className="ml-2">Chargement des utilisateurs...</span>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredUsers.map((user, index) => (
-                <motion.div
+                <UserCard
                   key={user.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className="flex flex-col rounded-xl border p-4 hover:bg-muted/50 transition-colors max-h-60 overflow-auto"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex flex-1 items-start gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
-                        <span className="text-sm font-medium">
-                          {(user.first_name?.[0] ?? '').toUpperCase()}{(user.last_name?.[0] ?? '').toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-medium text-[clamp(1rem,4vw,1.125rem)] truncate">
-                          {user.first_name} {user.last_name}
-                        </h4>
-                        <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center">
-                          <Badge variant={user.status === "actif" ? "success" : "warning"} className="text-xs">
-                            {user.status === "actif" ? "Actif" : "Inactif"}
-                          </Badge>
-                          <Badge variant={getRoleBadgeVariant(user.role_id)} className="text-xs">
-                            {getRoleLabel(user.role_id)}
-                          </Badge>
-                        </div>
-                        <span className="mt-1 flex items-center gap-1 text-sm text-muted-foreground break-all">
-                          <Mail className="h-3 w-3" />
-                          {user.email}
-                        </span>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {user.created_at
-                            ? `Créé le ${new Date(user.created_at).toLocaleDateString("fr-FR")}`
-                            : "Date de création inconnue"}
-                          {user.last_login && (
-                            <span className="ml-4">
-                              Dernière connexion: {new Date(user.last_login).toLocaleDateString("fr-FR")}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="hidden sm:flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl"
-                        onClick={() => handleViewUser(user.id)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button asChild variant="outline" size="sm" className="rounded-xl">
-                        <Link href={`/users/${user.id}/edit`}>
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl"
-                        onClick={() => handleUserAction("reset-password", user.id, user.email)}
-                        disabled={actionLoading === `reset-password-${user.id}`}
-                      >
-                        {actionLoading === `reset-password-${user.id}` ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Lock className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl"
-                        onClick={() => handleUserAction(user.status === "actif" ? "deactivate" : "activate", user.id, user.email)}
-                        disabled={actionLoading === `${user.status === "actif" ? "deactivate" : "activate"}-${user.id}`}
-                      >
-                        {actionLoading === `${user.status === "actif" ? "deactivate" : "activate"}-${user.id}` ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : user.status === "actif" ? (
-                          <XCircle className="h-4 w-4" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm" className="rounded-xl">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Supprimer l'utilisateur</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              ⚠️ Cette action est irréversible ! L'utilisateur "{user.first_name} {user.last_name}" ({user.email}) sera définitivement supprimé.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Annuler</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleUserAction("delete", user.id, user.email)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Supprimer définitivement
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="sm:hidden">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => handleViewUser(user.id)}>Voir</DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/users/${user.id}/edit`}>Modifier</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleUserAction("reset-password", user.id, user.email)}>
-                          Réinit. mot de passe
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleUserAction(user.status === "actif" ? "deactivate" : "activate", user.id, user.email)}>
-                          {user.status === "actif" ? "Désactiver" : "Activer"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => {
-                            if (confirm("Supprimer cet utilisateur ?")) {
-                              handleUserAction("delete", user.id, user.email)
-                            }
-                          }}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          Supprimer
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </motion.div>
+                  user={user}
+                  roleLabel={getRoleLabel(user.role_id)}
+                  onView={handleViewUser}
+                  onAction={handleUserAction}
+                  actionLoading={actionLoading}
+                  index={index}
+                />
               ))}
             </div>
           )}
@@ -447,40 +317,13 @@ export default function UsersPage() {
         </div>
       )}
 
-      <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>
-              {detailUser ? `${detailUser.first_name} ${detailUser.last_name}` : "Utilisateur"}
-            </SheetTitle>
-            {detailUser && (
-              <SheetDescription>{detailUser.email}</SheetDescription>
-            )}
-          </SheetHeader>
-          {detailUser && (
-            <div className="space-y-2 mt-4 text-sm">
-              <p>
-                <strong>Rôle :</strong> {getRoleLabel(detailUser.role_id)}
-                {(() => {
-                  const desc = getRoleDescription(detailUser.role_id)
-                  return desc ? ` - ${desc}` : ''
-                })()}
-              </p>
-              <p><strong>Statut :</strong> {detailUser.status === "actif" ? "Actif" : "Inactif"}</p>
-              <p><strong>Téléphone :</strong> {detailUser.phone || "—"}</p>
-              <p>
-                <strong>Créé le :</strong>{' '}
-                {detailUser.created_at
-                  ? new Date(detailUser.created_at).toLocaleDateString("fr-FR")
-                  : '—'}
-              </p>
-              {detailUser.last_login && (
-                <p><strong>Dernière connexion :</strong> {new Date(detailUser.last_login).toLocaleDateString("fr-FR")}</p>
-              )}
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
+      <UserDetailsDialog
+        user={detailUser}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        roleLabel={detailUser ? getRoleLabel(detailUser.role_id) : ""}
+        roleDescription={detailUser ? getRoleDescription(detailUser.role_id) : ""}
+      />
     </div>
   )
 }

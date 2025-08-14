@@ -1,14 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { useParams, useRouter } from "next/navigation"
-import { XCircle, Loader2, Clock, Server, FileText, ChevronLeft, Copy } from "lucide-react"
+import { useParams } from "next/navigation"
+import { XCircle, Loader2, Clock, Server, FileText, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/back-button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ErrorMessage } from "@/components/ui/error-message"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
 import { fetchDeployment, summarizeDeploymentLogs, DeploymentDetail } from "@/services/deployments"
 import { getStatusBadge } from "@/components/status-badge"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
@@ -20,9 +22,9 @@ const normalizeForUI = (s: string) => stripAnsi(s).replace(/\r/g, "\n")
 
 export default function DeploymentDetailsPage() {
   const params = useParams()
-  const router = useRouter()
   const deploymentId = params.id as string
   const { toast } = useToast()
+  const { setError } = useErrors()
 
   const [deployment, setDeployment] = React.useState<DeploymentDetail | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -92,7 +94,7 @@ export default function DeploymentDetailsPage() {
         token = await refreshAuthToken()
       }
       if (!token) {
-        toast({ title: "Session expirée", variant: "destructive" })
+        setError("session", { message: "Session expirée", detailsUrl: "/login" })
         logoutUser("Session expirée")
         return
       }
@@ -148,7 +150,7 @@ export default function DeploymentDetailsPage() {
           if (newToken) {
             connect()
           } else {
-            toast({ title: "Session expirée", variant: "destructive" })
+            setError("session", { message: "Session expirée", detailsUrl: "/login" })
             logoutUser("Session expirée")
           }
         }
@@ -191,9 +193,7 @@ export default function DeploymentDetailsPage() {
         <XCircle className="h-12 w-12 mb-4" />
         <h2 className="text-xl font-semibold mb-2">Déploiement introuvable</h2>
         <p className="mb-4">L'identifiant de déploiement "{deploymentId}" n'existe pas.</p>
-        <Button onClick={() => router.push("/deploy")} className="rounded-xl">
-          <ChevronLeft className="mr-2 h-4 w-4" /> Retour au déploiement
-        </Button>
+        <BackButton href="/deploy" label="Retour au déploiement" />
       </div>
     )
   }
@@ -201,10 +201,7 @@ export default function DeploymentDetailsPage() {
   return (
     <div className="container mx-auto max-w-5xl px-4 py-4 space-y-6">
       <header className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/deploy")} className="rounded-xl">
-          <ChevronLeft className="h-5 w-5" />
-          <span className="sr-only">Retour</span>
-        </Button>
+        <BackButton href="/deploy" />
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Suivi du Déploiement</h1>
       </header>
 

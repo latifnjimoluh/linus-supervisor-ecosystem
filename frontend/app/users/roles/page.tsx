@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 import { listRoles, createRole, updateRole, deleteRole, Role } from "@/services/roles"
 import { capitalize } from "@/lib/utils"
 
@@ -29,6 +31,7 @@ export default function RolesPage() {
   const [formData, setFormData] = React.useState<RoleForm>({ name: "", description: "" })
   const [formLoading, setFormLoading] = React.useState(false)
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
 
   const fetchRoles = React.useCallback(async () => {
     setLoading(true)
@@ -58,21 +61,13 @@ export default function RolesPage() {
     const description = (formData.description ?? "").trim()
 
     if (!name || !description) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs",
-        variant: "destructive",
-      })
+      setError("roles", { message: "Veuillez remplir tous les champs", ttlMs: 5000 })
       return
     }
 
     // Check if role name already exists
     if (roles.some(role => (role.name ?? "").toLowerCase() === name.toLowerCase())) {
-      toast({
-        title: "Erreur",
-        description: "Un rôle avec ce nom existe déjà",
-        variant: "destructive",
-      })
+      setError("roles", { message: "Un rôle avec ce nom existe déjà", ttlMs: 5000 })
       return
     }
 
@@ -85,17 +80,14 @@ export default function RolesPage() {
       setFormData({ name: "", description: "" })
       setIsCreateDialogOpen(false)
 
+      clearError("roles")
       toast({
         title: "Rôle créé",
         description: `Le rôle "${name}" a été créé avec succès`,
         variant: "success",
       })
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la création du rôle",
-        variant: "destructive",
-      })
+      setError("roles", { message: "Erreur lors de la création du rôle" })
     } finally {
       setFormLoading(false)
     }
@@ -122,17 +114,14 @@ export default function RolesPage() {
       setEditingRole(null)
       setFormData({ name: "", description: "" })
 
+      clearError("roles")
       toast({
         title: "Rôle modifié",
         description: `Le rôle a été mis à jour avec succès`,
         variant: "success",
       })
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la modification du rôle",
-        variant: "destructive",
-      })
+      setError("roles", { message: "Erreur lors de la modification du rôle" })
     } finally {
       setFormLoading(false)
     }
@@ -143,17 +132,14 @@ export default function RolesPage() {
       await deleteRole(roleId)
       setRoles(prev => prev.filter(role => role.id !== roleId))
 
+      clearError("roles")
       toast({
         title: "Rôle supprimé",
         description: `Le rôle "${roleName}" a été supprimé avec succès`,
         variant: "success",
       })
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la suppression du rôle",
-        variant: "destructive",
-      })
+      setError("roles", { message: "Erreur lors de la suppression du rôle" })
     }
   }
 
@@ -167,6 +153,7 @@ export default function RolesPage() {
 
   return (
     <div className="space-y-6">
+      <ErrorBanner id="roles" />
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-4xl font-semibold">Gestion des rôles</h1>
@@ -248,7 +235,7 @@ export default function RolesPage() {
       </div>
 
       {/* Roles List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
         {loading ? (
           Array.from({ length: 4 }).map((_, index) => (
             <Card key={index} className="rounded-2xl">
@@ -268,8 +255,9 @@ export default function RolesPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
+              className="h-full"
             >
-              <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40 hover:shadow-lg transition-shadow">
+              <Card className="h-full flex flex-col rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40 hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
@@ -291,7 +279,7 @@ export default function RolesPage() {
                   </div>
                   <CardDescription>{role.description ?? ""}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 flex-1 flex flex-col">
                   <div className="text-xs text-muted-foreground">
                     Créé le{' '}
                     {role.createdAt
@@ -299,7 +287,7 @@ export default function RolesPage() {
                       : '—'}
                   </div>
 
-                  <div className="flex gap-2 pt-2 border-t">
+                  <div className="flex gap-2 pt-2 border-t mt-auto">
                     <Button
                       variant="outline"
                       size="sm"

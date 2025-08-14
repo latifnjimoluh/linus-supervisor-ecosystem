@@ -31,6 +31,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 import { cn } from "@/lib/utils"
 import { ErrorMessage } from "@/components/ui/error-message"
 import { InlineBanner } from "@/components/ui/inline-banner"
@@ -89,6 +91,7 @@ export default function CodeEditorPage() {
   const { theme } = useTheme()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
 
   const [scripts, setScripts] = React.useState<ScriptListItem[]>([])
   const [templates, setTemplates] = React.useState<Template[]>([])
@@ -115,6 +118,8 @@ export default function CodeEditorPage() {
   const [templateErrorMsg, setTemplateErrorMsg] = React.useState<string>("")
   const [templateView, setTemplateView] = React.useState<"code" | "json">("code")
   const [templateKind, setTemplateKind] = React.useState<TemplateKind>("json")
+  const [isTemplateModified, setIsTemplateModified] = React.useState<boolean>(false)
+  const [isTemplateSaving, setIsTemplateSaving] = React.useState<boolean>(false)
 
   const itemId = searchParams.get("id")
 
@@ -204,10 +209,14 @@ export default function CodeEditorPage() {
 
   // ----------------------------- Sélection template -----------------------------
   React.useEffect(() => {
-    if (!selectedTemplate) return
+    if (!selectedTemplate) {
+      setIsTemplateModified(false)
+      return
+    }
     setTemplateName(selectedTemplate.name ?? "")
     setTemplateCategory(selectedTemplate.category ?? "")
     setTemplateService(selectedTemplate.service_type ?? "")
+    setIsTemplateModified(false)
 
     const raw = selectedTemplate.template_content ?? ""
     const kind = detectTemplateKind(raw)
@@ -254,6 +263,7 @@ export default function CodeEditorPage() {
   const handleTemplateChange = (value: string) => {
     const val = value ?? ""
     setTemplateContent(val)
+    setIsTemplateModified(true)
 
     if (templateKind === "json") {
       const parsed = safeParseJson(val)
@@ -273,6 +283,7 @@ export default function CodeEditorPage() {
 
   const handleChangeTemplateKind = (kind: TemplateKind) => {
     setTemplateKind(kind)
+    setIsTemplateModified(true)
     if (kind === "json") {
       // on tente de formater si déjà du json plausible
       if (detectTemplateKind(templateContent) === "json") {
@@ -315,11 +326,7 @@ export default function CodeEditorPage() {
         variant: "success",
       })
     } catch {
-      toast({
-        title: "Erreur de sauvegarde",
-        description: "Impossible de sauvegarder le script",
-        variant: "destructive",
-      })
+      setError("editor", { message: "Impossible de sauvegarder le script" })
     } finally {
       setIsSaving(false)
     }
@@ -339,11 +346,7 @@ export default function CodeEditorPage() {
       setScripts((prev) => [...prev, tpl as any])
       setSelectedScript(tpl as any)
     } catch {
-      toast({
-        title: "Erreur",
-        description: "Impossible de créer le script",
-        variant: "destructive",
-      })
+      setError("editor", { message: "Impossible de créer le script" })
     }
   }
 
@@ -358,11 +361,7 @@ export default function CodeEditorPage() {
       })
     } catch {
       setScriptStatus("error")
-      toast({
-        title: "Erreur",
-        description: "Le script contient des erreurs",
-        variant: "destructive",
-      })
+      setError("editor", { message: "Le script contient des erreurs" })
     }
   }
 
@@ -438,11 +437,7 @@ export default function CodeEditorPage() {
         const parsed = safeParseJson(templateContent)
         if (!parsed.ok) {
           setTemplateStatus("error")
-          toast({
-            title: "Erreur",
-            description: `Template JSON invalide: ${parsed.error.message}`,
-            variant: "destructive",
-          })
+          setError("editor", { message: `Template JSON invalide: ${parsed.error.message}` })
           return
         }
         await simulateScript(JSON.stringify(parsed.value))
@@ -457,15 +452,12 @@ export default function CodeEditorPage() {
       })
     } catch {
       setTemplateStatus("error")
-      toast({
-        title: "Erreur",
-        description: "Le template est invalide",
-        variant: "destructive",
-      })
+      setError("editor", { message: "Le template est invalide" })
     }
   }
 
   const saveTemplate = async () => {
+    setIsTemplateSaving(true)
     try {
       if (selectedTemplate) {
         const payload =
@@ -475,11 +467,7 @@ export default function CodeEditorPage() {
                 if (!parsed.ok) {
                   setTemplateStatus("error")
                   setTemplateErrorMsg(parsed.error.message || "JSON invalide")
-                  toast({
-                    title: "Erreur",
-                    description: `Template JSON invalide: ${parsed.error.message}`,
-                    variant: "destructive",
-                  })
+                  setError("editor", { message: `Template JSON invalide: ${parsed.error.message}` })
                   throw new Error("invalid json")
                 }
                 return {
@@ -510,6 +498,7 @@ export default function CodeEditorPage() {
           description: `${templateName || "Template"} a été enregistré`,
           variant: "success",
         })
+        setIsTemplateModified(false)
       } else {
         const payload =
           templateKind === "json"
@@ -518,11 +507,7 @@ export default function CodeEditorPage() {
                 if (!parsed.ok) {
                   setTemplateStatus("error")
                   setTemplateErrorMsg(parsed.error.message || "JSON invalide")
-                  toast({
-                    title: "Erreur",
-                    description: `Template JSON invalide: ${parsed.error.message}`,
-                    variant: "destructive",
-                  })
+                  setError("editor", { message: `Template JSON invalide: ${parsed.error.message}` })
                   throw new Error("invalid json")
                 }
                 return {
@@ -553,9 +538,12 @@ export default function CodeEditorPage() {
           description: `${created.name} a été enregistré`,
           variant: "success",
         })
+        setIsTemplateModified(false)
       }
     } catch {
       // déjà toasts au-dessus si JSON invalide
+    } finally {
+      setIsTemplateSaving(false)
     }
   }
 
@@ -577,18 +565,16 @@ export default function CodeEditorPage() {
       setTemplateContent(prettyJson(defaultTemplateJson))
       setTemplateStatus("idle")
       setTemplateErrorMsg("")
+      setIsTemplateModified(false)
     } catch {
-      toast({
-        title: "Erreur",
-        description: "Impossible de créer le template",
-        variant: "destructive",
-      })
+      setError("editor", { message: "Impossible de créer le template" })
     }
   }
 
   // --------------------------------- UI ---------------------------------
   return (
     <div className="space-y-6">
+      <ErrorBanner id="editor" />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-6">
         <TabsList className="w-full md:w-auto">
           <TabsTrigger value="scripts">Scripts</TabsTrigger>
@@ -827,8 +813,17 @@ export default function CodeEditorPage() {
                 <Button onClick={simulateTemplate} variant="outline" className="rounded-xl">
                   <Play className="mr-2 h-4 w-4" /> Simuler
                 </Button>
-                <Button onClick={saveTemplate} className="rounded-xl">
-                  <Save className="mr-2 h-4 w-4" /> Sauvegarder
+                <Button
+                  onClick={saveTemplate}
+                  className="rounded-xl"
+                  disabled={!isTemplateModified || isTemplateSaving}
+                >
+                  {isTemplateSaving ? (
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Sauvegarder
                 </Button>
               </div>
             </div>
@@ -880,7 +875,10 @@ export default function CodeEditorPage() {
                       <Input
                         id="template-name"
                         value={templateName ?? ""}
-                        onChange={(e) => setTemplateName(e.target.value ?? "")}
+                        onChange={(e) => {
+                          setTemplateName(e.target.value ?? "")
+                          setIsTemplateModified(true)
+                        }}
                         className="rounded-xl"
                       />
                     </div>
@@ -889,7 +887,10 @@ export default function CodeEditorPage() {
                       <Input
                         id="template-category"
                         value={templateCategory ?? ""}
-                        onChange={(e) => setTemplateCategory(e.target.value ?? "")}
+                        onChange={(e) => {
+                          setTemplateCategory(e.target.value ?? "")
+                          setIsTemplateModified(true)
+                        }}
                         className="rounded-xl"
                       />
                     </div>
@@ -898,7 +899,10 @@ export default function CodeEditorPage() {
                       <Input
                         id="template-service"
                         value={templateService ?? ""}
-                        onChange={(e) => setTemplateService(e.target.value ?? "")}
+                        onChange={(e) => {
+                          setTemplateService(e.target.value ?? "")
+                          setIsTemplateModified(true)
+                        }}
                         className="rounded-xl"
                       />
                     </div>
@@ -921,7 +925,13 @@ export default function CodeEditorPage() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg flex items-center gap-2">
-                        <Code className="h-5 w-5" /> Contenu
+                        <Code className="h-5 w-5" />
+                        {templateName || "Sans nom"}
+                        {isTemplateModified && (
+                          <Badge variant="warning" className="text-xs">
+                            Non sauvegardé
+                          </Badge>
+                        )}
                         {templateKind === "json" && templateStatus === "ok" && (
                           <Badge variant="success" className="text-xs">
                             <CheckCircle className="h-3 w-3 mr-1" /> Valide

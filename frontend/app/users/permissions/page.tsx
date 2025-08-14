@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 import {
   listPermissions,
   createPermission,
@@ -93,6 +95,7 @@ export default function PermissionsPage() {
   const [assignLoading, setAssignLoading] = React.useState(false)
   const [pagination, setPagination] = React.useState({ page: 1, pages: 1, total: 0, limit: 10 })
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
 
   const fetchData = React.useCallback(async () => {
     setLoading(true)
@@ -125,21 +128,13 @@ export default function PermissionsPage() {
 
   const handleCreatePermission = async () => {
     if (!formData.key.trim() || !formData.name.trim() || !formData.description.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs",
-        variant: "destructive",
-      })
+      setError("permissions", { message: "Veuillez remplir tous les champs", ttlMs: 5000 })
       return
     }
 
     // Validate permission key format
     if (!/^[a-z]+\.[a-z_]+$/.test(formData.key)) {
-      toast({
-        title: "Format invalide",
-        description: "La clé doit suivre le format 'module.action' (ex: vm.create)",
-        variant: "destructive",
-      })
+      setError("permissions", { message: "La clé doit suivre le format 'module.action' (ex: vm.create)", ttlMs: 5000 })
       return
     }
 
@@ -149,6 +144,7 @@ export default function PermissionsPage() {
       await createPermission({ key: formData.key, name: formData.name, description: formData.description })
       setFormData({ key: "", name: "", description: "" })
       setIsCreateDialogOpen(false)
+      clearError("permissions")
       toast({
         title: "Permission créée",
         description: `La permission "${formData.key}" a été créée avec succès`,
@@ -156,11 +152,7 @@ export default function PermissionsPage() {
       })
       fetchData()
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la création de la permission",
-        variant: "destructive",
-      })
+      setError("permissions", { message: "Erreur lors de la création de la permission" })
     } finally {
       setFormLoading(false)
     }
@@ -169,16 +161,13 @@ export default function PermissionsPage() {
   const handleEditPermission = async () => {
     if (!editingPermission) return
     if (!editData.key.trim() || !editData.name.trim() || !editData.description.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs",
-        variant: "destructive",
-      })
+      setError("permissions", { message: "Veuillez remplir tous les champs", ttlMs: 5000 })
       return
     }
     setEditLoading(true)
     try {
       await updatePermission(editingPermission.id, editData)
+      clearError("permissions")
       toast({
         title: "Permission mise à jour",
         description: `La permission "${editData.key}" a été mise à jour avec succès`,
@@ -187,11 +176,7 @@ export default function PermissionsPage() {
       setEditingPermission(null)
       fetchData()
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la mise à jour de la permission",
-        variant: "destructive",
-      })
+      setError("permissions", { message: "Erreur lors de la mise à jour de la permission" })
     } finally {
       setEditLoading(false)
     }
@@ -202,11 +187,7 @@ export default function PermissionsPage() {
     const isUsed = roles.some(role => role.permissions.includes(permissionId))
     
     if (isUsed) {
-      toast({
-        title: "Suppression impossible",
-        description: "Cette permission est utilisée par un ou plusieurs rôles",
-        variant: "destructive",
-      })
+      setError("permissions", { message: "Cette permission est utilisée par un ou plusieurs rôles", ttlMs: 5000 })
       return
     }
 
@@ -214,17 +195,14 @@ export default function PermissionsPage() {
       await deletePermission(permissionId)
       fetchData()
 
+      clearError("permissions")
       toast({
         title: "Permission supprimée",
         description: `La permission "${permissionName}" a été supprimée avec succès`,
         variant: "success",
       })
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la suppression de la permission",
-        variant: "destructive",
-      })
+      setError("permissions", { message: "Erreur lors de la suppression de la permission" })
     }
   }
 
@@ -251,17 +229,14 @@ export default function PermissionsPage() {
       const permission = permissions.find(p => p.id === permissionId)
       const role = roles.find(r => r.id === roleId)
 
+      clearError("permissions")
       toast({
         title: isAssigned ? "Permission retirée" : "Permission attribuée",
         description: `Permission "${permission?.name}" ${isAssigned ? "retirée de" : "attribuée au"} rôle "${role?.name}"`,
         variant: "success",
       })
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la modification des permissions",
-        variant: "destructive",
-      })
+      setError("permissions", { message: "Erreur lors de la modification des permissions" })
     } finally {
       setAssignLoading(false)
     }
@@ -277,6 +252,7 @@ const aiContext = `Total: ${stats.total} permissions, Actives: ${stats.active}. 
 
   return (
     <div className="space-y-6">
+      <ErrorBanner id="permissions" />
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-4xl font-semibold">Gestion des permissions</h1>

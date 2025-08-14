@@ -12,6 +12,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 import { resetPassword } from "@/actions/auth"
 
 export default function SetNewPasswordPage({ params }: { params: { token: string } }) {
@@ -22,6 +24,7 @@ export default function SetNewPasswordPage({ params }: { params: { token: string
   const [confirmPassword, setConfirmPassword] = useState("")
   const [confirmShake, setConfirmShake] = useState(false)
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
   const router = useRouter()
 
   const isPasswordStrong = (password: string) => {
@@ -31,6 +34,7 @@ export default function SetNewPasswordPage({ params }: { params: { token: string
   useEffect(() => {
     if (state) {
       if (state.success) {
+        clearError("reset-new")
         toast({
           title: "Succès",
           description: state.message,
@@ -38,25 +42,23 @@ export default function SetNewPasswordPage({ params }: { params: { token: string
         })
         setTimeout(() => {
           router.push("/login")
-        }, 5000) // Redirect after 5 seconds
+        }, 5000)
       } else {
-        toast({
-          title: "Erreur",
-          description: state.message,
-          variant: "destructive",
-        })
+        setError("reset-new", { message: state.message, ttlMs: 6000 })
         if (state.message === "Les deux mots de passe ne sont pas identiques.") {
           setConfirmShake(true)
           setTimeout(() => setConfirmShake(false), 500)
         }
       }
     }
-  }, [state, toast, router])
+  }, [state, toast, router, setError, clearError])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
-        <CardHeader className="text-center">
+      <div className="w-full max-w-md space-y-4">
+        <ErrorBanner id="reset-new" />
+        <Card className="w-full rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+          <CardHeader className="text-center">
           <CardTitle className="text-2xl">Définir un nouveau mot de passe</CardTitle>
           <CardDescription>Saisissez votre nouveau mot de passe.</CardDescription>
         </CardHeader>
@@ -149,7 +151,8 @@ export default function SetNewPasswordPage({ params }: { params: { token: string
             </div>
           </form>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   )
 }

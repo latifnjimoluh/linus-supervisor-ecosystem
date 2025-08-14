@@ -9,10 +9,13 @@ import { Label } from "@/components/ui/label";
 import useAuth from "@/hooks/useAuth";
 import { getUserProfile, updateUserProfile } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { useErrors } from "@/hooks/use-errors";
+import { ErrorBanner } from "@/components/error-banner";
 
 export default function ProfilePage() {
   useAuth("/profile");
   const { toast } = useToast();
+  const { setError, clearError } = useErrors();
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ first_name: "", last_name: "", email: "" });
@@ -28,11 +31,7 @@ export default function ProfilePage() {
           email: data.email || "",
         });
       } catch (err: any) {
-        toast({
-          title: "Erreur",
-          description: err.message || "Impossible de récupérer le profil.",
-          variant: "destructive",
-        });
+        setError("profile", { message: err.message || "Impossible de récupérer le profil." });
       } finally {
         setIsLoading(false);
       }
@@ -49,13 +48,10 @@ export default function ProfilePage() {
     if (!userId) return;
     try {
       await updateUserProfile(userId, formData);
+      clearError("profile");
       toast({ title: "Succès", description: "Profil mis à jour.", variant: "success" });
     } catch (err: any) {
-      toast({
-        title: "Erreur",
-        description: err.message || "Échec de la mise à jour.",
-        variant: "destructive",
-      });
+      setError("profile", { message: err.message || "Échec de la mise à jour." });
     }
   };
 
@@ -65,6 +61,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
+      <ErrorBanner id="profile" />
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Mon Profil</h1>
         <p className="text-muted-foreground">Mettez à jour les informations de votre profil personnel.</p>

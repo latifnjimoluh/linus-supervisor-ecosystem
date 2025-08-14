@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
 
 interface ConfirmationDialogProps {
   open: boolean
@@ -46,14 +47,11 @@ export function ConfirmationDialog({
 }: ConfirmationDialogProps) {
   const [confirmationInput, setConfirmationInput] = React.useState("")
   const { toast } = useToast()
+  const { setError } = useErrors()
 
   const handleConfirm = async () => {
     if (requireConfirmation && confirmationInput !== confirmationText) {
-      toast({
-        title: "Confirmation incorrecte",
-        description: `Veuillez saisir "${confirmationText}" pour confirmer`,
-        variant: "destructive",
-      })
+      setError("global", { message: `Veuillez saisir "${confirmationText}" pour confirmer`, ttlMs: 5000 })
       return
     }
 
@@ -63,11 +61,7 @@ export function ConfirmationDialog({
       setConfirmationInput("")
     } catch (error) {
       console.error("Confirmation action failed:", error)
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue lors de l'exécution de l'action",
-        variant: "destructive",
-      })
+      setError("global", { message: "Une erreur est survenue lors de l'exécution de l'action" })
     }
   }
 

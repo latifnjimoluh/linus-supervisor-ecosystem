@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, User, Mail, Lock, Shield, Loader2 } from 'lucide-react'
+import { User, Mail, Lock, Shield, Loader2 } from 'lucide-react'
 import { capitalize } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
@@ -11,9 +11,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 import { createUser } from "@/services/users"
 import { listRoles, Role } from "@/services/roles"
 import { ErrorMessage } from "@/components/ui/error-message"
+import { BackButton } from "@/components/back-button"
 
 interface CreateUserForm {
   first_name: string
@@ -26,6 +29,7 @@ interface CreateUserForm {
 export default function CreateUserPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
   const [loading, setLoading] = React.useState(false)
   const [roles, setRoles] = React.useState<Role[]>([])
   const [formData, setFormData] = React.useState<CreateUserForm>({
@@ -87,6 +91,7 @@ export default function CreateUserPage() {
 
     try {
       await createUser(formData)
+      clearError("user-create")
       toast({
         title: "Utilisateur créé",
         description: `Le compte de ${formData.first_name} ${formData.last_name} a été créé avec succès`,
@@ -98,11 +103,7 @@ export default function CreateUserPage() {
       if (message.includes('Email')) {
         setErrors({ email: message })
       }
-      toast({
-        title: "Erreur",
-        description: message,
-        variant: "destructive",
-      })
+      setError("user-create", { message })
     } finally {
       setLoading(false)
     }
@@ -117,13 +118,12 @@ export default function CreateUserPage() {
 
   return (
     <div className="space-y-6">
+      <ErrorBanner id="user-create" />
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/users")}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-4xl font-semibold">Créer un utilisateur</h1>
-      </div>
+        <div className="flex items-center gap-3">
+          <BackButton href="/users" />
+          <h1 className="text-4xl font-semibold">Créer un utilisateur</h1>
+        </div>
 
       {/* Form */}
       <div className="max-w-2xl">

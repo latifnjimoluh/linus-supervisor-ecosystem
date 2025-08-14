@@ -29,6 +29,8 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/hooks/use-errors"
+import { ErrorBanner } from "@/components/error-banner"
 
 import {
   fetchTemplatesAndScripts,
@@ -73,6 +75,7 @@ export default function ScriptsTemplatesBrowser({
   const [categoryFilter, setCategoryFilter] = React.useState<CategoryFilter>("ALL")
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("actif")
   const { toast } = useToast()
+  const { setError, clearError } = useErrors()
   const { theme } = useTheme()
 
   const refreshItems = React.useCallback(() => {
@@ -152,7 +155,7 @@ export default function ScriptsTemplatesBrowser({
         e?.response?.data?.message === "Échec de l'analyse IA."
           ? "Le service d'analyse IA est momentanément indisponible."
           : "Impossible d'analyser cet élément."
-      toast({ title: "Analyse IA", description: msg, variant: "destructive" })
+      setError("scripts", { message: msg })
       return msg
     }
   }
@@ -164,7 +167,7 @@ export default function ScriptsTemplatesBrowser({
       toast({ title: 'Élément supprimé', variant: 'success' })
       refreshItems()
     } catch {
-      toast({ title: 'Erreur', description: 'Suppression impossible', variant: 'destructive' })
+      setError("scripts", { message: 'Suppression impossible' })
     }
   }
 
@@ -175,12 +178,12 @@ export default function ScriptsTemplatesBrowser({
       toast({ title: 'Élément réactivé', variant: 'success' })
       refreshItems()
     } catch {
-      toast({ title: 'Erreur', description: 'Réactivation impossible', variant: 'destructive' })
+      setError("scripts", { message: 'Réactivation impossible' })
     }
   }
 
   const renderGrid = (itemsToShow: ScriptOrTemplate[]) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid auto-rows-fr grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <AnimatePresence>
         {itemsToShow.map((item) => {
           const isScript = item.type === "script"
@@ -194,10 +197,14 @@ export default function ScriptsTemplatesBrowser({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              className="flex h-full"
             >
-              <Card data-item-type={item.type} className="h-full flex flex-col hover:shadow-lg transition-shadow rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
+              <Card
+                data-item-type={item.type}
+                className="flex h-full flex-col rounded-2xl shadow-sm hover:shadow-md transition-shadow dark:ring-1 dark:ring-slate-700/40"
+              >
+                <CardHeader className="p-5 pb-4">
+                  <CardTitle className="text-lg flex items-center gap-2 break-words">
                     {item.name}
                   </CardTitle>
                   <div className="flex flex-wrap gap-2 pt-2">
@@ -215,11 +222,11 @@ export default function ScriptsTemplatesBrowser({
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1">
-                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                <CardContent className="flex-1 p-5">
+                  <p className="text-sm text-muted-foreground break-words">{item.description}</p>
                 </CardContent>
 
-                <div className="p-4 border-t flex flex-wrap gap-2">
+                <div className="mt-auto p-5 border-t flex flex-wrap gap-2">
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button variant="secondary" size="sm" onClick={() => handleViewCode(item)}>
@@ -384,6 +391,7 @@ export default function ScriptsTemplatesBrowser({
 
   return (
     <div className="space-y-6">
+      <ErrorBanner id="scripts" />
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-3">
           <BackButton href="/dashboard" label="Retour" />
