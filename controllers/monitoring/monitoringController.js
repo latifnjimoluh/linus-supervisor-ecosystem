@@ -6,6 +6,7 @@ const ping = require('ping');
 const { getRemoteFileContent, getRemoteJSON } = require('../../utils/sshClient');
 const { Monitoring, UserSetting, Deployment } = require('../../models');
 const { Op } = require('sequelize');
+const { evaluateResourceAlerts } = require('../../services/alertEvaluator');
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
@@ -206,6 +207,12 @@ exports.getOverview = async (req, res) => {
       return res.status(404).json({ message: 'Paramètres Proxmox introuvables.' });
     }
 
+    const cpuThreshold = Number(req.query.cpu_threshold);
+    const ramThreshold = Number(req.query.ram_threshold);
+    const thresholdOverrides = {};
+    if (!isNaN(cpuThreshold)) thresholdOverrides.cpu = cpuThreshold;
+    if (!isNaN(ramThreshold)) thresholdOverrides.ram = ramThreshold;
+
     // 🔹 Récupération des VMs depuis Proxmox
     const headers = {
       Authorization: `PVEAPIToken=${settings.proxmox_api_token_id}!${settings.proxmox_api_token_name}=${settings.proxmox_api_token_secret}`,
@@ -289,6 +296,15 @@ exports.getOverview = async (req, res) => {
         if (!cpu_usage && vm.cpu != null) {
           cpu_usage = vm.cpu * 100;
         }
+        const alerts = evaluateResourceAlerts(
+          {
+            cpu_usage,
+            memory_usage,
+            memory_total,
+            last_monitoring,
+          },
+          thresholdOverrides
+        );
         return {
           id: String(vm.vmid),
           name: vm.name || dep.vm_name || `VM ${vm.vmid}`,
@@ -304,6 +320,7 @@ exports.getOverview = async (req, res) => {
           active_services,
           last_monitoring: last_monitoring ? last_monitoring.toISOString() : null,
           ping_ok,
+          alerts,
           template: dep?.vm_specs?.template_name || '',
           created_at: dep?.createdAt ? dep.createdAt.toISOString() : null,
           instance_id: dep?.instance_id || null,

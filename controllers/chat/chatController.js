@@ -1,5 +1,4 @@
 const asyncHandler = require('express-async-handler');
-const { streamChat } = require('../../services/llm');
 const logger = require('../../utils/logger');
 
 const history = new Map(); // key: userId:threadId -> [{role, content}]

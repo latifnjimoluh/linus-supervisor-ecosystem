@@ -1,3 +1,4 @@
+// routes/chatbot/chatbotRoutes.js
 const express = require("express");
 const router = express.Router();
 
@@ -14,10 +15,6 @@ const systemPrompt =
   "Tu es l’assistant IA du projet BUNEC. Réponds clairement, en français, concis, pratique. Recadre le hors-sujet vers le projet.";
 const logChat = (e) => { if (process.env.NODE_ENV !== "test") console.log("[chatbot]", e); };
 
-// Sous‑routeurs
-const askRouter = createAskRouter({ model, systemPrompt, logChat });
-const askStreamRouter = createAskStreamRouter({ model, systemPrompt, logChat });
-
 // Sécurité commune (auth + permission) sur tout /chatbot/*
 router.use(
   "/",
@@ -28,11 +25,14 @@ router.use(
   express.json({ limit: "1mb" })
 );
 
-// /chatbot/ask (non stream) et /chatbot/ask/stream (SSE)
-router.use("/ask", askRouter);
-router.use("/ask/stream", askStreamRouter);
+// Sous‑routeurs
+router.use("/ask", createAskRouter({ model, systemPrompt, logChat }));
+router.use("/ask/stream", createAskStreamRouter({ model, systemPrompt, logChat }));
 
 // (optionnel) compat legacy: POST /chatbot -> /chatbot/ask
-router.post("/", askRouter);
+router.post("/", (req, res, next) => {
+  req.url = "/"; // redirige vers /ask
+  next();
+}, createAskRouter({ model, systemPrompt, logChat }));
 
 module.exports = router;
