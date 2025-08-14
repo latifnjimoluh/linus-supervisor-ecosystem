@@ -1,4 +1,5 @@
-const express = require('express');
+// routes/index.js
+const express = require("express");
 const router = express.Router();
 
 router.use('/auth', require('./auth/authRoutes'));
@@ -20,6 +21,8 @@ router.use('/terminal', require('./terminal/terminalRoutes'));
 router.use('/terminal', require('./terminal/sshRoutes'));
 router.use('/deployments', require('./deployments/deploymentRoutes'));
 router.use('/chat', require('./chat/chatRoutes'));
+
+// 👉 nouveau
 router.use('/chatbot', require('./chatbot/chatbotRoutes'));
 
 module.exports = router;

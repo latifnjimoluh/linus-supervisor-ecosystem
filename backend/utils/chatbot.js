@@ -1,53 +1,38 @@
-// Timeout global simple
-function withTimeout(promise, ms) {
-  return Promise.race([
-    promise,
-    new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms)),
-  ]);
-}
+// routes/chatbot/chatbotRoutes.js
+const express = require("express");
+const router = express.Router();
 
-// Anti-injection basique + bornage
-function stripControlTokens(s = "") {
-  return String(s)
-    .replace(/^\s*(SYSTEM|ASSISTANT|USER)\s*:\s*/gim, "")
-    .slice(0, 4000);
-}
+const { verifyToken, checkPermission } = require("../../middlewares/auth");
+const { createGeminiModel } = require("../../services/chatbotModel");
 
-// Build prompt façon transcript
-function buildPrompt(messages = [], SYSTEM_PROMPT = "") {
-  const safe = (Array.isArray(messages) ? messages : [])
-    .slice(-15)
-    .map((m) => ({
-      role: m?.role === "assistant" ? "assistant" : "user",
-      content: stripControlTokens(m?.content || ""),
-    }))
-    .filter((m) => m.content.trim().length > 0);
+const createAskRouter = require("../../controllers/chatbot/ask");
+const createAskStreamRouter = require("../../controllers/chatbot/askStream");
 
-  const SCOPE_RULES =
-    "Si la question sort du périmètre (BUNEC, DevOps, Linux, Terraform, Proxmox, supervision, sécurité), " +
-    "réponds brièvement que ce n’est pas couvert puis recadre vers le projet.";
+// Init modèle & prompt
+const model = createGeminiModel();
+const systemPrompt =
+  process.env.CHATBOT_SYSTEM_PROMPT ||
+  "Tu es l’assistant IA du projet BUNEC. Réponds clairement, en français, concis, pratique. Recadre le hors-sujet vers le projet.";
+const logChat = (e) => { if (process.env.NODE_ENV !== "test") console.log("[chatbot]", e); };
 
-  const prompt =
-    `SYSTEM:\n${SYSTEM_PROMPT}\n\nRÈGLES:\n${SCOPE_RULES}\n\n` +
-    safe.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n") +
-    `\nASSISTANT:`;
+// Sécurité commune (auth + permission) sur tout /chatbot/*
+router.use(
+  "/",
+  (req, _res, next) => { req.log?.info?.({ path: req.path }, "chatbot_request"); next(); },
+  verifyToken,
+  (req, _res, next) => { req.log?.info?.({ userId: req.user?.id, perms: req.user?.permissions }, "auth_ok"); next(); },
+  checkPermission("chatbot.use"),
+  express.json({ limit: "1mb" })
+);
 
-  return { safe, prompt };
-}
+// Sous‑routeurs
+router.use("/ask", createAskRouter({ model, systemPrompt, logChat }));
+router.use("/ask/stream", createAskStreamRouter({ model, systemPrompt, logChat }));
 
-// Parse retryAfter depuis l'erreur LLM
-function parseRetryAfterSec(err) {
-  try {
-    const arr = err?.errorDetails || [];
-    for (const item of arr) {
-      if (String(item?.["@type"] || "").includes("RetryInfo")) {
-        const s = String(item?.retryDelay || "").trim();
-        const m = s.match(/^(\d+)\s*s?$/i);
-        if (m) return Number(m[1]);
-      }
-    }
-  } catch {}
-  return null;
-}
+// (optionnel) compat legacy: POST /chatbot -> /chatbot/ask
+router.post("/", (req, res, next) => {
+  req.url = "/"; // redirige vers /ask
+  next();
+}, createAskRouter({ model, systemPrompt, logChat }));
 
-module.exports = { withTimeout, buildPrompt, parseRetryAfterSec };
+module.exports = router;

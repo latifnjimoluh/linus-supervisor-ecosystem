@@ -2,26 +2,38 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 function createGeminiModel() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY manquant dans l'environnement");
-  }
+  const apiKey = process.env.GEMINI_API_KEY || "";
+  const MODEL_ID = process.env.MODEL_ID || "gemini-1.5-flash";
+  const MODEL_FALLBACK_ID = process.env.MODEL_FALLBACK_ID || ""; // ex: "gemini-1.5-flash-8b"
 
-  const modelName = process.env.CHATBOT_MODEL || "gemini-1.5-flash";
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: modelName });
+  const modelPrimary = genAI.getGenerativeModel({ model: MODEL_ID });
+  const modelFallback = MODEL_FALLBACK_ID
+    ? genAI.getGenerativeModel({ model: MODEL_FALLBACK_ID })
+    : null;
 
-  // On expose 2 méthodes homogènes pour le controller
   return {
-    async generate(prompt) {
-      // prompt texte (transcript)
-      return model.generateContent(prompt);
+    async generateContent(prompt) {
+      try {
+        return await modelPrimary.generateContent(prompt);
+      } catch (err) {
+        const msg = String(err?.message || "");
+        if ((err?.status === 429 || /Too Many Requests|quota/i.test(msg)) && modelFallback) {
+          return await modelFallback.generateContent(prompt);
+        }
+        throw err;
+      }
     },
-    async stream(prompt) {
-      // stream SSE
-      return model.generateContentStream({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-      });
+    async generateContentStream(prompt) {
+      try {
+        return await modelPrimary.generateContentStream(prompt);
+      } catch (err) {
+        const msg = String(err?.message || "");
+        if ((err?.status === 429 || /Too Many Requests|quota/i.test(msg)) && modelFallback) {
+          return await modelFallback.generateContentStream(prompt);
+        }
+        throw err;
+      }
     },
   };
 }

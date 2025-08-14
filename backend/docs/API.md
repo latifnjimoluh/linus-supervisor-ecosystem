@@ -41,10 +41,6 @@ All routes except `POST /auth/login` require a Bearer token obtained from the lo
 ## Logs
 - `GET /logs?search=&sort=&order=&page=&limit=` – list system logs, applying search and sort before pagination and returning `{ total_after_filter, items }`
 - `GET /logs/export?search=&sort=&order=` – download filtered logs as NDJSON
-
-## Chat
-- `GET /chat/stream?threadId=ID&message=...` – stream chatbot responses via Server-Sent Events. Tokens arrive as `data:` frames and a final `data: [DONE]` marks completion.
-
 ## Deployments
 - `GET /deployments/:id/stream` – stream deployment status and log updates via SSE. Authenticate with `Authorization: Bearer <JWT>` or append `?access_token=` when headers cannot be set.
 
