@@ -47,6 +47,21 @@ router.post('/change-password', verifyToken, logRequest, (req, res, next) => {
   next();
 }, authController.changePassword);
 
+router.post('/2fa/setup', verifyToken, logRequest, (req, res, next) => {
+  console.log('➡️ [Route] POST /auth/2fa/setup');
+  next();
+}, authController.setup2FA);
+
+router.post('/2fa/verify', verifyToken, logRequest, (req, res, next) => {
+  console.log('➡️ [Route] POST /auth/2fa/verify');
+  next();
+}, authController.verify2FA);
+
+router.post('/2fa/disable', verifyToken, logRequest, (req, res, next) => {
+  console.log('➡️ [Route] POST /auth/2fa/disable');
+  next();
+}, authController.disable2FA);
+
 router.get('/reset-history', verifyToken, checkPermission('auth.reset-history'), logRequest, (req, res, next) => {
   console.log('➡️ [Route] GET /auth/reset-history');
   next();

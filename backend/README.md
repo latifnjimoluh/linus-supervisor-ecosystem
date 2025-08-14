@@ -62,7 +62,9 @@ For existing deployments, run the commands in [sql/add_logs_and_alerts.sql](sql/
 | `ALERT_CPU_THRESHOLD` | Seuil CPU pour déclencher une alerte (%) | `10` |
 | `ALERT_RAM_THRESHOLD` | Seuil RAM pour déclencher une alerte (%) | `10` |
 | `ALERT_FRESHNESS_MINUTES` | Âge max des métriques avant d'être considérées obsolètes | `5` |
-| `ALERT_EMAIL_TO` | Destinataires email séparés par des virgules pour les nouvelles alertes | _optional_ |
+| `ALERT_EMAIL_TO` | Destinataires email supplémentaires séparés par des virgules pour les nouvelles alertes | _optional_ |
+
+Les alertes sont automatiquement envoyées à l'utilisateur connecté. `ALERT_EMAIL_TO` permet simplement d'ajouter des destinataires supplémentaires.
 
 ## Testing with Postman
 A Postman collection is available in `postman_collection.json`. Import it and set the `baseUrl` and `token` variables. Login to obtain a token before accessing protected routes.

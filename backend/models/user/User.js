@@ -34,6 +34,13 @@ module.exports = (sequelize, DataTypes) => {
     last_password_reset_at: {
       type: DataTypes.DATE,
     },
+    two_factor_secret: {
+      type: DataTypes.STRING,
+    },
+    two_factor_enabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   }, {
     tableName: 'users',
     underscored: true,

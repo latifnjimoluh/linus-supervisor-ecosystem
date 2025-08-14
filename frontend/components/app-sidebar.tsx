@@ -25,10 +25,12 @@ import {
   Info,
   Book,
   HelpCircle,
+  AlertTriangle,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useLanguage } from "@/hooks/use-language"
 
 interface AppSidebarProps {
   isOpen: boolean
@@ -50,66 +52,67 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    label: "Tableau de bord",
+    label: "dashboard",
     icon: LayoutDashboard,
     children: [
-      { href: "/dashboard", icon: LayoutDashboard, label: "Vue d'ensemble" },
-      { href: "/dashboard/map", icon: Map, label: "Carte Infra" },
-      { href: "/dashboard/stats", icon: TrendingUp, label: "Statistiques" },
+      { href: "/dashboard", icon: LayoutDashboard, label: "overview" },
+      { href: "/dashboard/map", icon: Map, label: "infraMap" },
+      { href: "/dashboard/stats", icon: TrendingUp, label: "stats" },
     ],
   },
   {
-    label: "Supervision",
+    label: "supervision",
     icon: Activity,
     children: [
-      { href: "/monitoring", icon: Activity, label: "Monitoring" },
-      { href: "/logs", icon: FileText, label: "Logs" },
-      { href: "/alerts", icon: Bell, label: "Alertes" },
+      { href: "/monitoring", icon: Activity, label: "monitoring" },
+      { href: "/logs", icon: FileText, label: "logs" },
+      { href: "/alerts", icon: Bell, label: "alerts" },
     ],
   },
   {
-    label: "Déploiement",
+    label: "deployment",
     icon: Server,
     children: [
-      { href: "/deploy", icon: Server, label: "Déployer" },
-      { href: "/deploy/history", icon: History, label: "Historique des VM" },
+      { href: "/deploy", icon: Server, label: "deploy" },
+      { href: "/deploy/history", icon: History, label: "vmHistory" },
     ],
   },
   {
-    label: "Scripts & Templates",
+    label: "scriptsTemplates",
     icon: Code,
     children: [
-      { href: "/scripts-templates", icon: FileText, label: "Liste" },
-      { href: "/scripts", icon: FileText, label: "Scripts" },
-      { href: "/templates", icon: FileText, label: "Templates" },
+      { href: "/scripts-templates", icon: FileText, label: "list" },
+      { href: "/scripts", icon: FileText, label: "scripts" },
+      { href: "/templates", icon: FileText, label: "templates" },
     ],
   },
   {
-    label: "Utilisateurs",
+    label: "users",
     icon: Users,
     children: [
-      { href: "/users", icon: Users, label: "Utilisateurs" },
-      { href: "/users/roles", icon: Shield, label: "Rôles" },
-      { href: "/users/permissions", icon: Key, label: "Permissions" },
+      { href: "/users", icon: Users, label: "usersList" },
+      { href: "/users/roles", icon: Shield, label: "roles" },
+      { href: "/users/permissions", icon: Key, label: "permissions" },
     ],
   },
-  { label: "Terminal", icon: Terminal, href: "/terminal" },
-  { label: "Éditeur de code", icon: Edit, href: "/editor" },
+  { label: "terminal", icon: Terminal, href: "/terminal" },
+  { label: "codeEditor", icon: Edit, href: "/editor" },
   {
-    label: "Paramètres",
+    label: "settings",
     icon: Settings,
     href: "/settings",
     children: [
-      { href: "/settings/account", icon: User, label: "Paramètres du Compte" },
-      { href: "/settings/proxmox", icon: Server, label: "Connexion Proxmox" },
-      { href: "/settings/templates", icon: FileText, label: "Templates de Provisionnement" },
-      { href: "/settings/storage", icon: Server, label: "Stockage" },
+      { href: "/settings/account", icon: User, label: "accountSettings" },
+      { href: "/settings/proxmox", icon: Server, label: "proxmoxConnection" },
+      { href: "/settings/templates", icon: FileText, label: "provisioningTemplates" },
+      { href: "/settings/storage", icon: Server, label: "storage" },
+      { href: "/settings/alerts", icon: AlertTriangle, label: "alertThresholds" },
     ],
   },
-  { label: "À propos", icon: Info, href: "/about" },
-  { label: "Politique de confidentialité", icon: Shield, href: "/privacy" },
-  { label: "Guide", icon: Book, href: "/guide" },
-  { label: "Aide", icon: HelpCircle, href: "/help" },
+  { label: "about", icon: Info, href: "/about" },
+  { label: "privacyPolicy", icon: Shield, href: "/privacy" },
+  { label: "guide", icon: Book, href: "/guide" },
+  { label: "help", icon: HelpCircle, href: "/help" },
 ]
 
 export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
@@ -127,6 +130,8 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
 
   const toggleItem = (label: string) =>
     setOpenItems((prev) => ({ ...prev, [label]: !prev[label] }))
+
+  const { t } = useLanguage()
 
   const isActive = (href?: string) => !!href && pathname === href
 
@@ -153,7 +158,7 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
           </Link>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
-            <span className="sr-only">Fermer la barre latérale</span>
+            <span className="sr-only">{t("closeSidebar")}</span>
           </Button>
         </div>
 
@@ -161,8 +166,8 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
           {navItems.map((item) => {
             const isOpenItem = openItems[item.label]
 
-            // ========= CAS PARTICULIER: "Paramètres" =========
-            if (item.label === "Paramètres" && item.children) {
+            // ========= CAS PARTICULIER: "settings" =========
+            if (item.label === "settings" && item.children) {
               return (
                 <div key={item.label} className="flex flex-col">
                   <div className="flex items-center justify-between gap-2 px-2">
@@ -178,13 +183,13 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
                       onClick={onClose}
                     >
                       <item.icon className="h-5 w-5" />
-                      <span>{item.label}</span>
+                      <span>{t(item.label)}</span>
                     </Link>
 
                     {/* Chevron séparé qui ne navigue pas, ouvre/ferme le sous-menu */}
                     <button
                       type="button"
-                      aria-label="Dérouler"
+                      aria-label={t("expand")}
                       onClick={() => toggleItem(item.label)}
                       className={cn(
                         "ml-1 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -212,7 +217,7 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
                           onClick={onClose}
                         >
                           <child.icon className="h-5 w-5" />
-                          <span>{child.label}</span>
+                          <span>{t(child.label)}</span>
                         </Link>
                       ))}
                     </div>
@@ -233,7 +238,7 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
                   >
                     <span className="flex items-center gap-3">
                       <item.icon className="h-5 w-5" />
-                      {item.label}
+                      {t(item.label)}
                     </span>
                     <ChevronDown
                       className={cn(
@@ -256,7 +261,7 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
                           onClick={onClose}
                         >
                           <child.icon className="h-5 w-5" />
-                          <span>{child.label}</span>
+                          <span>{t(child.label)}</span>
                         </Link>
                       ))}
                     </div>
@@ -277,7 +282,7 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
                 onClick={onClose}
               >
                 <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </Link>
             )
           })}

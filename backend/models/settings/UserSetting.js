@@ -59,6 +59,12 @@ module.exports = (sequelize, DataTypes) => {
     proxmox_ssh_user: {
       type: DataTypes.STRING,
     },
+    alert_cpu_threshold: {
+      type: DataTypes.INTEGER,
+    },
+    alert_ram_threshold: {
+      type: DataTypes.INTEGER,
+    },
   }, {
     tableName: 'user_settings',
     underscored: true,

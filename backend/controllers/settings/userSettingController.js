@@ -40,6 +40,7 @@ exports.getAccountInfo = async (req, res) => {
       phone: user.phone,
       role: user.role,
       language: null,
+      two_factor_enabled: user.two_factor_enabled,
       settings,
     });
   } catch (err) {
@@ -89,6 +90,61 @@ exports.updateStorageSettings = async (req, res) => {
     return res.status(200).json({ message: 'Préférences de stockage mises à jour', settings });
   } catch (err) {
     console.error('❌ Erreur updateStorageSettings:', err);
+    return res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+// ⚠️ Seuils d'alertes CPU/RAM
+exports.getAlertThresholds = async (req, res) => {
+  console.log('📥 getAlertThresholds called for user', req.user?.id);
+  const userId = req.user?.id;
+  try {
+    const settings = await UserSetting.findOne({ where: { user_id: userId } });
+    if (!settings) {
+      return res.status(404).json({ message: 'Paramètres non trouvés.' });
+    }
+    const { alert_cpu_threshold, alert_ram_threshold } = settings;
+    return res.status(200).json({ alert_cpu_threshold, alert_ram_threshold });
+  } catch (err) {
+    console.error('❌ Erreur getAlertThresholds:', err);
+    return res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+exports.createAlertThresholds = async (req, res) => {
+  console.log('📥 createAlertThresholds called for user', req.user?.id, req.body);
+  const userId = req.user?.id;
+  const { alert_cpu_threshold, alert_ram_threshold } = req.body;
+  try {
+    const existing = await UserSetting.findOne({ where: { user_id: userId } });
+    if (existing) {
+      return res.status(400).json({ message: 'Les paramètres existent déjà pour cet utilisateur.' });
+    }
+    const settings = await UserSetting.create({
+      user_id: userId,
+      alert_cpu_threshold,
+      alert_ram_threshold,
+    });
+    return res.status(201).json({ message: 'Seuils créés', settings });
+  } catch (err) {
+    console.error('❌ Erreur createAlertThresholds:', err);
+    return res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+exports.updateAlertThresholds = async (req, res) => {
+  console.log('📥 updateAlertThresholds called for user', req.user?.id, req.body);
+  const userId = req.user?.id;
+  const { alert_cpu_threshold, alert_ram_threshold } = req.body;
+  try {
+    const settings = await UserSetting.findOne({ where: { user_id: userId } });
+    if (!settings) {
+      return res.status(404).json({ message: 'Paramètres non trouvés. Veuillez d\'abord les créer.' });
+    }
+    await settings.update({ alert_cpu_threshold, alert_ram_threshold });
+    return res.status(200).json({ message: 'Seuils mis à jour', settings });
+  } catch (err) {
+    console.error('❌ Erreur updateAlertThresholds:', err);
     return res.status(500).json({ message: 'Erreur serveur.' });
   }
 };

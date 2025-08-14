@@ -209,9 +209,15 @@ api.interceptors.response.use(
 );
 
 // ---- API calls ----
-export const loginUser = async (email: string, password: string, remember = false): Promise<any> => {
+export const loginUser = async (
+  email: string,
+  password: string,
+  remember = false,
+  otp?: string
+): Promise<any> => {
   let deviceId = getDeviceId();
   const payload: any = { email, password, remember };
+  if (otp) payload.otp = otp;
   if (remember) {
     if (!deviceId && typeof crypto !== "undefined" && (crypto as any).randomUUID) {
       deviceId = (crypto as any).randomUUID();
