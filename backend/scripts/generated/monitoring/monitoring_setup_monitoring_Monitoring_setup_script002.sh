@@ -38,7 +38,15 @@ IFACE=$(ip route get 1.1.1.1 | awk '{print $5; exit}')
 RX_BYTES=$(cat /sys/class/net/$IFACE/statistics/rx_bytes)
 TX_BYTES=$(cat /sys/class/net/$IFACE/statistics/tx_bytes)
 OPEN_PORTS=$(ss -tuln | awk 'NR>1 {split($5,a,":"); print a[length(a)]}' | sort -n | uniq | paste -sd, -)
-TOP_PROCESSES=$(ps -eo pid,comm,%cpu --sort=-%cpu | head -n 6 | tail -n 5 | awk '{printf "{\"pid\":%s,\"cmd\":\"%s\",\"cpu\":%s}",",", $1, $2, $3}')
+TOP_PROCESSES=$(
+  ps -eo pid=,comm=,%cpu= --sort=-%cpu \
+  | head -n 5 \
+  | awk 'BEGIN{printf "["}
+         {printf "%s{\"pid\":%s,\"cmd\":\"%s\",\"cpu\":%s}",
+                 (NR>1?",":""), $1, $2, $3}
+         END{print "]"}'
+)
+
 TOP_PROCESSES="[${TOP_PROCESSES%,}]"
 
 cat <<JSON > "$MONITOR_DIR/status.json"

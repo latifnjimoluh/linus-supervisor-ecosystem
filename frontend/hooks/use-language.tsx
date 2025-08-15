@@ -1,10 +1,14 @@
+// hooks/use-language.tsx
 "use client";
 
 import * as React from "react";
 
 export type Locale = "en" | "fr";
 
-const dictionaries: Record<Locale, Record<string, string>> = {
+type Dict = Record<string, string>;
+type Dictionaries = Record<Locale, Dict>;
+
+const dictionaries: Dictionaries = {
   en: {
     dashboard: "Dashboard",
     overview: "Overview",
@@ -34,24 +38,10 @@ const dictionaries: Record<Locale, Record<string, string>> = {
     storage: "Storage",
     alertThresholds: "Alert thresholds",
     about: "About",
-    privacyPolicy: "Privacy Policy",
-    guide: "Guide",
-    help: "Help",
-    closeSidebar: "Close sidebar",
-    expand: "Expand",
-    toggleSidebar: "Toggle sidebar",
-    lastDeployment: "Last deployment",
-    inProgress: "In progress…",
-    needHelp: "Need help?",
-    notifications: "Notifications",
-    myAccount: "My account",
-    profile: "Profile",
-    logout: "Logout",
-    switchLanguage: "Switch language",
   },
   fr: {
     dashboard: "Tableau de bord",
-    overview: "Vue d'ensemble",
+    overview: "Aperçu",
     infraMap: "Carte Infra",
     stats: "Statistiques",
     supervision: "Supervision",
@@ -60,11 +50,11 @@ const dictionaries: Record<Locale, Record<string, string>> = {
     alerts: "Alertes",
     deployment: "Déploiement",
     deploy: "Déployer",
-    vmHistory: "Historique des VM",
-    scriptsTemplates: "Scripts & Templates",
+    vmHistory: "Historique VMs",
+    scriptsTemplates: "Scripts & Modèles",
     list: "Liste",
     scripts: "Scripts",
-    templates: "Templates",
+    templates: "Modèles",
     users: "Utilisateurs",
     usersList: "Utilisateurs",
     roles: "Rôles",
@@ -72,77 +62,54 @@ const dictionaries: Record<Locale, Record<string, string>> = {
     terminal: "Terminal",
     codeEditor: "Éditeur de code",
     settings: "Paramètres",
-    accountSettings: "Paramètres du Compte",
+    accountSettings: "Paramètres du compte",
     proxmoxConnection: "Connexion Proxmox",
-    provisioningTemplates: "Templates de Provisionnement",
+    provisioningTemplates: "Modèles de provisioning",
     storage: "Stockage",
-    alertThresholds: "Seuils d'alertes",
+    alertThresholds: "Seuils d’alerte",
     about: "À propos",
-    privacyPolicy: "Politique de confidentialité",
-    guide: "Guide",
-    help: "Aide",
-    closeSidebar: "Fermer la barre latérale",
-    expand: "Dérouler",
-    toggleSidebar: "Ouvrir/fermer la barre",
-    lastDeployment: "Dernier déploiement",
-    inProgress: "En cours…",
-    needHelp: "Besoin d'aide ?",
-    notifications: "Notifications",
-    myAccount: "Mon Compte",
-    profile: "Profil",
-    logout: "Déconnexion",
-    switchLanguage: "Changer de langue",
   },
 };
 
-interface LanguageContextValue {
-  lang: Locale;
-  setLang: (l: Locale) => void;
+type LanguageContextType = {
+  locale: Locale;
+  setLocale: (l: Locale) => void;
   t: (key: string) => string;
-}
+};
 
-const LanguageContext = React.createContext<LanguageContextValue | undefined>(
-  undefined
-);
+const LanguageContext = React.createContext<LanguageContextType | null>(null);
 
-export function LanguageProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [lang, setLangState] = React.useState<Locale>("fr");
+export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
+  const [locale, setLocale] = React.useState<Locale>("fr");
 
+  // Charger/sauver la langue depuis localStorage côté client
   React.useEffect(() => {
-    const stored =
-      typeof window !== "undefined" ? localStorage.getItem("lang") : null;
-    if (stored === "en" || stored === "fr") {
-      setLangState(stored);
-    }
+    try {
+      const saved = window.localStorage.getItem("app:locale") as Locale | null;
+      if (saved === "en" || saved === "fr") setLocale(saved);
+    } catch {}
   }, []);
 
-  const setLang = React.useCallback((l: Locale) => {
-    setLangState(l);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("lang", l);
-      document.documentElement.lang = l;
-    }
+  const safeSetLocale = React.useCallback((l: Locale) => {
+    setLocale(l);
+    try {
+      window.localStorage.setItem("app:locale", l);
+    } catch {}
   }, []);
-
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      document.documentElement.lang = lang;
-    }
-  }, [lang]);
 
   const t = React.useCallback(
-    (key: string) => dictionaries[lang][key] || key,
-    [lang]
+    (key: string) => dictionaries[locale]?.[key] ?? key,
+    [locale]
   );
 
-  const value = React.useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
+  const value = React.useMemo(
+    () => ({ locale, setLocale: safeSetLocale, t }),
+    [locale, safeSetLocale, t]
+  );
 
+  
   return (
-    <LanguageContext.Provider value={value}>
+    <LanguageContext.Provider value={{ locale, setLocale, t }}>
       {children}
     </LanguageContext.Provider>
   );
@@ -150,11 +117,12 @@ export function LanguageProvider({
 
 export function useLanguage() {
   const ctx = React.useContext(LanguageContext);
-  if (!ctx) throw new Error("useLanguage must be used within LanguageProvider");
+  if (!ctx) {
+    throw new Error("useLanguage must be used within <LanguageProvider>");
+  }
   return ctx;
 }
 
-export function useTranslation() {
-  return useLanguage();
-}
 
+
+export default LanguageProvider;

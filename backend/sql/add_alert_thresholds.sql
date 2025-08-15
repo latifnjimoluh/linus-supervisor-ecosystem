@@ -1,3 +1,0 @@
-ALTER TABLE user_settings
-  ADD COLUMN IF NOT EXISTS alert_cpu_threshold INTEGER DEFAULT 10,
-  ADD COLUMN IF NOT EXISTS alert_ram_threshold INTEGER DEFAULT 10;
