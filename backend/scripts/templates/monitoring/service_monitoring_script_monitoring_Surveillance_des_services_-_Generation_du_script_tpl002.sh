@@ -7,9 +7,13 @@ mkdir -p /opt/monitoring
 cat <<'EOS' > ${SERVICES_SCRIPT_PATH}
 #!/bin/bash
 
-# 🔐 Charger l'INSTANCE_ID depuis /etc/instance-info.conf si présent
+# 🔐 Assurer la présence de l'INSTANCE_ID
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
+else
+  uuid=$(command -v uuidgen >/dev/null 2>&1 && uuidgen || cat /proc/sys/kernel/random/uuid)
+  echo "INSTANCE_ID=$uuid" > /etc/instance-info.conf
+  INSTANCE_ID="$uuid"
 fi
 
 TIMESTAMP=$(date -Iseconds)

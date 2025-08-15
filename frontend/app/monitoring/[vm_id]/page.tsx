@@ -63,11 +63,7 @@ interface VMDetails {
     port?: number
     description: string
   }>
-  recent_logs: Array<{
-    timestamp: string
-    level: "info" | "warning" | "error"
-    message: string
-  }>
+  recent_logs: string[]
   open_ports: number[]
   top_processes: Array<{ pid: number; cmd: string; cpu: number }>
   last_monitoring: string
@@ -201,6 +197,7 @@ export default function VMDetailsPage() {
       const monitor = data.monitoring || {}
       const system = monitor.system_status || {}
       const services = monitor.services_status?.services || []
+      const logs = monitor.logs_status?.logs || []
       const memoryTotalKb = data.memory_total || data.status?.maxmem / 1024 || 0
       const diskTotalKb = data.disk_total || data.status?.maxdisk / 1024 || 0
 
@@ -237,7 +234,7 @@ export default function VMDetailsPage() {
           status: s.active === 'active' ? 'active' : s.active === 'inactive' ? 'inactive' : 'failed',
           description: s.enabled,
         })),
-        recent_logs: Array.isArray(system.recent_logs) ? system.recent_logs : [],
+        recent_logs: Array.isArray(logs) ? logs : [],
         open_ports: Array.isArray(system.open_ports) ? system.open_ports : [],
         top_processes: Array.isArray(system.top_processes) ? system.top_processes : [],
         last_monitoring: monitor.retrieved_at ? formatDate(monitor.retrieved_at) : '',
@@ -353,14 +350,6 @@ export default function VMDetailsPage() {
     }
   }
 
-  const getLogLevelColor = (level: string) => {
-    switch (level) {
-      case "error": return "text-destructive"
-      case "warning": return "text-warning"
-      case "info": return "text-info"
-      default: return "text-foreground"
-    }
-  }
 
   if (loading) {
     return (
@@ -769,18 +758,7 @@ export default function VMDetailsPage() {
             <div className="flex-1 space-y-3 max-h-64 sm:max-h-72 overflow-y-auto">
               {vmData.recent_logs.map((log, index) => (
                 <div key={index} className="p-3 sm:p-3.5 border rounded-xl">
-                  <div className="flex flex-wrap items-start justify-between mb-1 gap-2">
-                    <span className="font-mono text-xs sm:text-sm text-muted-foreground break-all">{log.timestamp}</span>
-                    <Badge
-                      variant={
-                        log.level === 'error' ? 'destructive' : log.level === 'warning' ? 'warning' : 'info'
-                      }
-                      className="inline-flex items-center px-2.5 py-1 rounded-md font-mono text-xs sm:text-[13px] max-w-full break-all"
-                    >
-                      {log.level}
-                    </Badge>
-                  </div>
-                  <p className={cn("text-sm whitespace-normal break-words break-all", getLogLevelColor(log.level))}>{log.message}</p>
+                  <p className="text-sm font-mono whitespace-pre-wrap break-words break-all">{log}</p>
                 </div>
               ))}
             </div>

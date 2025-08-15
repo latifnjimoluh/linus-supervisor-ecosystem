@@ -139,7 +139,10 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
           <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
           <span className="sr-only">{t("toggleSidebar")}</span>
         </Button>
-        {title && <h1 className="text-base font-medium sm:text-lg">{title}</h1>}
+        <Link href="/" className="ml-2 font-semibold sm:text-lg">
+          LinuSupervisor
+        </Link>
+        {title && <h1 className="ml-4 text-base font-medium sm:text-lg">{title}</h1>}
         <div className="flex-1" />
         {last && (
           <Link href={`/deployments/${last.instance_id}`}>

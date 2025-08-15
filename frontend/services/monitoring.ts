@@ -84,10 +84,16 @@ export interface MonitoringRecord {
   instance_id: string;
   services_status: any;
   system_status: any;
+  logs_status: any;
   retrieved_at: string;
 }
 
 export async function fetchVmHistory(id: string): Promise<MonitoringRecord[]> {
   const res = await api.get(`/monitoring/${id}/history`);
+  return res.data;
+}
+
+export async function fetchVmSystemInfo(id: string) {
+  const res = await api.get(`/monitoring/${id}/system`);
   return res.data;
 }

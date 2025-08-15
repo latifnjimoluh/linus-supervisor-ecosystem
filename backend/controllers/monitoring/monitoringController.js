@@ -7,7 +7,6 @@ const { getRemoteFileContent, getRemoteJSON } = require('../../utils/sshClient')
 const { Monitoring, UserSetting, Deployment, Alert } = require('../../models');
 const { Op } = require('sequelize');
 const { evaluateResourceAlerts } = require('../../services/alertEvaluator');
-const { sendAlertEmail } = require('../../utils/mailer');
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
@@ -324,7 +323,7 @@ exports.getOverview = async (req, res) => {
         for (const a of alerts) {
           const serverName = ip || `VM ${vm.vmid}`;
           const description = `${a.type} usage ${a.value_percent}% (seuil ${a.threshold}%)`;
-          const [record, created] = await Alert.findOrCreate({
+          const [record] = await Alert.findOrCreate({
             where: { server: serverName, service: a.type, status: 'en_cours' },
             defaults: {
               severity: 'critique',
@@ -333,22 +332,6 @@ exports.getOverview = async (req, res) => {
           });
           a.id = record.id;
           a.description = description;
-          if (created) {
-            const recipients = [req.user?.email]
-              .concat(
-                process.env.ALERT_EMAIL_TO
-                  ? process.env.ALERT_EMAIL_TO.split(',').map((e) => e.trim())
-                  : []
-              )
-              .filter(Boolean);
-            await sendAlertEmail(recipients, {
-              server: serverName,
-              service: a.type,
-              value: a.value_percent,
-              threshold: a.threshold,
-              description,
-            });
-          }
         }
 
         return {
@@ -576,6 +559,30 @@ exports.getVmHistory = async (req, res) => {
     res.json(records);
   } catch (err) {
     res.status(500).json({ message: "Erreur lors de la récupération de l'historique", error: err.message });
+  }
+};
+
+// ℹ️ Informations système depuis la base pour une VM donnée
+exports.getVmSystemInfo = async (req, res) => {
+  try {
+    const vmid = req.params.vmid;
+    const deployment = await Deployment.findOne({ where: { vm_id: vmid } });
+    if (!deployment) {
+      return res.status(404).json({ message: 'Déploiement introuvable' });
+    }
+
+    const record = await Monitoring.findOne({
+      where: { vm_ip: deployment.vm_ip },
+      order: [['retrieved_at', 'DESC']],
+    });
+
+    if (!record) {
+      return res.status(404).json({ message: "Aucune donnée de monitoring" });
+    }
+
+    res.json(record.system_status || {});
+  } catch (err) {
+    res.status(500).json({ message: "Erreur lors de la récupération des informations système", error: err.message });
   }
 };
 
