@@ -33,17 +33,15 @@ export default function AlertsPage() {
             <th className="py-2">Sévérité</th>
             <th className="py-2">Statut</th>
             <th className="py-2">Date</th>
-            <th className="py-2" />
+            <th className="py-2 text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           {alerts.map((alert) => (
             <tr key={alert.id} className="border-b">
               <td className="py-2">
-                <Link href={`/alerts/${alert.id}`} className="hover:underline">
-                  {alert.server}
-                  {alert.service ? ` - ${alert.service}` : ""}
-                </Link>
+                {alert.server}
+                {alert.service ? ` - ${alert.service}` : ""}
               </td>
               <td className="py-2"><Badge>{alert.severity}</Badge></td>
               <td className="py-2">{alert.status}</td>
@@ -51,9 +49,14 @@ export default function AlertsPage() {
                 {new Date(alert.created_at).toLocaleString()}
               </td>
               <td className="py-2 text-right">
-                <Button size="sm" variant="secondary" onClick={() => handleAck(alert.id)}>
-                  Acquitter
-                </Button>
+                <div className="flex justify-end gap-2">
+                  <Link href={`/alerts/${alert.id}`}>
+                    <Button size="sm" variant="outline">Voir</Button>
+                  </Link>
+                  <Button size="sm" variant="secondary" onClick={() => handleAck(alert.id)}>
+                    Acquitter
+                  </Button>
+                </div>
               </td>
             </tr>
           ))}

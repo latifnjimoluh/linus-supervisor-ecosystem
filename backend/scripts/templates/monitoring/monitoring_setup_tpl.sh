@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Ensure monitoring directory exists with correct permissions
-MONITOR_DIR="/opt/monitoring"
+MONITOR_DIR="${MONITOR_DIR:-/opt/monitoring}"
 CRON_USER="${CRON_USER:-nexus}"
 sudo mkdir -p "$MONITOR_DIR"
 sudo chown -R "$CRON_USER":"$CRON_USER" "$MONITOR_DIR"
@@ -17,7 +17,8 @@ LOGS_SCRIPT_PATH="${LOGS_SCRIPT_PATH:-$MONITOR_DIR/logs.sh}"
 cat <<'EOS' > "$STATUS_SCRIPT_PATH"
 #!/bin/bash
 set -euo pipefail
-MONITOR_DIR="/opt/monitoring"
+MONITOR_DIR="${MONITOR_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+mkdir -p "$MONITOR_DIR"
 
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
@@ -72,7 +73,8 @@ chmod +x "$STATUS_SCRIPT_PATH"
 cat <<'EOS' > "$SERVICES_SCRIPT_PATH"
 #!/bin/bash
 set -euo pipefail
-MONITOR_DIR="/opt/monitoring"
+MONITOR_DIR="${MONITOR_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+mkdir -p "$MONITOR_DIR"
 
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
@@ -107,7 +109,8 @@ chmod +x "$SERVICES_SCRIPT_PATH"
 cat <<'EOS' > "$LOGS_SCRIPT_PATH"
 #!/bin/bash
 set -euo pipefail
-MONITOR_DIR="/opt/monitoring"
+MONITOR_DIR="${MONITOR_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+mkdir -p "$MONITOR_DIR"
 
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf

@@ -40,7 +40,38 @@ export interface HistoryFilters {
   template?: string;
 }
 
-export async function fetchDeploymentHistory(filters: HistoryFilters = {}) {
+export interface DeleteRecord {
+  id: number;
+  vm_name: string;
+  vm_ip?: string;
+  instance_id?: string;
+  deleted_at: string;
+  user_email?: string;
+  log_path?: string;
+}
+
+export interface HistoryResponse {
+  deployments: {
+    id: number;
+    vm_name: string;
+    template: string;
+    started_at: string;
+    duration: string;
+    status: string;
+    user_email: string;
+  }[];
+  deletes: DeleteRecord[];
+  pagination: {
+    page: number;
+    limit: number;
+    deploymentsTotal: number;
+    deletionsTotal: number;
+  };
+}
+
+export async function fetchDeploymentHistory(
+  filters: HistoryFilters = {}
+): Promise<HistoryResponse> {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([k, v]) => {
     if (v !== undefined && v !== "") params.append(k, String(v));

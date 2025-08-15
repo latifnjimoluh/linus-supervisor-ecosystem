@@ -136,9 +136,8 @@ export async function askChatbotStream(
 function resolveAbsoluteUrl(path: string): string {
   const base =
     (typeof window !== "undefined" && (window as any)?.__API_BASE_URL__) ||
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    "";
-  if (!base) return path;
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:3000";
   return `${trimSlash(base)}/${trimSlash(path)}`;
 }
 

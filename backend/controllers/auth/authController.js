@@ -135,10 +135,11 @@ exports.login = async (req, res) => {
       role_id: user.role_id,
     };
 
-    if (user.two_factor_enabled) {
-      if (!otp) {
-        return res.status(401).json({ message: 'Code 2FA requis.' });
-      }
+    if (user.two_factor_enabled && !otp) {
+      return res.status(206).json({ message: 'Code 2FA requis.' });
+    }
+
+    if (user.two_factor_enabled && otp) {
       const verifiedOtp = speakeasy.totp.verify({
         secret: user.two_factor_secret,
         encoding: 'base32',

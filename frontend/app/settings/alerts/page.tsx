@@ -8,21 +8,28 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
 import { useAlertThresholds } from "@/hooks/use-alert-thresholds"
 
 export default function AlertSettingsPage() {
   const { cpu, ram, save } = useAlertThresholds()
   const [localCpu, setLocalCpu] = React.useState(cpu)
   const [localRam, setLocalRam] = React.useState(ram)
+  const { toast } = useToast()
 
   React.useEffect(() => {
     setLocalCpu(cpu)
     setLocalRam(ram)
   }, [cpu, ram])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    save(localCpu, localRam)
+    try {
+      await save(localCpu, localRam)
+      toast({ title: "Modification bien effectuée", variant: "success" })
+    } catch {
+      toast({ title: "Erreur lors de la modification", variant: "destructive" })
+    }
   }
 
   return (

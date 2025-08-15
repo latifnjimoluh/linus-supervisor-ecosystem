@@ -1,11 +1,18 @@
 #!/bin/bash
+set -euo pipefail
 
-# 📁 Créer le dossier de monitoring s’il n’existe pas
-mkdir -p /opt/monitoring
+# 📁 Dossier de sortie personnalisable
+MONITOR_DIR="${MONITOR_DIR:-/opt/monitoring}"
+mkdir -p "$MONITOR_DIR"
 
 # 📦 Créer le script de surveillance système
-cat <<'EOS' > /opt/monitoring/status.sh
+cat <<'EOS' > "$MONITOR_DIR/status.sh"
 #!/bin/bash
+set -euo pipefail
+
+# Répertoire cible (par défaut le dossier du script)
+MONITOR_DIR="${MONITOR_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+mkdir -p "$MONITOR_DIR"
 
 # 🔐 Charger l'INSTANCE_ID depuis /etc/instance-info.conf si présent
 if [ -f /etc/instance-info.conf ]; then
@@ -19,21 +26,17 @@ IP_ADDR=$(hostname -I | awk '{print $1}')
 LOAD_AVG=$(cut -d ' ' -f1-3 /proc/loadavg)
 MEM_TOTAL=$(grep MemTotal /proc/meminfo | awk '{print $2}')
 MEM_AVAILABLE=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
-
 DISK_TOTAL=$(df -B1 / | tail -1 | awk '{print $2}')
 DISK_USED=$(df -B1 / | tail -1 | awk '{print $3}')
 DISK_AVAIL=$(df -B1 / | tail -1 | awk '{print $4}')
-
 IFACE=$(ip route get 1.1.1.1 | awk '{print $5; exit}')
 RX_BYTES=$(cat /sys/class/net/$IFACE/statistics/rx_bytes)
 TX_BYTES=$(cat /sys/class/net/$IFACE/statistics/tx_bytes)
-
 OPEN_PORTS=$(ss -tuln | awk 'NR>1 {split($5,a,":"); print a[length(a)]}' | sort -n | uniq | paste -sd, -)
-
-TOP_PROCESSES=$(ps -eo pid,comm,%cpu --sort=-%cpu | head -n 6 | tail -n 5 | awk '{printf "{\"pid\":%s,\"cmd\":\"%s\",\"cpu\":%s},", $1, $2, $3}')
+TOP_PROCESSES=$(ps -eo pid,comm,%cpu --sort=-%cpu | head -n 6 | tail -n 5 | awk '{printf "{\\"pid\\":%s,\\"cmd\\":\\"%s\\",\\"cpu\\":%s}",",", $1, $2, $3}')
 TOP_PROCESSES="[${TOP_PROCESSES%,}]"
 
-cat <<JSON > /opt/monitoring/status.json
+cat <<JSON > "$MONITOR_DIR/status.json"
 {
   "timestamp": "${TIMESTAMP}",
   "instance_id": "${INSTANCE_ID}",
@@ -60,7 +63,8 @@ cat <<JSON > /opt/monitoring/status.json
 JSON
 EOS
 
-chmod +x /opt/monitoring/status.sh
+chmod +x "$MONITOR_DIR/status.sh"
 
 # 🕔 Ajout au cron (évite les doublons)
-grep -q "status.sh" /etc/crontab || echo "*/5 * * * * root /opt/monitoring/status.sh" >> /etc/crontab
+grep -q "status.sh" /etc/crontab || echo "*/5 * * * * root $MONITOR_DIR/status.sh" >> /etc/crontab
+

@@ -100,7 +100,13 @@ export default function MonitoringPage() {
       toast({ title: 'Suppression', description: `VM ${vm.name} supprimée avec succès`, variant: 'success' })
       mutate()
     } catch {
-      setError("monitoring", { message: "Impossible de supprimer la VM", ttlMs: 5000 })
+      setError(
+        "monitoring",
+        {
+          message: "Suppression impossible. Actualisez la page puis réessayez.",
+          ttlMs: 8000,
+        }
+      )
     } finally {
       setActionLoading(null)
     }

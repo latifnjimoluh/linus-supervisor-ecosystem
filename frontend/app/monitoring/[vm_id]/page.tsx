@@ -314,6 +314,14 @@ export default function VMDetailsPage() {
           message: `${exp.title}${exp.description ? " – " + exp.description : ""}`,
           ttlMs: 8000,
         })
+      } else if (action === "delete") {
+        setError(
+          "vm-actions",
+          {
+            message: "Suppression impossible. Actualisez la page puis réessayez.",
+            ttlMs: 8000,
+          }
+        )
       } else {
         setError("vm-actions", { message: 'Action échouée', ttlMs: 5000 })
       }
