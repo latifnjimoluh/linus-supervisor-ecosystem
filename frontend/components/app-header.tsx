@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { ModeToggle } from "@/components/mode-toggle"
 import { LanguageSwitcher } from "@/components/language-switcher"
-import { Menu, Bell, User, Settings, LogOut, HelpCircle, Loader2 } from 'lucide-react'
+import { Menu, Bell, User, Settings, LogOut, HelpCircle } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { fetchDeployment, fetchLastDeployment } from "@/services/deployments"
 import { getAuthToken, refreshAuthToken, logoutUser } from "@/services/api"
+import { listAlerts } from "@/services/alerts"
 import { getStatusBadge } from "@/components/status-badge"
 import { useErrors } from "@/hooks/use-errors"
 import { ErrorBanner } from "./error-banner"
@@ -22,12 +23,28 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
-  const { t, lang } = useLanguage()
+  const { t } = useLanguage()
   const [last, setLast] = React.useState<null | { instance_id: string; status: string; updatedAt: number }>(null)
   const esRef = React.useRef<EventSource | null>(null)
-  const [staleMsg, setStaleMsg] = React.useState<string | null>(null)
   const retryRef = React.useRef(false)
   const { setError } = useErrors()
+  const [alertCount, setAlertCount] = React.useState(0)
+
+  const loadAlertsCount = React.useCallback(async () => {
+    try {
+      const res = await listAlerts()
+      const count = res.data.filter(a => a.status !== "acknowledged").length
+      setAlertCount(count)
+    } catch (e) {
+      console.error("Failed to fetch alerts", e)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    loadAlertsCount()
+    const interval = setInterval(loadAlertsCount, 30000)
+    return () => clearInterval(interval)
+  }, [loadAlertsCount])
 
   const subscribe = React.useCallback(async (id: string) => {
     if (esRef.current) esRef.current.close()
@@ -104,24 +121,6 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
     }
   }, [subscribe])
 
-  React.useEffect(() => {
-    if (!last) return
-    const check = () => {
-      if (["running", "pending"].includes(last.status) && Date.now() - last.updatedAt > 15000) {
-        const timeStr = new Date(last.updatedAt).toLocaleTimeString()
-        setStaleMsg(
-          lang === "fr"
-            ? `Toujours en cours… (dernière mise à jour ${timeStr})`
-            : `Still running… (last update ${timeStr})`
-        )
-      } else {
-        setStaleMsg(null)
-      }
-    }
-    const interval = setInterval(check, 1000)
-    check()
-    return () => clearInterval(interval)
-  }, [last])
 
   const handleLogout = () => {
     logoutUser("Déconnecté")
@@ -144,21 +143,12 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
         <div className="flex-1" />
         {last && (
           <Link href={`/deployments/${last.instance_id}`}>
-            <Button variant="outline" className="flex items-center gap-2">
-              {t("lastDeployment")}
-              <div className="flex items-center gap-2">
-                {getStatusBadge(last.status)}
-                {["pending", "running"].includes(last.status) && (
-                  staleMsg ? (
-                    <span className="text-sm text-muted-foreground">{staleMsg}</span>
-                  ) : (
-                    <span className="flex items-center text-sm text-muted-foreground">
-                      <Loader2 className="mr-1 h-4 w-4 animate-spin" /> {t("inProgress")}
-                    </span>
-                  )
-                )}
-              </div>
-
+            <Button
+              variant="outline"
+              className="rounded-xl h-9 sm:h-10 px-3.5 sm:px-4 flex items-center gap-2"
+            >
+              Reprendre dernier déploiement
+              {getStatusBadge(last.status)}
             </Button>
           </Link>
         )}
@@ -168,10 +158,17 @@ export function AppHeader({ title, onToggleSidebar }: AppHeaderProps) {
             <span className="sr-only">{t("needHelp")}</span>
           </Button>
         </Link>
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
-          <span className="sr-only">{t("notifications")}</span>
-        </Button>
+        <Link href="/alerts">
+          <Button variant="ghost" size="icon" className="relative rounded-full">
+            <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
+            {alertCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-white">
+                {alertCount}
+              </span>
+            )}
+            <span className="sr-only">{t("notifications")}</span>
+          </Button>
+        </Link>
         <LanguageSwitcher />
         <ModeToggle />
         <DropdownMenu>

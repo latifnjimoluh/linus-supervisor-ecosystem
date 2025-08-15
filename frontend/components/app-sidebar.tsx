@@ -153,8 +153,8 @@ export function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
       >
         <div className="flex h-16 items-center justify-between border-b px-4">
           <Link href="/" className="flex items-center gap-2 text-lg font-semibold" onClick={onClose}>
-            LS
-            <span className="sr-only">LinuSupervisor</span>
+            <span className={cn(isOpen ? "hidden" : "block", "lg:hidden")}>LS</span>
+            <span className={cn(isOpen ? "block" : "hidden", "lg:block")}>LinuSupervisor</span>
           </Link>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />

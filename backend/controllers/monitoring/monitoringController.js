@@ -436,7 +436,6 @@ exports.getVmDetails = async (req, res) => {
       // Ignorer les erreurs RRD
     }
     // Récupération des infos locales et IP depuis Proxmox
-    const deployment = await Deployment.findOne({ where: { vm_id: vmid } });
     let ip = await getVMIPFromProxmox({
       apiUrl: settings.proxmox_api_url,
       headers,
@@ -444,6 +443,17 @@ exports.getVmDetails = async (req, res) => {
       vmid,
       type: vmInfo.type,
     });
+
+    // Recherche du déploiement correspondant (VM ID, IP et nom) avec status 'apply'
+    const whereClause = { vm_id: vmid, status: 'apply' };
+    if (ip) whereClause.vm_ip = ip;
+    if (vmInfo?.name) whereClause.vm_name = vmInfo.name;
+
+    const deployment = await Deployment.findOne({
+      where: whereClause,
+      order: [['createdAt', 'DESC']],
+    });
+
     if (!ip) ip = deployment?.vm_ip || null;
 
     const monitor = ip

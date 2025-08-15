@@ -229,7 +229,7 @@ export const loginUser = async (
   if (remember && response.data?.refreshToken) setRefreshToken(response.data.refreshToken);
   if (response.data?.device_id) setDeviceId(response.data.device_id);
   else if (deviceId) setDeviceId(deviceId);
-  return response.data;
+  return { ...response.data, status: response.status };
 };
 
 export const getUserProfile = async (): Promise<any> => {

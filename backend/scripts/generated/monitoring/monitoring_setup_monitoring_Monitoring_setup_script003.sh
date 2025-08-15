@@ -18,6 +18,8 @@ cat <<'EOS' > "$STATUS_SCRIPT_PATH"
 #!/bin/bash
 set -euo pipefail
 
+MONITOR_DIR="$(dirname "$(readlink -f "$0")")"
+
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
 fi
@@ -72,6 +74,8 @@ cat <<'EOS' > "$SERVICES_SCRIPT_PATH"
 #!/bin/bash
 set -euo pipefail
 
+MONITOR_DIR="$(dirname "$(readlink -f "$0")")"
+
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
 fi
@@ -105,6 +109,8 @@ chmod +x "$SERVICES_SCRIPT_PATH"
 cat <<'EOS' > "$LOGS_SCRIPT_PATH"
 #!/bin/bash
 set -euo pipefail
+
+MONITOR_DIR="$(dirname "$(readlink -f "$0")")"
 
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf

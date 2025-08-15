@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react"
 import {
   fetchDeploymentHistory,
   fetchDeployment,
+  HistoryResponse,
 } from "@/services/deployments"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/dialog"
 
 export default function HistoryPage() {
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<HistoryResponse | null>(null)
   const [filters, setFilters] = useState({
     status: "",
     user: "",
@@ -198,6 +199,12 @@ export default function HistoryPage() {
                           {ev.template}
                         </div>
                       )}
+                      {ev.type === "delete" && ev.vm_ip && (
+                        <div className="text-sm text-muted-foreground">IP : {ev.vm_ip}</div>
+                      )}
+                      {ev.type === "delete" && ev.user_email && (
+                        <div className="text-xs text-muted-foreground">{ev.user_email}</div>
+                      )}
                       <div className="text-xs text-muted-foreground">
                         {new Date(ev.date).toLocaleTimeString()}
                       </div>
@@ -234,18 +241,32 @@ export default function HistoryPage() {
           </DialogHeader>
           {detail ? (
             <div className="space-y-2 text-sm">
-              {detail.template && <p>Template : {detail.template}</p>}
-              {detail.started_at && (
-                <p>Démarré : {new Date(detail.started_at).toLocaleString()}</p>
-              )}
-              {detail.ended_at && (
-                <p>Terminé : {new Date(detail.ended_at).toLocaleString()}</p>
-              )}
-              {detail.duration && <p>Durée : {detail.duration}</p>}
-              {detail.log && (
-                <pre className="max-h-60 overflow-auto rounded bg-muted p-2 text-xs whitespace-pre-wrap">
-                  {detail.log}
-                </pre>
+              {selected?.type === "delete" ? (
+                <>
+                  {detail.deleted_at && (
+                    <p>Supprimée : {new Date(detail.deleted_at).toLocaleString()}</p>
+                  )}
+                  {detail.user_email && <p>Utilisateur : {detail.user_email}</p>}
+                  {detail.vm_ip && <p>IP : {detail.vm_ip}</p>}
+                  {detail.instance_id && <p>Instance : {detail.instance_id}</p>}
+                  {detail.log_path && <p>Journal : {detail.log_path}</p>}
+                </>
+              ) : (
+                <>
+                  {detail.template && <p>Template : {detail.template}</p>}
+                  {detail.started_at && (
+                    <p>Démarré : {new Date(detail.started_at).toLocaleString()}</p>
+                  )}
+                  {detail.ended_at && (
+                    <p>Terminé : {new Date(detail.ended_at).toLocaleString()}</p>
+                  )}
+                  {detail.duration && <p>Durée : {detail.duration}</p>}
+                  {detail.log && (
+                    <pre className="max-h-60 overflow-auto rounded bg-muted p-2 text-xs whitespace-pre-wrap">
+                      {detail.log}
+                    </pre>
+                  )}
+                </>
               )}
             </div>
           ) : (

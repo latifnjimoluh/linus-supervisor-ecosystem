@@ -15,11 +15,11 @@ import { loginUser } from "@/services/api";
 
 // ✅ import du hook d’erreurs global
 import { useErrors } from "@/hooks/use-errors";
+import { ErrorBanner } from "@/components/error-banner";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [passwordShake, setPasswordShake] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +55,22 @@ export default function LoginPage() {
     clearError("auth");
 
     try {
-      const data = await loginUser(email, password, remember, otp);
+      const data = await loginUser(email, password, remember);
+
+      if (data.status === 206) {
+        sessionStorage.setItem(
+          "preAuth",
+          JSON.stringify({ email, password, remember, redirectTo })
+        );
+        toast({
+          title: "Code 2FA requis",
+          description: "Veuillez saisir le code d'authentification.",
+          variant: "info",
+          duration: 3000,
+        });
+        router.push("/login/otp");
+        return;
+      }
 
       // ✅ on purge l’erreur “auth” s’il en restait une (ex: tentative précédente)
       clearError("auth");
@@ -98,6 +113,7 @@ export default function LoginPage() {
           <CardDescription>Connectez-vous à votre compte Linusupervisor</CardDescription>
         </CardHeader>
         <CardContent>
+          <ErrorBanner id="auth" />
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -139,16 +155,6 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </motion.div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="otp">Code 2FA</Label>
-              <Input
-                id="otp"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                className="rounded-xl focus-visible:ring-2 focus-visible:ring-primary"
-              />
             </div>
 
             <div className="flex items-center space-x-2">

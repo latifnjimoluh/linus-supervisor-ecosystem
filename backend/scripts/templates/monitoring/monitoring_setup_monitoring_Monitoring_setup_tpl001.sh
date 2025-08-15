@@ -18,6 +18,8 @@ cat <<'EOS' > "$STATUS_SCRIPT_PATH"
 #!/bin/bash
 set -euo pipefail
 
+MONITOR_DIR="${MONITOR_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+mkdir -p "$MONITOR_DIR"
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
 fi
@@ -72,6 +74,8 @@ cat <<'EOS' > "$SERVICES_SCRIPT_PATH"
 #!/bin/bash
 set -euo pipefail
 
+MONITOR_DIR="${MONITOR_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+mkdir -p "$MONITOR_DIR"
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
 fi
@@ -106,6 +110,8 @@ cat <<'EOS' > "$LOGS_SCRIPT_PATH"
 #!/bin/bash
 set -euo pipefail
 
+MONITOR_DIR="${MONITOR_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+mkdir -p "$MONITOR_DIR"
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
 fi

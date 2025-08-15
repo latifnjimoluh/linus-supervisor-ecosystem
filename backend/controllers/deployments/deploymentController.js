@@ -274,8 +274,11 @@ exports.history = async (req, res) => {
       deletes: deletions.rows.map((d) => ({
         id: d.id,
         vm_name: d.vm_name,
+        vm_ip: d.vm_ip,
+        instance_id: d.instance_id,
         deleted_at: d.deleted_at,
         user_email: d.user_email,
+        log_path: d.log_path,
       })),
       pagination: {
         page: Number(page),
