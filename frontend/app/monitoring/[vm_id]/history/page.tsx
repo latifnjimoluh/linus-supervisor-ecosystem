@@ -37,8 +37,8 @@ export default function VmHistoryPage() {
         const total = mem.total_kb || mem.total || 0
         const used = total - (mem.available_kb || mem.free_kb || 0)
         const memPercent = total ? (used / total) * 100 : 0
-        const logs = Array.isArray(sys.recent_logs)
-          ? sys.recent_logs.join("\n")
+        const logs = Array.isArray(rec.logs_status?.logs)
+          ? rec.logs_status.logs.join("\n")
           : "Aucun log disponible"
         const state = rec.services_status?.state
         let variant: any = "secondary"

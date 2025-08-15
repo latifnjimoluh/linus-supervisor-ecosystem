@@ -1,13 +1,23 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import { listAlerts, ackAlert, Alert } from "@/services/alerts"
+import { listAlerts, ackAlert, getAlert, Alert } from "@/services/alerts"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = React.useState<Alert[]>([])
+  const [selected, setSelected] = React.useState<Alert | null>(null)
+  const [open, setOpen] = React.useState(false)
+  const { toast } = useToast()
 
   const fetchAlerts = React.useCallback(async () => {
     const res = await listAlerts()
@@ -20,7 +30,15 @@ export default function AlertsPage() {
 
   const handleAck = async (id: number) => {
     await ackAlert(id)
+    toast({ title: "Alerte acquittée", variant: "success" })
+    setOpen(false)
     fetchAlerts()
+  }
+
+  const handleView = async (id: number) => {
+    const data = await getAlert(id)
+    setSelected(data)
+    setOpen(true)
   }
 
   return (
@@ -50,9 +68,9 @@ export default function AlertsPage() {
               </td>
               <td className="py-2 text-right">
                 <div className="flex justify-end gap-2">
-                  <Link href={`/alerts/${alert.id}`}>
-                    <Button size="sm" variant="outline">Voir</Button>
-                  </Link>
+                  <Button size="sm" variant="outline" onClick={() => handleView(alert.id)}>
+                    Voir
+                  </Button>
                   <Button size="sm" variant="secondary" onClick={() => handleAck(alert.id)}>
                     Acquitter
                   </Button>
@@ -62,6 +80,40 @@ export default function AlertsPage() {
           ))}
         </tbody>
       </table>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="space-y-2">
+          {selected && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Alerte #{selected.id}</DialogTitle>
+                <DialogDescription>
+                  {selected.server}
+                  {selected.service ? ` - ${selected.service}` : ""}
+                </DialogDescription>
+              </DialogHeader>
+              <div>
+                <span className="font-semibold">Sévérité:&nbsp;</span>
+                <Badge>{selected.severity}</Badge>
+              </div>
+              <div>
+                <span className="font-semibold">Statut:&nbsp;</span>
+                {selected.status}
+              </div>
+              <div>
+                <span className="font-semibold">Date:&nbsp;</span>
+                {new Date(selected.created_at).toLocaleString()}
+              </div>
+              {selected.description && (
+                <div>
+                  <span className="font-semibold">Description:&nbsp;</span>
+                  {selected.description}
+                </div>
+              )}
+              <Button onClick={() => handleAck(selected.id)}>Acquitter</Button>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

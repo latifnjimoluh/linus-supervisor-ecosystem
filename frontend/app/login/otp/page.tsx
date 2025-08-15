@@ -16,6 +16,9 @@ import { ErrorBanner } from "@/components/error-banner";
 export default function OtpPage() {
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [creds, setCreds] = useState<any | null>(null);
+  const [checked, setChecked] = useState(false);
+
   const router = useRouter();
   const { toast } = useToast();
   const { setError, clearError } = useErrors();
@@ -24,12 +27,15 @@ export default function OtpPage() {
     clearError("auth");
   }, [clearError]);
 
-  let creds: any = null;
-  if (typeof window !== "undefined") {
+  useEffect(() => {
     const stored = sessionStorage.getItem("preAuth");
-    if (stored) creds = JSON.parse(stored);
-    else router.replace("/login");
-  }
+    if (stored) {
+      setCreds(JSON.parse(stored));
+    } else {
+      router.replace("/login");
+    }
+    setChecked(true);
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -59,7 +65,7 @@ export default function OtpPage() {
     }
   };
 
-  if (!creds) return null;
+  if (!checked || !creds) return null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">

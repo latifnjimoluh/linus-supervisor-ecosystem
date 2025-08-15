@@ -38,6 +38,7 @@ const dictionaries: Dictionaries = {
     storage: "Storage",
     alertThresholds: "Alert thresholds",
     about: "About",
+    switchLanguage: "Switch language",
   },
   fr: {
     dashboard: "Tableau de bord",
@@ -68,6 +69,7 @@ const dictionaries: Dictionaries = {
     storage: "Stockage",
     alertThresholds: "Seuils d’alerte",
     about: "À propos",
+    switchLanguage: "Changer de langue",
   },
 };
 
@@ -107,9 +109,8 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     [locale, safeSetLocale, t]
   );
 
-  
   return (
-    <LanguageContext.Provider value={{ locale, setLocale, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

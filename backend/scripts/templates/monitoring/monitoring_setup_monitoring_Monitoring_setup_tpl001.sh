@@ -8,6 +8,12 @@ sudo mkdir -p "$MONITOR_DIR"
 sudo chown -R "$CRON_USER":"$CRON_USER" "$MONITOR_DIR"
 sudo chmod 775 "$MONITOR_DIR"
 
+# Ensure instance ID file exists
+if [ ! -f /etc/instance-info.conf ]; then
+  uuid=$(command -v uuidgen >/dev/null 2>&1 && uuidgen || cat /proc/sys/kernel/random/uuid)
+  echo "INSTANCE_ID=$uuid" | sudo tee /etc/instance-info.conf >/dev/null
+fi
+
 # Paths
 STATUS_SCRIPT_PATH="${STATUS_SCRIPT_PATH:-$MONITOR_DIR/status.sh}"
 SERVICES_SCRIPT_PATH="${SERVICES_SCRIPT_PATH:-$MONITOR_DIR/services_status.sh}"
@@ -22,6 +28,10 @@ MONITOR_DIR="${MONITOR_DIR:-$(cd "$(dirname "$0")" && pwd)}"
 mkdir -p "$MONITOR_DIR"
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
+else
+  uuid=$(command -v uuidgen >/dev/null 2>&1 && uuidgen || cat /proc/sys/kernel/random/uuid)
+  echo "INSTANCE_ID=$uuid" > /etc/instance-info.conf
+  INSTANCE_ID="$uuid"
 fi
 
 TIMESTAMP=$(date -Iseconds)
@@ -78,6 +88,10 @@ MONITOR_DIR="${MONITOR_DIR:-$(cd "$(dirname "$0")" && pwd)}"
 mkdir -p "$MONITOR_DIR"
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
+else
+  uuid=$(command -v uuidgen >/dev/null 2>&1 && uuidgen || cat /proc/sys/kernel/random/uuid)
+  echo "INSTANCE_ID=$uuid" > /etc/instance-info.conf
+  INSTANCE_ID="$uuid"
 fi
 
 TIMESTAMP=$(date -Iseconds)
@@ -114,6 +128,10 @@ MONITOR_DIR="${MONITOR_DIR:-$(cd "$(dirname "$0")" && pwd)}"
 mkdir -p "$MONITOR_DIR"
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
+else
+  uuid=$(command -v uuidgen >/dev/null 2>&1 && uuidgen || cat /proc/sys/kernel/random/uuid)
+  echo "INSTANCE_ID=$uuid" > /etc/instance-info.conf
+  INSTANCE_ID="$uuid"
 fi
 
 TIMESTAMP=$(date -Iseconds)

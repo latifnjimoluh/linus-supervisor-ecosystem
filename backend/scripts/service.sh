@@ -5,6 +5,12 @@ set -euo pipefail
 MONITOR_DIR="${MONITOR_DIR:-/opt/monitoring}"
 mkdir -p "$MONITOR_DIR"
 
+# Ensure instance ID exists
+if [ ! -f /etc/instance-info.conf ]; then
+  uuid=$(command -v uuidgen >/dev/null 2>&1 && uuidgen || cat /proc/sys/kernel/random/uuid)
+  echo "INSTANCE_ID=$uuid" > /etc/instance-info.conf
+fi
+
 # 📦 Créer le script de surveillance des services
 cat <<'EOS' > "$MONITOR_DIR/services_status.sh"
 #!/bin/bash
@@ -14,9 +20,13 @@ set -euo pipefail
 MONITOR_DIR="${MONITOR_DIR:-$(cd "$(dirname "$0")" && pwd)}"
 mkdir -p "$MONITOR_DIR"
 
-# 🔐 Charger l'INSTANCE_ID depuis /etc/instance-info.conf si présent
+# 🔐 Assurer la présence de l'INSTANCE_ID
 if [ -f /etc/instance-info.conf ]; then
   source /etc/instance-info.conf
+else
+  uuid=$(command -v uuidgen >/dev/null 2>&1 && uuidgen || cat /proc/sys/kernel/random/uuid)
+  echo "INSTANCE_ID=$uuid" > /etc/instance-info.conf
+  INSTANCE_ID="$uuid"
 fi
 
 TIMESTAMP=$(date -Iseconds)
