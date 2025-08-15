@@ -59,14 +59,6 @@ describe('open routes', () => {
     expect(res.body.format).toBe('bash');
     expect(res.body.script).toContain('Configuring test');
   });
-
-  it('POST /assistant/chat without message returns 400', async () => {
-    const res = await request(app)
-      .post('/assistant/chat')
-      .set('Content-Type', 'application/json')
-      .send({});
-    expect(res.status).toBe(400);
-  });
 });
 
 describe('script retrieval', () => {

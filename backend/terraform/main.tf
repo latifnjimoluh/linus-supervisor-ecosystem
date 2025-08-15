@@ -30,10 +30,19 @@ locals {
         : "ip=dhcp"
     )
   }
+  monitoring_cloud_init = templatefile("${path.module}/cloud-init-monitoring.tpl", {
+    monitoring_script = file("${path.module}/../scripts/monitoring.sh")
+  })
+}
+
+resource "local_file" "monitoring_cloud_init" {
+  content  = local.monitoring_cloud_init
+  filename = "/var/lib/vz/snippets/monitoring-cloud-init.yml"
 }
 
 resource "proxmox_vm_qemu" "vm" {
   for_each    = toset(var.vm_names)
+  depends_on  = [local_file.monitoring_cloud_init]
   name        = each.value
   target_node = var.proxmox_node
   clone       = var.template_name
@@ -55,6 +64,7 @@ resource "proxmox_vm_qemu" "vm" {
   ciuser     = var.cloudinit_user
   cipassword = var.cloudinit_password
   sshkeys    = file(var.ssh_public_key_path)
+  cicustom   = "user=local:snippets/monitoring-cloud-init.yml"
 
   ipconfig0 = local.ipconfig_map[each.value]
 
@@ -118,6 +128,9 @@ resource "null_resource" "run_scripts" {
   # ▶️ Exécution séquentielle des scripts transférés
   provisioner "remote-exec" {
     inline = [
+      "sudo bash -c 'echo INSTANCE_ID=${var.instance_id} > /etc/instance-info.conf'",
+      "sudo bash -c 'echo export INSTANCE_ID=${var.instance_id} > /etc/profile.d/instance_id.sh'",
+      "sudo chmod +x /etc/profile.d/instance_id.sh",
       "export INSTANCE_ID=${var.instance_id}",
       "for f in $(ls /tmp/script_*.sh 2>/dev/null); do tr -d '\\r' < $f > $f.tmp && mv $f.tmp $f; chmod +x $f; sudo bash -c \"INSTANCE_ID=${var.instance_id} $f\"; done",
       "echo '✅ Fin des scripts avec INSTANCE_ID=${var.instance_id}'"

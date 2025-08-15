@@ -80,6 +80,14 @@ exports.deploy = async (req, res) => {
       ssh_private_key_path: payload.ssh_private_key_path || userSettings.ssh_private_key_path,
     });
 
+    // Validation du nom d'utilisateur cloud-init
+    const userRegex = /^[a-z_][a-z0-9_-]{0,31}$/;
+    if (payload.cloudinit_user && !userRegex.test(payload.cloudinit_user)) {
+      return res.status(400).json({
+        message: `❌ Nom d'utilisateur invalide: "${payload.cloudinit_user}". Utilisez uniquement des lettres minuscules, chiffres, '-' ou '_' et commencez par une lettre.`,
+      });
+    }
+
     // Vérif nom VM déjà existant (sur le premier nom demandé)
     const proxmoxCreds = {
       proxmox_api_url: payload.proxmox_api_url,
@@ -231,6 +239,7 @@ exports.deploy = async (req, res) => {
       log_path: logPath,
       vm_id: null,
       vm_ip: null,
+      vm_username: payload.cloudinit_user || null,
       instance_id: instanceId,
       injected_files: scriptList,
       vm_specs: {

@@ -1,73 +1,35 @@
-const asyncHandler = require('express-async-handler');
-const logger = require('../../utils/logger');
+const faq = [
+  {
+    pattern: /vm|machine/i,
+    reply: "Pour gérer vos machines virtuelles, utilisez la section VMs de Linusupervisor."
+  },
+  {
+    pattern: /mot de passe|password|reset/i,
+    reply: "Pour réinitialiser votre mot de passe, utilisez le lien 'Mot de passe oublié' sur la page de connexion."
+  },
+  {
+    pattern: /monitoring|logs?/i,
+    reply: "Le monitoring collecte les événements système importants. Consultez l'onglet Monitoring pour plus de détails."
+  }
+];
 
-const history = new Map(); // key: userId:threadId -> [{role, content}]
-
-function safeMessage(input = '') {
-  return String(input).replace(/^\s*system:\s*/i, '').slice(0, 4000);
+function generateReply(message) {
+  const lower = message.toLowerCase();
+  for (const entry of faq) {
+    if (entry.pattern.test(lower)) {
+      return entry.reply;
+    }
+  }
+  return "Je suis l'assistant Linusupervisor. Je peux répondre aux questions concernant la plateforme.";
 }
 
-exports.stream = asyncHandler(async (req, res) => {
-  const userId = req.user?.id || 'anon';
-  const threadId = String(req.query?.threadId || 'default');
-  const message = safeMessage(String(req.query?.message || ''));
+const chat = async (req, res) => {
+  const { message } = req.body || {};
+  const userMessage = typeof message === 'string' ? message.trim() : '';
+  const reply = userMessage
+    ? generateReply(userMessage)
+    : "Bonjour, je suis l'assistant Linusupervisor. Posez votre question.";
+  res.json({ reply });
+};
 
-  if (!message) {
-    return res.status(400).json({ error: 'message_requis' });
-  }
-
-  const key = `${userId}:${threadId}`;
-  const msgs = history.get(key) || [];
-  msgs.push({ role: 'user', content: message });
-  history.set(key, msgs);
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders?.();
-
-  const controller = new AbortController();
-  req.on('close', () => controller.abort());
-
-  let full = '';
-  const started = Date.now();
-  const ping = setInterval(() => {
-    try {
-      res.write(':\n\n');
-    } catch {}
-  }, 20000);
-
-  try {
-    await streamChat({
-      messages: msgs,
-      signal: controller.signal,
-      onDelta: (token) => {
-        full += token;
-        try {
-          res.write(`data: ${token}\n\n`);
-        } catch {
-          controller.abort();
-        }
-      },
-    });
-    msgs.push({ role: 'assistant', content: full });
-    history.set(key, msgs);
-    const durationMs = Date.now() - started;
-    logger.info('chat_stream', {
-      userId,
-      threadId,
-      promptChars: message.length,
-      responseChars: full.length,
-      durationMs,
-      status: 'success',
-    });
-    try {
-      res.write('data: [DONE]\n\n');
-    } catch {}
-  } catch (err) {
-    logger.error('chat_stream_error', { userId, threadId, err: err.message });
-  } finally {
-    clearInterval(ping);
-    res.end();
-  }
-});
+module.exports = { chat };

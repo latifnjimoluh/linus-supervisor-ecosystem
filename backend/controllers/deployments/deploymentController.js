@@ -49,6 +49,7 @@ exports.getById = async (req, res) => {
       id: dep.id,
       instance_id: dep.instance_id,
       vm_name: dep.vm_name,
+      vm_username: dep.vm_username,
       template: dep.service_name,
       status: dep.status || (dep.success === null ? "pending" : dep.success ? "success" : "failed"),
       started_at: dep.started_at,
@@ -76,6 +77,7 @@ exports.getLast = async (req, res) => {
       id: dep.id,
       instance_id: dep.instance_id,
       vm_name: dep.vm_name,
+      vm_username: dep.vm_username,
       template: dep.service_name,
       status: dep.status || (dep.success === null ? "pending" : dep.success ? "success" : "failed"),
       started_at: dep.started_at,
@@ -264,12 +266,14 @@ exports.history = async (req, res) => {
     return res.json({
       deployments: deployments.rows.map((d) => ({
         id: d.id,
+        instance_id: d.instance_id,
         vm_name: d.vm_name,
         template: d.service_name,
         started_at: d.started_at,
         duration: d.duration,
-        status: d.success ? "success" : "failed",
+        status: d.status || (d.success ? "success" : "failed"),
         user_email: d.user_email,
+        log_path: d.log_path,
       })),
       deletes: deletions.rows.map((d) => ({
         id: d.id,

@@ -43,6 +43,7 @@ express.Router = function (...args) {
 // NB: models/index.js importe ../config/db, initialise les modèles et exporte { sequelize, Sequelize }
 const { sequelize } = require('./models');
 const routes = require('./routes');
+const { init: initTerminalWs } = require('./ws/terminal');
 
 const app = express();
 logger.info("Initialisation de l'application Express");
@@ -156,7 +157,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 
 async function start() {
-  app.listen(PORT, async () => {
+  const server = app.listen(PORT, async () => {
     logger.info(`Serveur démarré sur le port ${PORT}`);
     try {
       console.log('[DB AUTH] Tentative sequelize.authenticate() …');
@@ -167,7 +168,9 @@ async function start() {
       logger.error('Erreur de connexion à la base de données', err);
     }
   });
+  initTerminalWs(server);
 }
 
 if (require.main === module) start();
 module.exports = app;
+module.exports.start = start;
