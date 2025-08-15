@@ -13,6 +13,7 @@ module.exports = (sequelize, DataTypes) => {
     log_path: { type: DataTypes.STRING },
     vm_id: { type: DataTypes.STRING },
     vm_ip: { type: DataTypes.STRING },
+    vm_username: { type: DataTypes.STRING },
     instance_id: { type: DataTypes.STRING },
     injected_files: { type: DataTypes.JSON },
     vm_specs: { type: DataTypes.JSON },

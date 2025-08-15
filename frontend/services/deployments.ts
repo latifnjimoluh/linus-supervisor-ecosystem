@@ -53,12 +53,14 @@ export interface DeleteRecord {
 export interface HistoryResponse {
   deployments: {
     id: number;
+    instance_id?: string;
     vm_name: string;
     template: string;
     started_at: string;
     duration: string;
     status: string;
     user_email: string;
+    log_path?: string;
   }[];
   deletes: DeleteRecord[];
   pagination: {

@@ -7,8 +7,7 @@ import { AppHeader } from "@/components/app-header";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AuthGuard } from "@/components/auth-guard";
 import { ErrorBanner } from "./error-banner";
-import { ChatButton } from "@/components/chat/ChatButton";
-import { ChatPanel } from "@/components/chat/ChatPanel";
+import { Chatbot } from "@/components/chatbot";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -16,13 +15,16 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
-  const isLoginPage = pathname === "/" || pathname === "/login";
+  const isPublicPage =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname.startsWith("/reset");
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
   const toggleSidebar = () => setIsSidebarOpen((open) => !open);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  if (isLoginPage) {
+  if (isPublicPage) {
     return <main className="flex min-h-screen w-full flex-col">{children}</main>;
   }
 
@@ -37,8 +39,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             {children}
           </main>
         </div>
-        <ChatButton />
-        <ChatPanel />
+        <Chatbot />
       </div>
     </AuthGuard>
   );

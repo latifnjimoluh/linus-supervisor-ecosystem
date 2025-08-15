@@ -185,7 +185,7 @@ export default function LogsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-4xl font-semibold">Historique global des actions</h1>
+        <h1 className="text-4xl font-semibold">Logs action</h1>
         <div className="flex gap-3 items-center">
           <Button onClick={fetchLogs} variant="outline" size="sm" className="rounded-xl">
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />

@@ -47,6 +47,8 @@ interface VMDetails {
   memory: string
   disk: string
   instance_id: string
+  logs_timestamp: string
+  logs_instance_id: string
   metrics: {
     cpu_usage: number
     memory_usage: number // KB
@@ -198,6 +200,8 @@ export default function VMDetailsPage() {
       const system = monitor.system_status || {}
       const services = monitor.services_status?.services || []
       const logs = monitor.logs_status?.logs || []
+      const logsTimestamp = monitor.logs_status?.timestamp || ''
+      const logsInstance = monitor.logs_status?.instance_id || ''
       const memoryTotalKb = data.memory_total || data.status?.maxmem / 1024 || 0
       const diskTotalKb = data.disk_total || data.status?.maxdisk / 1024 || 0
 
@@ -219,6 +223,8 @@ export default function VMDetailsPage() {
         memory: formatKB(memoryTotalKb),
         disk: formatKB(diskTotalKb),
         instance_id: data.instance_id || '',
+        logs_timestamp: logsTimestamp ? formatDate(logsTimestamp) : '',
+        logs_instance_id: logsInstance || '',
         metrics: {
           cpu_usage: data.cpu_usage || 0,
           memory_usage: data.memory_usage || 0,
@@ -234,7 +240,16 @@ export default function VMDetailsPage() {
           status: s.active === 'active' ? 'active' : s.active === 'inactive' ? 'inactive' : 'failed',
           description: s.enabled,
         })),
-        recent_logs: Array.isArray(logs) ? logs : [],
+        recent_logs: [
+          ...(Array.isArray(monitor.logs_status?.errors)
+            ? monitor.logs_status.errors
+            : Array.isArray(logs)
+              ? logs
+              : []),
+          ...(Array.isArray(monitor.logs_status?.system_events)
+            ? monitor.logs_status.system_events
+            : []),
+        ],
         open_ports: Array.isArray(system.open_ports) ? system.open_ports : [],
         top_processes: Array.isArray(system.top_processes) ? system.top_processes : [],
         last_monitoring: monitor.retrieved_at ? formatDate(monitor.retrieved_at) : '',
@@ -752,9 +767,18 @@ export default function VMDetailsPage() {
               <FileText className="h-5 w-5" />
               Logs récents
             </CardTitle>
-            <CardDescription>Dernières entrées du journal système</CardDescription>
+            <CardDescription>
+              {vmData.logs_timestamp
+                ? `Collectés le ${vmData.logs_timestamp}`
+                : 'Dernières entrées du journal système'}
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-4 sm:p-5 flex-1 flex flex-col">
+            {vmData.logs_instance_id && (
+              <p className="text-xs text-muted-foreground mb-2">
+                Instance: {vmData.logs_instance_id}
+              </p>
+            )}
             <div className="flex-1 space-y-3 max-h-64 sm:max-h-72 overflow-y-auto">
               {vmData.recent_logs.map((log, index) => (
                 <div key={index} className="p-3 sm:p-3.5 border rounded-xl">

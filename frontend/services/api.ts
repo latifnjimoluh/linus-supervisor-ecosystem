@@ -49,11 +49,8 @@ export const isTokenExpired = (token: string): boolean => {
 
 const clearLocalData = (): void => {
   if (typeof window !== "undefined") {
-    const keys = ["token", "role", "refresh_token", "last_instance_id", "chatThread"];
+    const keys = ["token", "role", "refresh_token", "last_instance_id"];
     for (const k of keys) localStorage.removeItem(k);
-    Object.keys(localStorage)
-      .filter((k) => k.startsWith("chat:"))
-      .forEach((k) => localStorage.removeItem(k));
   }
 };
 

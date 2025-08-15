@@ -74,6 +74,7 @@ variable "cloudinit_password" {
   description = "Mot de passe injecté (cloud-init)"
   type        = string
   sensitive   = true
+  default     = "nexus"
 }
 
 variable "ssh_public_key_path" {

@@ -65,7 +65,8 @@ const navItems: NavItem[] = [
     icon: Activity,
     children: [
       { href: "/monitoring", icon: Activity, label: "monitoring" },
-      { href: "/logs", icon: FileText, label: "logs" },
+      { href: "/logs", icon: FileText, label: "logAction" },
+      { href: "/logs/deployments", icon: History, label: "deployLogs" },
       { href: "/alerts", icon: Bell, label: "alerts" },
     ],
   },
