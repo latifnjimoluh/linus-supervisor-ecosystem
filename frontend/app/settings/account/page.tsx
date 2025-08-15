@@ -21,6 +21,14 @@ import {
   getAccountInfo,
   updateMySettings,
 } from "@/services/settings"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function AccountSettingsPage() {
   const { setTheme } = useTheme()
@@ -43,6 +51,10 @@ export default function AccountSettingsPage() {
   const [proxmoxHost, setProxmoxHost] = useState("")
   const [proxmoxSshUser, setProxmoxSshUser] = useState("")
   const [twoFAEnabled, setTwoFAEnabled] = useState(false)
+  const [show2FAModal, setShow2FAModal] = useState(false)
+  const [qrCode, setQrCode] = useState("")
+  const [twoFASecret, setTwoFASecret] = useState("")
+  const [otpCode, setOtpCode] = useState("")
 
   useEffect(() => {
     getAccountInfo().then((data) => {
@@ -111,18 +123,27 @@ export default function AccountSettingsPage() {
   const handleToggle2FA = async (checked: boolean) => {
     try {
       if (checked) {
-        const { secret } = await setup2FA()
-        alert(`Secret 2FA : ${secret}`)
-        const code = window.prompt("Entrez le code de votre application d'authentification")
-        if (!code) return
-        await verify2FA(code)
-        setTwoFAEnabled(true)
-        toast({ title: "2FA activée", variant: "success" })
+        const { secret, qr } = await setup2FA()
+        setTwoFASecret(secret)
+        setQrCode(qr)
+        setOtpCode("")
+        setShow2FAModal(true)
       } else {
         await disable2FA()
         setTwoFAEnabled(false)
         toast({ title: "2FA désactivée", variant: "success" })
       }
+    } catch (err: any) {
+      setError("account", { message: err?.response?.data?.message || err.message })
+    }
+  }
+
+  const handleVerify2FA = async () => {
+    try {
+      await verify2FA(otpCode)
+      setTwoFAEnabled(true)
+      setShow2FAModal(false)
+      toast({ title: "2FA activée", variant: "success" })
     } catch (err: any) {
       setError("account", { message: err?.response?.data?.message || err.message })
     }
@@ -153,6 +174,7 @@ export default function AccountSettingsPage() {
   }
 
   return (
+    <>
     <div className="space-y-6">
       <ErrorBanner id="account" />
       <div className="flex items-center gap-3">
@@ -516,5 +538,50 @@ export default function AccountSettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
+    <Dialog
+      open={show2FAModal}
+      onOpenChange={(open) => {
+        setShow2FAModal(open)
+        if (!open) {
+          setOtpCode("")
+          setQrCode("")
+          setTwoFASecret("")
+          if (!twoFAEnabled) {
+            disable2FA().catch(() => {})
+          }
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Activer la 2FA</DialogTitle>
+          <DialogDescription>
+            Scannez ce QR code avec votre application d'authentification puis saisissez le code à six chiffres.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          {qrCode && (
+            <img src={qrCode} alt="QR Code 2FA" className="mx-auto h-40 w-40" />
+          )}
+          {twoFASecret && (
+            <p className="text-center text-xs break-all">Code secret : {twoFASecret}</p>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="otp-code">Code 2FA</Label>
+            <Input
+              id="otp-code"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={handleVerify2FA} disabled={!otpCode}>
+            Confirmer
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
