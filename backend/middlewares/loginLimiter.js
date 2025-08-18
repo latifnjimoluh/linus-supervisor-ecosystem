@@ -1,6 +1,6 @@
 const attempts = new Map();
 
-module.exports = function loginLimiter({ windowMs = 150 * 60 * 1000, limit = 5 } = {}) {
+module.exports = function loginLimiter({ windowMs = 150000 * 60000 * 1000, limit = 15000 } = {}) {
   return (req, res, next) => {
     const now = Date.now();
     const ip = req.ip || req.connection.remoteAddress || 'unknown';

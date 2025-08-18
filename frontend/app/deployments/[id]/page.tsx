@@ -14,7 +14,7 @@ import { useErrors } from "@/hooks/use-errors"
 import { fetchDeployment, summarizeDeploymentLogs, DeploymentDetail } from "@/services/deployments"
 import { getStatusBadge } from "@/components/status-badge"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
-import { getAuthToken, refreshAuthToken, logoutUser } from "@/services/api"
+import { getAuthToken, refreshAuthToken } from "@/services/api" // ⬅️ retiré logoutUser
 
 // --- Helpers d'affichage de log (clean & normalise) ---
 const stripAnsi = (s: string) => s.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
@@ -60,12 +60,18 @@ export default function DeploymentDetailsPage() {
     try {
       const data = await fetchDeployment(deploymentId)
       safeMerge(data)
-    } catch (e) {
-      console.error("Erreur de récupération du déploiement", e)
+    } catch (e: any) {
+      // ⬇️ Ne déconnecte jamais ici; signale juste la vraie fin de session
+      const status = e?.status || e?.response?.status
+      if (status === 401 || status === 403) {
+        setError("session", { message: "Session expirée (API)", detailsUrl: "/login" })
+      } else {
+        console.error("Erreur de récupération du déploiement", e)
+      }
     } finally {
       setLoading(false)
     }
-  }, [deploymentId, safeMerge])
+  }, [deploymentId, safeMerge, setError])
 
   // Chargement initial
   React.useEffect(() => {
@@ -80,7 +86,7 @@ export default function DeploymentDetailsPage() {
     }
   }, [deployment?.log])
 
-  // SSE + Poll fallback (sans écraser les logs)
+  // SSE + Poll fallback (sans écraser les logs) – NE PAS déconnecter sur erreur SSE
   React.useEffect(() => {
     if (!deploymentId) return
 
@@ -88,19 +94,34 @@ export default function DeploymentDetailsPage() {
     let es: EventSource | null = null
     let retried = false
 
+    const startPollingIfNeeded = () => {
+      if (!pollRef.current) {
+        pollRef.current = setInterval(fetchDeploymentDetails, 5000)
+      }
+    }
+
+    const stopPollingIfNeeded = () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }
+
     const connect = async () => {
       let token = getAuthToken()
       if (!token) {
-        token = await refreshAuthToken()
+        // Essaye un refresh, mais NE PAS déconnecter si ça échoue
+        token = await refreshAuthToken().catch(() => null as unknown as string)
       }
       if (!token) {
-        setError("session", { message: "Session expirée", detailsUrl: "/login" })
-        logoutUser("Session expirée")
+        // Pas de token utilisable pour SSE: on reste connecté et on bascule en polling
+        setError("session", { message: "Flux SSE indisponible (token)" })
+        startPollingIfNeeded()
         return
       }
 
-      // Poll fallback (démarre au début, s’arrête dès que le SSE s’ouvre)
-      if (!pollRef.current) pollRef.current = setInterval(fetchDeploymentDetails, 5000)
+      // Démarre le poll de secours; il s'arrêtera quand le SSE s'ouvrira
+      startPollingIfNeeded()
 
       const url = `${baseUrl}/deployments/${deploymentId}/stream?access_token=${encodeURIComponent(token)}`
       es = new EventSource(url)
@@ -108,7 +129,7 @@ export default function DeploymentDetailsPage() {
       es.onopen = () => {
         retried = false
         setStreaming(true)
-        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+        stopPollingIfNeeded()
       }
 
       es.addEventListener("status", (e: MessageEvent) => {
@@ -122,13 +143,23 @@ export default function DeploymentDetailsPage() {
         setDeployment(d => (d ? { ...d, log: (d.log || "") + clean } : d))
       })
 
-      // message d’erreur “friendly” envoyé par le backend (ex: STORAGE_FULL)
-      es.addEventListener("error", (e: MessageEvent) => {
+      // Événement métier d'erreur (idéalement renommé côté backend en "deploy_error")
+      es.addEventListener("deploy_error", (e: MessageEvent) => {
         try {
           const { message } = JSON.parse(e.data)
           setFriendlyError(message || "Le déploiement a échoué.")
         } catch {
           setFriendlyError("Le déploiement a échoué.")
+        }
+      })
+
+      // Compat actuel si le backend envoie encore event: error (⚠️ nom réservé côté EventSource)
+      es.addEventListener("error", (e: MessageEvent) => {
+        try {
+          const { message } = JSON.parse(e.data)
+          setFriendlyError(message || "Le déploiement a échoué.")
+        } catch {
+          // Peut aussi être une erreur réseau non JSON — on laisse es.onerror gérer
         }
       })
 
@@ -140,19 +171,21 @@ export default function DeploymentDetailsPage() {
       })
 
       es.onerror = async () => {
-        // Si le SSE casse, on garde/relance le polling de secours
+        // ⬇️ IMPORTANT: ne JAMAIS déconnecter ici
         setStreaming(false)
-        if (!pollRef.current) pollRef.current = setInterval(fetchDeploymentDetails, 5000)
         es?.close()
+
+        // (Ré)active le polling de secours
+        startPollingIfNeeded()
+
+        // Retente UNE fois le SSE, sans logout même si le refresh échoue
         if (!retried) {
           retried = true
-          const newToken = await refreshAuthToken()
-          if (newToken) {
+          await refreshAuthToken().catch(() => null)
+          setTimeout(() => {
+            // On retente discrètement le SSE
             connect()
-          } else {
-            setError("session", { message: "Session expirée", detailsUrl: "/login" })
-            logoutUser("Session expirée")
-          }
+          }, 1500)
         }
       }
     }
@@ -161,15 +194,9 @@ export default function DeploymentDetailsPage() {
 
     return () => {
       es?.close()
-      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      stopPollingIfNeeded()
     }
-  }, [deploymentId, fetchDeploymentDetails, toast])
-
-   
-
-    
-  
-  
+  }, [deploymentId, fetchDeploymentDetails, setError])
 
   const copyLogs = () => {
     if (deployment?.log) {
@@ -180,7 +207,7 @@ export default function DeploymentDetailsPage() {
 
   if (loading && !deployment) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-150px)]">
+      <div className="flex items-center justify-center min-h[calc(100vh-150px)]">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
         <span className="ml-3 text-lg">Chargement des détails du déploiement...</span>
       </div>
@@ -263,7 +290,6 @@ export default function DeploymentDetailsPage() {
             <pre
               className={[
                 "p-4 whitespace-pre-wrap [overflow-wrap:anywhere]",
-                // Police plus lisible (arbitrary value Tailwind)
                 "[font-family:ui-monospace,Menlo,Consolas,Monaco,'Liberation Mono','Courier New',monospace]",
                 "text-[13px] md:text-[14px] leading-relaxed tracking-[0.01em]",
                 "text-slate-800 dark:text-slate-200",
@@ -274,9 +300,10 @@ export default function DeploymentDetailsPage() {
           </ScrollArea>
         </CardContent>
       </Card>
+
       <AssistantAIBlock
         title="Résumé IA des logs"
-        context={deployment.log || ''}
+        context={deployment.log || ""}
         onAnalyze={async (_ctx) => {
           const { summary } = await summarizeDeploymentLogs(deploymentId)
           return summary

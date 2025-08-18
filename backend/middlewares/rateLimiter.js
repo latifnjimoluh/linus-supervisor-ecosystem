@@ -1,6 +1,6 @@
 const buckets = new Map();
 
-module.exports = function rateLimiter({ windowMs = 60000, limit = 60 } = {}) {
+module.exports = function rateLimiter({ windowMs = 60000000000, limit = 60 } = {}) {
   return (req, res, next) => {
     const now = Date.now();
     const ip = req.ip || req.connection.remoteAddress || 'unknown';

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -11,92 +11,111 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { loginUser } from "@/services/api";
-
-// ✅ import du hook d’erreurs global
 import { useErrors } from "@/hooks/use-errors";
 import { ErrorBanner } from "@/components/error-banner";
 
+// ⬇️ IMPORTANT : importer depuis services/auth
+import { loginUser, saveTokens } from "@/services/auth";
+
 export default function LoginPage() {
+  // ---- UI state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [passwordShake, setPasswordShake] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(false); // valeur initiale identique SSR/CSR
 
   const { toast } = useToast();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/dashboard";
-
-  // ✅ accès au store d’erreurs
   const { setError, clearError } = useErrors();
-
   const pwdRef = useRef<HTMLInputElement>(null);
 
+  // ---- Effets client-only
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    // 1) Message de logout (optionnel)
     const msg = localStorage.getItem("logout_message");
     if (msg) {
       const variant = msg.toLowerCase().includes("expir") ? "warning" : "success";
-      toast({ title: msg, variant, duration: 4000 }); // durée explicite
+      toast({ title: msg, variant, duration: 4000 });
       localStorage.removeItem("logout_message");
     }
-    // on s’assure de partir sans reliquat d’erreur
+
+    // 2) Recharger la préférence "remember"
+    const saved = localStorage.getItem("remember") === "1";
+    if (saved) setRemember(true);
+
+    // 3) Nettoyer les erreurs d’auth résiduelles
     clearError("auth");
   }, [toast, clearError]);
 
+  // ---- Soumission du formulaire
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     setIsLoading(true);
-    // Nettoie une éventuelle erreur précédente avant de tenter à nouveau
     clearError("auth");
 
     try {
-      const data = await loginUser(email, password, remember);
+      // ⚠️ Calcul et sanitisation de redirectTo au moment de l’action (client-only)
+      const params = new URLSearchParams(window.location.search);
+      let redirectTo = params.get("redirect") || "/dashboard";
+      // ⛔️ ne jamais rediriger vers /login ni /login/otp pour éviter une boucle
+      if (redirectTo.startsWith("/login")) redirectTo = "/dashboard";
 
-      if (data.status === 206) {
+      // Persister la préférence "remember" (optionnel)
+      localStorage.setItem("remember", remember ? "1" : "0");
+
+      const res = await loginUser(email, password, remember);
+      // res = { status, message?, token?, user?, refreshToken?, device_id? }
+
+      if (res.status === 206) {
+        // Étape 2FA requise -> on garde l'info minimale en sessionStorage, puis redirection OTP
         sessionStorage.setItem(
           "preAuth",
           JSON.stringify({ email, password, remember, redirectTo })
         );
+
         toast({
           title: "Code 2FA requis",
           description: "Veuillez saisir le code d'authentification.",
           variant: "info",
           duration: 3000,
         });
-        router.push("/login/otp");
+
+        router.push("/login/otp"); // pas de ?redirect= ici
         return;
       }
 
-      // ✅ on purge l’erreur “auth” s’il en restait une (ex: tentative précédente)
-      clearError("auth");
+      if (res.status === 200 && res.token) {
+        // Login direct (sans 2FA) -> on enregistre le token (et refresh/device si fournis), puis redirection
+        saveTokens({ token: res.token, refreshToken: res.refreshToken, device_id: res.device_id });
 
-      toast({
-        title: "Connexion réussie",
-        description: data.message,
-        variant: "success",
-        duration: 3000,
-      });
+        toast({
+          title: "Connexion réussie",
+          description: res.message,
+          variant: "success",
+          duration: 3000,
+        });
 
-      router.push(redirectTo);
+        router.push(redirectTo);
+        return;
+      }
+
+      // Statuts d’erreur côté API (401/403/429/500 …)
+      throw new Error(res?.message || "Échec de la connexion.");
     } catch (error: any) {
-      const status = error?.response?.status;
+      // Gestion centralisée + feedback local (shake)
       const message =
         error?.response?.data?.message ||
-        (status === 429 ? "Trop de tentatives. Réessayez plus tard." : "Identifiants incorrects.");
+        error?.message ||
+        "Identifiants incorrects.";
 
-      // ✅ on pousse l’erreur dans le provider global avec TTL (auto-dismiss)
       setError("auth", {
         message,
-        detailsUrl: "/logs",  // si tu as une page de logs ; sinon enlève
-        ttlMs: 6000,          // disparaît tout seul après 6s
+        detailsUrl: "/logs", // si tu as une page de logs ; sinon enlève
+        ttlMs: 6000,
       });
 
-      // feedback UI local (shake + focus)
       setPasswordShake(true);
       setTimeout(() => setPasswordShake(false), 500);
       pwdRef.current?.focus();
@@ -112,9 +131,13 @@ export default function LoginPage() {
           <CardTitle className="text-2xl">Connexion</CardTitle>
           <CardDescription>Connectez-vous à votre compte Linusupervisor</CardDescription>
         </CardHeader>
+
         <CardContent>
+          {/* Bannière d’erreur globale (provider use-errors) */}
           <ErrorBanner id="auth" />
+
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email */}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -125,9 +148,11 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="rounded-xl focus-visible:ring-2 focus-visible:ring-primary"
+                autoComplete="username"
               />
             </div>
 
+            {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password">Mot de passe</Label>
               <motion.div
@@ -143,6 +168,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="rounded-xl focus-visible:ring-2 focus-visible:ring-primary pr-10"
+                  autoComplete="current-password"
                 />
                 <Button
                   type="button"
@@ -157,6 +183,7 @@ export default function LoginPage() {
               </motion.div>
             </div>
 
+            {/* Remember me */}
             <div className="flex items-center space-x-2">
               <input
                 id="remember"
@@ -168,6 +195,7 @@ export default function LoginPage() {
               <Label htmlFor="remember" className="text-sm">Se souvenir de moi</Label>
             </div>
 
+            {/* Submit */}
             <Button type="submit" className="w-full rounded-xl" disabled={isLoading}>
               {isLoading ? (
                 <span className="flex items-center">
@@ -179,8 +207,11 @@ export default function LoginPage() {
               )}
             </Button>
 
+            {/* Reset link */}
             <div className="text-center text-sm">
-              <Link href="/reset" className="text-primary hover:underline">Mot de passe oublié ?</Link>
+              <Link href="/reset" className="text-primary hover:underline">
+                Mot de passe oublié ?
+              </Link>
             </div>
           </form>
         </CardContent>

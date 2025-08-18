@@ -1,106 +1,117 @@
+// app/login/otp/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { loginUser } from "@/services/api";
-import { useErrors } from "@/hooks/use-errors";
-import { ErrorBanner } from "@/components/error-banner";
+import { loginWithOtp } from "@/services/api"; // <-- depuis api.ts
 
-export default function OtpPage() {
+export default function LoginOtpPage() {
   const [otp, setOtp] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(false);
+  const [redirectTo, setRedirectTo] = useState("/dashboard");
   const [isLoading, setIsLoading] = useState(false);
-  const [creds, setCreds] = useState<any | null>(null);
-  const [checked, setChecked] = useState(false);
+  const [lastTriedOtp, setLastTriedOtp] = useState<string | null>(null); // ✅ empêche re-submit même OTP
 
-  const router = useRouter();
   const { toast } = useToast();
-  const { setError, clearError } = useErrors();
+  const router = useRouter();
+  const search = useSearchParams();
 
   useEffect(() => {
-    clearError("auth");
-  }, [clearError]);
-
-  useEffect(() => {
-    const stored = sessionStorage.getItem("preAuth");
-    if (stored) {
-      setCreds(JSON.parse(stored));
-    } else {
+    const pre = sessionStorage.getItem("preAuth");
+    if (!pre) {
+      const qpRedirect = search?.get("redirect");
+      router.replace(qpRedirect || "/login");
+      return;
+    }
+    try {
+      const p = JSON.parse(pre);
+      setEmail(p.email || "");
+      setPassword(p.password || "");
+      setRemember(!!p.remember);
+      setRedirectTo(p.redirectTo || "/dashboard");
+    } catch {
       router.replace("/login");
     }
-    setChecked(true);
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!creds) return;
+  const onChangeOtp = (v: string) => {
+    const onlyDigits = v.replace(/\D/g, "").slice(0, 6);
+    setOtp(onlyDigits);
+    // dès qu'on modifie l'OTP, on déverrouille la soumission
+    setLastTriedOtp(null);
+  };
 
+  const canSubmit = useMemo(() => otp.length === 6 && !isLoading, [otp, isLoading]);
+
+  const submit = useCallback(async () => {
+    if (!canSubmit) return;
+    if (lastTriedOtp === otp) return; // ✅ pas deux fois le même OTP
     setIsLoading(true);
-    clearError("auth");
+    setLastTriedOtp(otp);
+
     try {
-      const data = await loginUser(creds.email, creds.password, creds.remember, otp);
-      clearError("auth");
-      sessionStorage.removeItem("preAuth");
-      toast({
-        title: "Connexion réussie",
-        description: data.message,
-        variant: "success",
-        duration: 3000,
-      });
-      router.push(creds.redirectTo || "/dashboard");
-    } catch (error: any) {
-      const status = error?.response?.status;
+      // loginWithOtp renverra { status, message, token? } (voir api.ts plus bas)
+      const res = await loginWithOtp(email, password, otp, remember);
+
+      if (res?.status === 200 && res?.token) {
+        sessionStorage.removeItem("preAuth");
+        toast({ title: "Connexion réussie", variant: "success" });
+        router.push(redirectTo);
+        return;
+      }
+
+      // 401 → mauvais code OTP
+      const msg = res?.message || (res?.status === 401 ? "Code OTP invalide." : "Échec de la vérification OTP.");
+      toast({ title: msg, variant: "destructive" });
+    } catch (err: any) {
       const message =
-        error?.response?.data?.message ||
-        (status === 429 ? "Trop de tentatives. Réessayez plus tard." : "Code 2FA invalide.");
-      setError("auth", { message, ttlMs: 6000 });
+        err?.response?.data?.message ||
+        err?.message ||
+        "Impossible de vérifier le code OTP.";
+      toast({ title: message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  if (!checked || !creds) return null;
+  }, [canSubmit, lastTriedOtp, otp, email, password, remember, toast, router, redirectTo]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
+      <Card className="w-full max-w-sm rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Vérification 2FA</CardTitle>
-          <CardDescription>Entrez le code de votre application d'authentification</CardDescription>
+          <CardDescription>Entrez le code à 6 chiffres de votre application d’authentification.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <ErrorBanner id="auth" />
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="otp">Code 2FA</Label>
-              <Input
-                id="otp"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                required
-                className="rounded-xl focus-visible:ring-2 focus-visible:ring-primary"
-              />
-            </div>
-            <Button type="submit" className="w-full rounded-xl" disabled={isLoading}>
-              {isLoading ? (
-                <span className="flex items-center">
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Vérification...
-                </span>
-              ) : (
-                "Vérifier"
-              )}
-            </Button>
-          </form>
+
+        <CardContent className="space-y-4">
+          <Input
+            inputMode="numeric"
+            pattern="\d*"
+            maxLength={6}
+            placeholder="000000"
+            value={otp}
+            onChange={(e) => onChangeOtp(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && canSubmit) submit(); }}
+            className="text-center tracking-widest text-lg"
+            autoFocus
+            aria-label="Code OTP à 6 chiffres"
+          />
+
+          <Button className="w-full" onClick={submit} disabled={!canSubmit}>
+            {isLoading ? "Vérification..." : "Valider"}
+          </Button>
+
+          <Button variant="ghost" className="w-full" onClick={() => router.replace("/login")}>
+            Revenir au login
+          </Button>
         </CardContent>
       </Card>
     </div>
   );
 }
-

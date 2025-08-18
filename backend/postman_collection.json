@@ -44,15 +44,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"secret\",\n  \"role_id\": 1\n}"
+              "raw": "{\n  \"firstname\": \"\",\n  \"lastname\": \"\",\n  \"email\": \"\",\n  \"role\": \"\",\n  \"password\": \"\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/register",
@@ -68,63 +64,9 @@
           "response": []
         },
         {
-          "name": "Request Reset Code",
+          "name": "Logout",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"latifnjimoluh@gmail.com\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auth/request-reset",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "request-reset"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Reset Password",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"code\": \"803327\",\n  \"password\": \"admin123.\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auth/reset-password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "reset-password"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Reset History",
-          "request": {
-            "method": "GET",
             "header": [
               {
                 "key": "Authorization",
@@ -132,13 +74,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/auth/reset-history",
+              "raw": "{{baseUrl}}/auth/logout",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "auth",
-                "reset-history"
+                "logout"
               ]
             }
           },
@@ -165,7 +107,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Doe\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"secret\",\n  \"role_id\": 2\n}"
+              "raw": "{\n  \"firstname\": \"\",\n  \"lastname\": \"\",\n  \"email\": \"\",\n  \"role\": \"\",\n  \"password\": \"\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/users",
@@ -180,9 +122,9 @@
           "response": []
         },
         {
-          "name": "Delete User",
+          "name": "List Users",
           "request": {
-            "method": "DELETE",
+            "method": "GET",
             "header": [
               {
                 "key": "Authorization",
@@ -190,13 +132,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/users/1",
+              "raw": "{{baseUrl}}/users",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "users",
-                "1"
+                "users"
               ]
             }
           },
@@ -226,88 +167,6 @@
           "response": []
         },
         {
-          "name": "Get Users",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Patch User",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"last_name\": \"Smith\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/users/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Search Users",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/users/search?query=Jane",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "search"
-              ],
-              "query": [
-                {
-                  "key": "query",
-                  "value": "Jane"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
           "name": "Update User",
           "request": {
             "method": "PUT",
@@ -323,8 +182,31 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"first_name\": \"Jane\"\n}"
+              "raw": "{\n  \"firstname\": \"\",\n  \"lastname\": \"\",\n  \"email\": \"\",\n  \"role\": \"\",\n  \"password\": \"\"\n}"
             },
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/users/1",
               "host": [
@@ -341,55 +223,10 @@
       ]
     },
     {
-      "name": "Roles",
+      "name": "Servers",
       "item": [
         {
-          "name": "Get Roles",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/roles",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "roles"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Role",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/roles/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "roles",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Role",
+          "name": "Create Server",
           "request": {
             "method": "POST",
             "header": [
@@ -404,45 +241,59 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"editor\",\n  \"description\": \"Content editor\"\n}"
+              "raw": "{\n  \"name\": \"\",\n  \"ip\": \"\",\n  \"port\": 22\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/roles",
+              "raw": "{{baseUrl}}/servers",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "roles"
+                "servers"
               ]
             }
           },
           "response": []
         },
         {
-          "name": "Update Role",
+          "name": "List Servers",
           "request": {
-            "method": "PUT",
+            "method": "GET",
             "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Updated role\"\n}"
-            },
             "url": {
-              "raw": "{{baseUrl}}/roles/1",
+              "raw": "{{baseUrl}}/servers",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "roles",
+                "servers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Server",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/servers/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "servers",
                 "1"
               ]
             }
@@ -450,7 +301,38 @@
           "response": []
         },
         {
-          "name": "Delete Role",
+          "name": "Update Server",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"ip\": \"\",\n  \"port\": 22\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/servers/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "servers",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Server",
           "request": {
             "method": "DELETE",
             "header": [
@@ -460,12 +342,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/roles/1",
+              "raw": "{{baseUrl}}/servers/1",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "roles",
+                "servers",
                 "1"
               ]
             }
@@ -477,34 +359,6 @@
     {
       "name": "Permissions",
       "item": [
-        {
-          "name": "Get Permissions",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/permissions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "1"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
         {
           "name": "Create Permission",
           "request": {
@@ -521,7 +375,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"test\",\n  \"description\": \"test posts\"\n}"
+              "raw": "{\n  \"user_id\": 1,\n  \"server_id\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/permissions",
@@ -536,69 +390,7 @@
           "response": []
         },
         {
-          "name": "Assign Permissions",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "[{\n  \"role_id\": 1,\n  \"permission_ids\": [44]\n}]"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/permissions/assign",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions",
-                "assign"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Unassign Permissions",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "[{\n  \"role_id\": 1,\n  \"permission_ids\": [44]\n}]"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/permissions/unassign",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions",
-                "unassign"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Permissions by Role",
+          "name": "List Permissions",
           "request": {
             "method": "GET",
             "header": [
@@ -608,14 +400,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/permissions/role/1",
+              "raw": "{{baseUrl}}/permissions",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "permissions",
-                "role",
-                "1"
+                "permissions"
               ]
             }
           },
@@ -631,37 +421,6 @@
                 "value": "Bearer {{token}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/permissions/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update Permission",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"Updated permission\"\n}"
-            },
             "url": {
               "raw": "{{baseUrl}}/permissions/1",
               "host": [
@@ -800,7 +559,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cloudinit_user\": \"nexus\",\n  \"cloudinit_password\": \"Nexus2023.\",\n  \"proxmox_api_url\": \"https://192.168.24.134:8006/api2/json\",\n  \"proxmox_api_token_id\": \"root@pam\",\n  \"proxmox_api_token_name\": \"delete\",\n  \"proxmox_api_token_secret\": \"0a804aa8-029e-4503-83a3-3fb51a804771\",\n  \"pm_user\": \"root@pam\",\n  \"pm_password\": \"Nexus2023.\",\n  \"proxmox_node\": \"pve\",\n  \"vm_storage\": \"local-lvm\",\n  \"vm_bridge\": \"vmbr0\",\n  \"ssh_public_key_path\": \"C:/Users/Nexus-PC/.ssh/id_rsa.pub\",\n  \"ssh_private_key_path\": \"C:/Users/Nexus-PC/.ssh/id_rsa\",\n  \"statuspath\": \"/opt/monitoring/status.json\",\n  \"servicespath\": \"/opt/monitoring/services_status.json\",\n  \"instanceinfopath\": \"/etc/instance-info.conf\",\n  \"proxmox_host\": \"192.168.24.134\",\n  \"proxmox_ssh_user\": \"root\"\n}"
+              "raw": "{\n  \"cloudinit_user\": \"nexus\",\n  \"cloudinit_password\": \"Nexus2023.\",\n  \"proxmox_api_url\": \"https://192.168.24.134:8006/api2/json\",\n  \"proxmox_api_token_id\": \"root@pam\",\n  \"proxmox_api_token_name\": \"mytoken\",\n  \"proxmox_api_token_secret\": \"0a804aa8-029e-4503-83a3-3fb51a804771\",\n  \"pm_user\": \"root@pam\",\n  \"pm_password\": \"Nexus2023.\",\n  \"proxmox_node\": \"pve\",\n  \"vm_storage\": \"local-lvm\",\n  \"vm_bridge\": \"vmbr0\",\n  \"ssh_public_key_path\": \"/home/user/.ssh/id_rsa.pub\",\n  \"ssh_private_key_path\": \"/home/user/.ssh/id_rsa\",\n  \"statuspath\": \"/tmp/status.json\",\n  \"servicespath\": \"/tmp/services_status.json\",\n  \"instanceinfopath\": \"/etc/instance-info.conf\",\n  \"proxmox_host\": \"192.168.24.134\",\n  \"proxmox_ssh_user\": \"root\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/settings/me",
@@ -816,331 +575,7 @@
           "response": []
         },
         {
-          "name": "List All Settings",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/settings",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "settings"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Proxmox",
-      "item": [
-        {
-          "name": "List VMs",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/vms",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Start VM",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/vms/104/start",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "104",
-                "start"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Stop VM",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/vms/104/stop",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "104",
-                "stop"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete VM",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"vm_id\": 103,\n  \"instance_id\": \"inst-0001\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/vms/delete",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "delete"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Check VM Status",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"vm_id\": 104,\n  \"ip_address\": \"192.168.24.78\"\n}\n"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/vms/check-status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "check-status"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Convert VM to Template",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"vm_id\": 104\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/vms/convert",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "convert"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Conversion History",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/vms/conversions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vms",
-                "conversions"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Service Templates",
-      "item": [
-        {
-          "name": "List Templates",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/templates",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "templates"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Template",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Activation des cronjobs de supervision\",\n  \"service_type\": \"monitoring_cron\",\n  \"category\": \"monitoring\",\n  \"description\": \"Ajoute dynamiquement les tâches cron pour exécuter les scripts de supervision.\",\n  \"template_content\": \"#!/bin/bash\\n\\n# 📍 Ce script centralise l’installation des cronjobs de monitoring\\n\\n# 🔐 Vérifie que les scripts à exécuter existent\\nSTATUS_SCRIPT=\\\"${STATUS_SCRIPT}\\\"\\nSERVICES_SCRIPT=\\\"${SERVICES_SCRIPT}\\\"\\n\\n# 🧩 Crée les cronjobs uniquement s’ils n’existent pas déjà\\nif [ -f \\\"$STATUS_SCRIPT\\\" ]; then\\n  grep -q \\\"$STATUS_SCRIPT\\\" /etc/crontab || echo \\\"*/${STATUS_CRON_INTERVAL} * * * * root $STATUS_SCRIPT\\\" >> /etc/crontab\\n  echo \\\"✅ Cron job ajouté pour status.sh\\\"\\nelse\\n  echo \\\"❌ Script $STATUS_SCRIPT introuvable\\\"\\nfi\\n\\nif [ -f \\\"$SERVICES_SCRIPT\\\" ]; then\\n  grep -q \\\"$SERVICES_SCRIPT\\\" /etc/crontab || echo \\\"*/${SERVICES_CRON_INTERVAL} * * * * root $SERVICES_SCRIPT\\\" >> /etc/crontab\\n  echo \\\"✅ Cron job ajouté pour services_status.sh\\\"\\nelse\\n  echo \\\"❌ Script $SERVICES_SCRIPT introuvable\\\"\\nfi\",\n  \"script_path\": \"/scripts/register_cronjobs.sh\",\n  \"fields_schema\": {\n    \"fields\": [\n      {\n        \"name\": \"STATUS_SCRIPT\",\n        \"label\": \"Chemin script status\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"/opt/monitoring/status.sh\"\n      },\n      {\n        \"name\": \"SERVICES_SCRIPT\",\n        \"label\": \"Chemin script services\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"/opt/monitoring/services_status.sh\"\n      },\n      {\n        \"name\": \"STATUS_CRON_INTERVAL\",\n        \"label\": \"Fréquence status (min)\",\n        \"type\": \"number\",\n        \"required\": true,\n        \"default\": 5\n      },\n      {\n        \"name\": \"SERVICES_CRON_INTERVAL\",\n        \"label\": \"Fréquence services (min)\",\n        \"type\": \"number\",\n        \"required\": true,\n        \"default\": 5\n      }\n    ]\n  }\n}\n"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/templates",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "templates"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Template",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/templates/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "templates",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update Template",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Configuration du serveur NFS\",\n  \"service_type\": \"nfs_server\",\n  \"category\": \"file_sharing\",\n  \"description\": \"Installe et configure un serveur NFS avec un dossier partagé sur /srv/nfs_share accessible au réseau local.\",\n  \"template_content\": \"#!/bin/bash\\n# 🎯 Script de configuration du serveur NFS - nfs.camer.cm\\n\\necho \\\"📦 Installation du serveur NFS...\\\"\\nsudo apt update && sudo apt install -y nfs-kernel-server\\n\\necho \\\"📁 Création du dossier partagé ${SHARE_DIR}...\\\"\\nsudo mkdir -p ${SHARE_DIR}\\nsudo chown nobody:nogroup ${SHARE_DIR}\\nsudo chmod 777 ${SHARE_DIR}\\n\\necho \\\"📝 Configuration du fichier /etc/exports...\\\"\\necho \\\"${SHARE_DIR} ${CLIENT_SUBNET}(rw,sync,no_subtree_check)\\\" | sudo tee -a /etc/exports\\n\\necho \\\"🔄 Redémarrage du service NFS...\\\"\\nsudo systemctl restart nfs-kernel-server\\n\\necho \\\"🔍 Vérification de l’export actif...\\\"\\nsudo exportfs -v\\n\\necho \\\"✅ Serveur NFS configuré avec succès.\\\"\",\n  \"script_path\": \"/scripts/nfs_server_setup.sh\",\n  \"fields_schema\": {\n    \"fields\": [\n      {\n        \"name\": \"SHARE_DIR\",\n        \"label\": \"Dossier partagé\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"/srv/nfs_share\"\n      },\n      {\n        \"name\": \"CLIENT_SUBNET\",\n        \"label\": \"Sous-réseau autorisé\",\n        \"type\": \"text\",\n        \"required\": true,\n        \"default\": \"192.168.24.0/24\"\n      }\n    ]\n  }\n}\n"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/templates/13",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "templates",
-                "13"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Template",
+          "name": "Delete My Settings",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1150,44 +585,70 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/templates/1",
+              "raw": "{{baseUrl}}/settings/me",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "templates",
-                "1"
+                "settings",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Deployment",
+      "item": [
+        {
+          "name": "Launch Script",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"script\": \"echo test\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/scripts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "scripts"
               ]
             }
           },
           "response": []
         },
         {
-          "name": "Generate Script",
+          "name": "Get Scripts",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"template_id\": 14,\n  \"config_data\": {\n    \"NFS_SERVER\": \"192.168.10.10\",\n    \"SHARE_DIR\": \"/srv/nfs_share\",\n    \"MOUNT_DIR\": \"/mnt/nfs_share\"\n  }\n}"
-            },
             "url": {
-              "raw": "{{baseUrl}}/templates/generate",
+              "raw": "{{baseUrl}}/scripts",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "templates",
-                "generate"
+                "scripts"
               ]
             }
           },
@@ -1199,7 +660,7 @@
       "name": "Monitoring",
       "item": [
         {
-          "name": "List Monitoring Records",
+          "name": "Get Monitoring Logs",
           "request": {
             "method": "GET",
             "header": [
@@ -1215,46 +676,18 @@
               ],
               "path": [
                 "monitoring"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "vm_ip",
-                  "value": "192.168.10.10"
-                }
               ]
             }
           },
           "response": []
-        },
+        }
+      ]
+    },
+    {
+      "name": "Deployments",
+      "item": [
         {
-          "name": "Get Monitoring Record",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/monitoring/2",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "monitoring",
-                "2"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Collect Monitoring Data",
+          "name": "Create Deployment",
           "request": {
             "method": "POST",
             "header": [
@@ -1269,95 +702,22 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"vm_ip\": \"192.168.24.94\",\n  \"username\": \"nexus\"\n}"
+              "raw": "{\n  \"name\": \"vm1\",\n  \"pm_user\": \"root@pam\",\n  \"pm_password\": \"Nexus2023.\",\n  \"ciuser\": \"nexus\",\n  \"cipassword\": \"Nexus2023.\",\n  \"sshkeys\": \"ssh-rsa AAAAB...\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/monitoring/collect",
+              "raw": "{{baseUrl}}/deployments",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "monitoring",
-                "collect"
+                "deployments"
               ]
             }
           },
           "response": []
         },
         {
-          "name": "Sync Deployment IP",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"instance_id\": \"e591f327-9107-473b-9fd1-9c40c70641a4\",\n  \"vm_ip\": \"192.168.24.78\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/monitoring/sync-ip",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "monitoring",
-                "sync-ip"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Terraform",
-      "item": [
-        {
-          "name": "Run Deployment",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"vm_names\": [\"Webapache\"],\n  \"service_type\": \"web\",\n  \"script_refs\": [\n    { \"type\": \"script\", \"id\": 20 },\n    { \"type\": \"script\", \"id\": 21 },\n    { \"type\": \"script\", \"id\": 22 },\n    { \"type\": \"script\", \"id\": 23 }\n  ],\n  \"template_name\": \"ubuntu-template\",\n  \"memory_mb\": 2048,\n  \"vcpu_cores\": 2,\n  \"vcpu_sockets\": 1,\n  \"disk_size\": \"20G\",\n  \"use_static_ip\": false\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/terraform/deploy",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "terraform",
-                "deploy"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Dashboard",
-      "item": [
-        {
-          "name": "Get Summary",
+          "name": "Get Deployments",
           "request": {
             "method": "GET",
             "header": [
@@ -1367,20 +727,19 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/dashboard/summary",
+              "raw": "{{baseUrl}}/deployments",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "dashboard",
-                "summary"
+                "deployments"
               ]
             }
           },
           "response": []
         },
         {
-          "name": "List Servers",
+          "name": "Get Deployment",
           "request": {
             "method": "GET",
             "header": [
@@ -1390,62 +749,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/dashboard/servers",
+              "raw": "{{baseUrl}}/deployments/1",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "dashboard",
-                "servers"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Servers",
-      "item": [
-        {
-          "name": "List Servers",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/servers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "servers"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Server",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/servers/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "servers",
+                "deployments",
                 "1"
               ]
             }
@@ -1453,68 +762,7 @@
           "response": []
         },
         {
-          "name": "Create Server",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"ip\": \"192.168.10.10\",\n  \"name\": \"srv1\",\n  \"zone\": \"LAN\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/servers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "servers"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update Server",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"srv1-updated\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/servers/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "servers",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Server",
+          "name": "Delete Deployment",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1524,12 +772,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servers/1",
+              "raw": "{{baseUrl}}/deployments/1",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "servers",
+                "deployments",
                 "1"
               ]
             }
