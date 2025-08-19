@@ -50,6 +50,8 @@ export function clearTokens() {
 export type LoginResponse = {
   status: number;
   message?: string;
+  success?: boolean;
+  remaining_attempts?: number;
   token?: string;
   user?: {
     id: number | string;

@@ -197,18 +197,26 @@ exports.getDashboardData = async (req, res) => {
     // Déploiements
     const deployments = await Deployment.findAll();
     const deploymentMap = {};
-    let totalDeployments = 0;
-    let successDeployments = 0;
-    let failedDeployments = 0;
-
     deployments.forEach((d) => {
       const vmid = String(d.vm_id || "");
       // On ne comptabilise que les déploiements qui existent aussi dans Proxmox
       if (!vmid || !liveVmidSet.has(vmid)) return;
       deploymentMap[vmid] = d;
-      totalDeployments += 1;
-      if (d.success === true) successDeployments += 1;
-      else if (d.success === false) failedDeployments += 1;
+    });
+
+    const totalDeployments = await Deployment.count();
+    const successDeployments = await Deployment.count({
+      where: {
+        [Sequelize.Op.or]: [{ success: true }, { status: "success" }],
+      },
+    });
+    const failedDeployments = await Deployment.count({
+      where: {
+        [Sequelize.Op.or]: [
+          { success: false },
+          { status: { [Sequelize.Op.in]: ["failed", "error"] } },
+        ],
+      },
     });
 
     const totalDeleted = await Delete.count();
@@ -234,7 +242,7 @@ exports.getDashboardData = async (req, res) => {
     const totalVms = Array.from(liveVmidSet).length;
 
     const alertRows = await Alert.findAll({
-      where: { status: "en_cours" },
+      where: { status: "open" },
       attributes: ["severity", [Sequelize.fn("COUNT", Sequelize.col("id")), "count"]],
       group: ["severity"],
       raw: true,
@@ -250,7 +258,7 @@ exports.getDashboardData = async (req, res) => {
     });
 
     const serversInAlert = await Alert.count({
-      where: { status: "en_cours" },
+      where: { status: "open" },
       distinct: true,
       col: "server",
     });
@@ -298,7 +306,7 @@ exports.getDashboardData = async (req, res) => {
       deploymentStats: {
         total: totalDeployments,
         success: successDeployments,
-        failed: failedDeployments,
+        failed_count: failedDeployments,
         deleted: totalDeleted,
       },
     });
@@ -312,7 +320,10 @@ exports.getDashboardData = async (req, res) => {
 /* ------------------------ Deployment stats & IA ------------------------ */
 
 async function collectDeploymentStats(period = "day") {
-  const deployments = await Deployment.findAll({ attributes: ["started_at", "success"], raw: true });
+  const deployments = await Deployment.findAll({
+    attributes: ["started_at", "success", "status"],
+    raw: true,
+  });
   const deletions = await Delete.findAll({ attributes: ["deleted_at"], raw: true });
 
   const formatKey = (date) => {
@@ -333,8 +344,8 @@ async function collectDeploymentStats(period = "day") {
     const key = formatKey(dep.started_at);
     if (!map[key]) map[key] = { period: key, deployed: 0, deleted: 0, success: 0, failed: 0 };
     map[key].deployed += 1;
-    if (dep.success === true) map[key].success += 1;
-    if (dep.success === false) map[key].failed += 1;
+    if (dep.success === true || dep.status === "success") map[key].success += 1;
+    if (dep.success === false || ["failed", "error"].includes(dep.status)) map[key].failed += 1;
   });
   deletions.forEach((del) => {
     if (!del.deleted_at) return;
@@ -345,11 +356,13 @@ async function collectDeploymentStats(period = "day") {
   const timeline = Object.values(map).sort((a, b) => (a.period < b.period ? -1 : 1));
 
   const total = deployments.length;
-  const success = deployments.filter((d) => d.success === true).length;
-  const failed = deployments.filter((d) => d.success === false).length;
+  const success = deployments.filter((d) => d.success === true || d.status === "success").length;
+  const failed_count = deployments.filter(
+    (d) => d.success === false || ["failed", "error"].includes(d.status)
+  ).length;
   const deleted = deletions.length;
 
-  return { totals: { deployed: total, success, failed, deleted }, timeline };
+  return { totals: { deployed: total, success, failed_count, deleted }, timeline };
 }
 
 exports.getDeploymentStats = async (req, res) => {

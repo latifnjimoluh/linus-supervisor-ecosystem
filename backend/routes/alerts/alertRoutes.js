@@ -7,8 +7,10 @@ const { logRequest } = require('../../middlewares/log');
 router.use(verifyToken, logRequest);
 
 router.get('/', checkPermission('alert.list'), alertController.listAlerts);
+router.get('/notifications/status', checkPermission('alert.list'), alertController.notificationStatuses);
 router.get('/:id', checkPermission('alert.list'), alertController.getAlert);
-router.post('/:id/ack', checkPermission('alert.update'), alertController.ackAlert);
+router.post('/:id/mark', checkPermission('alert.update'), alertController.markAlert);
+router.post('/:id/resend', checkPermission('alert.update'), alertController.resendNotification);
 router.patch('/:id', checkPermission('alert.update'), alertController.updateAlert);
 
 module.exports = router;

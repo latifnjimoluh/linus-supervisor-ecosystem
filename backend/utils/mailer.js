@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-console.log('📧 Initialisation du transporteur Nodemailer');
+console.log('[SMTP] Initialisation du transporteur Nodemailer');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -14,11 +14,11 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-transporter.verify((err, success) => {
+transporter.verify((err) => {
   if (err) {
-    console.error('❌ Échec vérification transporteur :', err.message || err);
+    console.error('[SMTP] Échec vérification transporteur :', err.message || err);
   } else {
-    console.log('✅ Transporteur prêt à envoyer des emails (Gmail)');
+    console.log('[SMTP] Transporteur prêt à envoyer des emails');
   }
 });
 

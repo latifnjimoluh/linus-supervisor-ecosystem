@@ -39,7 +39,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             {children}
           </main>
         </div>
-        <Chatbot />
+        {process.env.NEXT_PUBLIC_USE_GEMINI === "true" && <Chatbot />}
       </div>
     </AuthGuard>
   );

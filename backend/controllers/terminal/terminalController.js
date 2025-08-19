@@ -97,8 +97,8 @@ exports.listTerminalVMs = async (req, res) => {
     const { data: listResp } = await axios.get(listUrl, { httpsAgent, headers });
     const all = Array.isArray(listResp?.data) ? listResp.data : [];
 
-    // garder uniquement les QEMU (l'agent est sous /qemu/…)
-    const vms = all.filter(v => v.type === 'qemu');
+    // garder uniquement les QEMU non templates
+    const vms = all.filter(v => v.type === 'qemu' && !v.template);
 
     // 2) Pour chaque VM : IP via BDD; sinon fallback agent si running + ping + ip_source
     const results = await mapLimited(vms, AGENT_CONCURRENCY, async (vm) => {
@@ -163,6 +163,12 @@ exports.listTerminalVMs = async (req, res) => {
     return res.json(payload);
   } catch (err) {
     console.error('❌ Erreur listTerminalVMs:', err);
-    return res.status(500).json({ message: 'Erreur serveur.' });
+    if (err.response?.status === 401) {
+      return res.status(401).json({ code: 'DEPLOY_AUTH_401', message: 'Authentification Proxmox invalide.' });
+    }
+    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+      return res.status(502).json({ code: 'MAP_PROXMOX_DOWN', message: 'Proxmox injoignable.' });
+    }
+    return res.status(500).json({ code: 'TERMINAL_LIST_ERROR', message: 'Erreur serveur.' });
   }
 };

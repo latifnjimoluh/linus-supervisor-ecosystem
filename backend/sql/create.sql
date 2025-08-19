@@ -97,7 +97,7 @@ CREATE TABLE alerts (
   server VARCHAR(255),
   service VARCHAR(255),
   severity VARCHAR(255),
-  status VARCHAR(255) DEFAULT 'en_cours',
+  status VARCHAR(255) DEFAULT 'open',
   description VARCHAR(255),
   comment TEXT,
   started_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -161,6 +161,10 @@ CREATE TABLE deployments (
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX idx_deployments_started_at ON deployments (started_at);
+CREATE INDEX idx_deployments_instance_id ON deployments (instance_id);
+CREATE INDEX idx_deployments_status ON deployments (status);
+
 -- Deletes​:codex-file-citation[codex-file-citation]{line_range_start=2 line_range_end=14 path=backend/models/delete/Delete.js git_url="https://github.com/latifnjimoluh/linusupervisor-back/blob/main/backend/models/delete/Delete.js#L2-L14"}​
 CREATE TABLE deletes (
   id SERIAL PRIMARY KEY,
@@ -219,4 +223,23 @@ CREATE TABLE refresh_tokens (
   device_id VARCHAR(255) NOT NULL,
   revoked BOOLEAN DEFAULT FALSE,
   expires_at TIMESTAMPTZ NOT NULL
+);
+
+-- Chat conversations and messages
+CREATE TABLE chat_conversations (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  system_prompt TEXT,
+  summary TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE chat_messages (
+  id SERIAL PRIMARY KEY,
+  conversation_id INTEGER NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+  role VARCHAR(20) NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );

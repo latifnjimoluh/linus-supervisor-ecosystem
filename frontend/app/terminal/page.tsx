@@ -20,20 +20,27 @@ export default function TerminalPage() {
   const term = React.useRef<XTerm>();
   const { setError, clearError } = useErrors();
 
-  React.useEffect(() => {
+  const loadVMs = React.useCallback(() => {
     fetchTerminalVMs()
-      .then(setVms)
+      .then((list) => {
+        setVms(list);
+        clearError("terminal-fetch");
+      })
       .catch(() => setError("terminal-fetch", { message: "Impossible de récupérer les VMs", detailsUrl: "/logs" }));
-  }, [setError]);
+  }, [setError, clearError]);
+
+  React.useEffect(() => {
+    loadVMs();
+  }, [loadVMs]);
 
   const connect = async () => {
     const vm = vms.find(v => v.id === selectedVm);
     if (!vm?.ip) {
-      setError("terminal", { message: "La VM n'est pas disponible", detailsUrl: "/logs" });
+      setError("terminal", { message: "La VM n'est pas disponible", detailsUrl: "/logs", ttlMs: 3000 });
       return;
     }
     if (!sshUser.trim()) {
-      setError("terminal", { message: "Veuillez saisir l'utilisateur SSH.", detailsUrl: "/logs" });
+      setError("terminal", { message: "Veuillez saisir l'utilisateur SSH.", ttlMs: 3000 });
       return;
     }
 
@@ -59,7 +66,7 @@ export default function TerminalPage() {
 
   return (
     <div className="flex flex-col p-4 gap-4 h-full">
-      <ErrorBanner id="terminal-fetch" />
+      <ErrorBanner id="terminal-fetch" actions={<Button size="sm" onClick={loadVMs}>Réessayer</Button>} />
       <div className="flex gap-2 items-center">
         <Select value={selectedVm} onValueChange={setSelectedVm}>
           <SelectTrigger className="w-64">
@@ -77,7 +84,7 @@ export default function TerminalPage() {
       <ScrollArea className="flex-1 border rounded">
         <div ref={termRef} className="h-[400px]"></div>
       </ScrollArea>
-      <ErrorBanner id="terminal" />
+      <ErrorBanner id="terminal" actions={<Button size="sm" onClick={connect}>Réessayer</Button>} />
     </div>
   );
 }
