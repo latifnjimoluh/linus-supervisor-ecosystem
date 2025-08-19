@@ -10,7 +10,7 @@ export interface DashboardData {
   lastUpdated: string | null;
   server_tz?: string;
   apiError: boolean;
-  deploymentStats: { total: number; success: number; failed: number; deleted: number };
+  deploymentStats: { total: number; success: number; failed_count: number; deleted: number };
 }
 
 export const getDashboard = async (): Promise<DashboardData> => {
@@ -19,7 +19,7 @@ export const getDashboard = async (): Promise<DashboardData> => {
 };
 
 export interface DeploymentStatsResponse {
-  totals: { deployed: number; success: number; failed: number; deleted: number };
+  totals: { deployed: number; success: number; failed_count: number; deleted: number };
   timeline: Array<{ period: string; deployed: number; deleted: number; success: number; failed: number }>;
   successRate7d: number;
   successRate30d: number;

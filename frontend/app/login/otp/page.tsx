@@ -1,7 +1,7 @@
 // app/login/otp/page.tsx
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ export default function LoginOtpPage() {
   const [redirectTo, setRedirectTo] = useState("/dashboard");
   const [isLoading, setIsLoading] = useState(false);
   const [lastTriedOtp, setLastTriedOtp] = useState<string | null>(null); // ✅ empêche re-submit même OTP
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -48,11 +49,17 @@ export default function LoginOtpPage() {
     setLastTriedOtp(null);
   };
 
-  const canSubmit = useMemo(() => otp.length === 6 && !isLoading, [otp, isLoading]);
+  const canSubmit = useMemo(
+    () => otp.length === 6 && !isLoading && otp !== lastTriedOtp,
+    [otp, isLoading, lastTriedOtp]
+  );
 
   const submit = useCallback(async () => {
     if (!canSubmit) return;
-    if (lastTriedOtp === otp) return; // ✅ pas deux fois le même OTP
+    if (debounceRef.current) return;
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+    }, 250);
     setIsLoading(true);
     setLastTriedOtp(otp);
 
@@ -68,7 +75,15 @@ export default function LoginOtpPage() {
       }
 
       // 401 → mauvais code OTP
-      const msg = res?.message || (res?.status === 401 ? "Code OTP invalide." : "Échec de la vérification OTP.");
+      const msg =
+        res?.message ||
+        (res?.status === 401
+          ? `Code OTP invalide.${
+              typeof res?.remaining_attempts === "number"
+                ? ` Tentatives restantes: ${res.remaining_attempts}.`
+                : ""
+            }`
+          : "Échec de la vérification OTP.");
       toast({ title: msg, variant: "destructive" });
     } catch (err: any) {
       const message =
@@ -79,7 +94,7 @@ export default function LoginOtpPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [canSubmit, lastTriedOtp, otp, email, password, remember, toast, router, redirectTo]);
+  }, [canSubmit, otp, email, password, remember, toast, router, redirectTo]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">

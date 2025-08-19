@@ -1,4 +1,3 @@
-// routes/terminal/sshRoutes.js
 const express = require('express');
 const router = express.Router();
 const { verifyToken, checkPermission } = require('../../middlewares/auth');
@@ -12,9 +11,13 @@ const SSH_TIMEOUT = parseInt(process.env.SSH_HANDSHAKE_TIMEOUT_MS || '10000', 10
 router.post('/ssh/test', verifyToken, checkPermission('vm.list'), logRequest, async (req, res) => {
   try {
     const { vm_id, ip, ssh_user } = req.body;
-    if (!vm_id || !ip || !ssh_user) return res.status(400).json({ ok: false, message: 'vm_id, ip, ssh_user requis' });
+    if (!vm_id || !ip || !ssh_user) {
+      return res.status(400).json({ ok: false, code: 'SSH_BAD_REQUEST', message: 'vm_id, ip, ssh_user requis' });
+    }
     const s = await UserSetting.findOne({ where: { user_id: req.user.id } });
-    if (!s?.ssh_private_key_path) return res.status(400).json({ ok: false, message: 'Clé SSH manquante côté serveur' });
+    if (!s?.ssh_private_key_path) {
+      return res.status(400).json({ ok: false, code: 'SSH_KEY_MISSING', message: 'Clé SSH manquante côté serveur' });
+    }
 
     const fs = require('fs'); const path = require('path');
     const key = fs.readFileSync(path.resolve(s.ssh_private_key_path), 'utf-8');
@@ -22,12 +25,12 @@ router.post('/ssh/test', verifyToken, checkPermission('vm.list'), logRequest, as
     // simple check: run 'echo ok'
     const { stdout } = await execSSHCommand({ host: ip, username: ssh_user, privateKey: key, command: 'echo ok', timeout: SSH_TIMEOUT });
     if (stdout.toLowerCase().includes('ok')) return res.json({ ok: true });
-    return res.status(500).json({ ok: false, message: 'SSH ok mais commande de test a échoué' });
+    return res.status(500).json({ ok: false, code: 'SSH_TEST_FAILED', message: 'SSH ok mais commande de test a échoué' });
   } catch (e) {
     if (e instanceof SshError) {
       return res.status(e.httpStatus).json({ ok: false, code: e.code, message: e.message });
     }
-    return res.status(500).json({ ok: false, message: e.message });
+    return res.status(500).json({ ok: false, code: 'SSH_UNKNOWN_ERROR', message: e.message });
   }
 });
 
@@ -36,10 +39,12 @@ router.post('/ssh/exec', verifyToken, checkPermission('vm.list'), logRequest, as
   try {
     const { vm_id, ip, ssh_user, command } = req.body;
     if (!vm_id || !ip || !ssh_user || !command) {
-      return res.status(400).json({ message: 'vm_id, ip, ssh_user, command requis' });
+      return res.status(400).json({ code: 'SSH_BAD_REQUEST', message: 'vm_id, ip, ssh_user, command requis' });
     }
     const s = await UserSetting.findOne({ where: { user_id: req.user.id } });
-    if (!s?.ssh_private_key_path) return res.status(400).json({ message: 'Clé SSH manquante côté serveur' });
+    if (!s?.ssh_private_key_path) {
+      return res.status(400).json({ code: 'SSH_KEY_MISSING', message: 'Clé SSH manquante côté serveur' });
+    }
 
     const fs = require('fs'); const path = require('path');
     const key = fs.readFileSync(path.resolve(s.ssh_private_key_path), 'utf-8');
@@ -50,7 +55,7 @@ router.post('/ssh/exec', verifyToken, checkPermission('vm.list'), logRequest, as
     if (e instanceof SshError) {
       return res.status(e.httpStatus).json({ code: e.code, message: e.message });
     }
-    return res.status(500).json({ message: e.message });
+    return res.status(500).json({ code: 'SSH_UNKNOWN_ERROR', message: e.message });
   }
 });
 

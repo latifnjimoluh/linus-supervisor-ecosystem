@@ -1,4 +1,4 @@
-const { Log, User } = require('../../models');
+const { Log, User, Deployment } = require('../../models');
 const { Op } = require('sequelize');
 
 // Get logs with search/sort applied before pagination
@@ -10,6 +10,8 @@ exports.getAllLogs = async (req, res) => {
       order = 'desc',
       page = 1,
       limit = 10,
+      from,
+      to,
     } = req.query;
 
     const sortFields = {
@@ -25,15 +27,19 @@ exports.getAllLogs = async (req, res) => {
     const limitInt = parseInt(limit, 10);
     const offset = (pageInt - 1) * limitInt;
 
-    const where = search
-      ? {
-          [Op.or]: [
-            { action: { [Op.iLike]: `%${search}%` } },
-            { details: { [Op.iLike]: `%${search}%` } },
-            { '$user.email$': { [Op.iLike]: `%${search}%` } },
-          ],
-        }
-      : {};
+    const where = {};
+    if (search) {
+      where[Op.or] = [
+        { action: { [Op.iLike]: `%${search}%` } },
+        { details: { [Op.iLike]: `%${search}%` } },
+        { '$user.email$': { [Op.iLike]: `%${search}%` } },
+      ];
+    }
+    if (from || to) {
+      where.created_at = {};
+      if (from) where.created_at[Op.gte] = new Date(from);
+      if (to) where.created_at[Op.lte] = new Date(to);
+    }
 
     const { rows, count } = await Log.findAndCountAll({
       where,
@@ -84,10 +90,82 @@ exports.getAllLogs = async (req, res) => {
   }
 };
 
+// List deployment logs with server-side pagination
+exports.getDeploymentLogs = async (req, res) => {
+  try {
+    const {
+      search = '',
+      sort = 'date',
+      order = 'desc',
+      page = 1,
+      limit = 25,
+    } = req.query;
+
+    const sortFields = {
+      date: 'started_at',
+      instance_id: 'instance_id',
+      status: 'status',
+    };
+
+    const orderField = sortFields[sort] || 'started_at';
+    const orderDirection = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const pageInt = parseInt(page, 10);
+    const limitInt = parseInt(limit, 10);
+    const offset = (pageInt - 1) * limitInt;
+
+    const where = {};
+    if (search) {
+      where[Op.or] = [
+        { vm_name: { [Op.iLike]: `%${search}%` } },
+        { instance_id: { [Op.iLike]: `%${search}%` } },
+        { status: { [Op.iLike]: `%${search}%` } },
+        { '$user.email$': { [Op.iLike]: `%${search}%` } },
+      ];
+    }
+
+    const { rows, count } = await Deployment.findAndCountAll({
+      where,
+      include: [{ model: User, as: 'user', attributes: ['email'] }],
+      order: [[orderField, orderDirection]],
+      limit: limitInt,
+      offset,
+      distinct: true,
+    });
+
+    const items = rows.map((dep) => ({
+      id: dep.id,
+      instance_id: dep.instance_id,
+      vm_name: dep.vm_name,
+      status: dep.status || (dep.success === null ? 'pending' : dep.success ? 'success' : 'failed'),
+      started_at: dep.started_at,
+      ended_at: dep.ended_at,
+      user: dep.user ? dep.user.email : null,
+    }));
+
+    return res.json({
+      items,
+      total_after_filter: count,
+      page: pageInt,
+      limit: limitInt,
+    });
+  } catch (err) {
+    console.error('❌ Erreur getDeploymentLogs:', err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
 // Export filtered logs as NDJSON
 exports.exportLogs = async (req, res) => {
   try {
-    const { search = '', sort = 'timestamp', order = 'desc' } = req.query;
+    const {
+      search = '',
+      sort = 'timestamp',
+      order = 'desc',
+      from,
+      to,
+      type,
+      status,
+    } = req.query;
 
     const sortFields = {
       timestamp: 'created_at',
@@ -99,20 +177,27 @@ exports.exportLogs = async (req, res) => {
     const orderField = sortFields[sort] || 'created_at';
     const orderDirection = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-    const where = search
-      ? {
-          [Op.or]: [
-            { action: { [Op.iLike]: `%${search}%` } },
-            { details: { [Op.iLike]: `%${search}%` } },
-            { '$user.email$': { [Op.iLike]: `%${search}%` } },
-          ],
-        }
-      : {};
+    const where = {};
+    if (search) {
+      where[Op.or] = [
+        { action: { [Op.iLike]: `%${search}%` } },
+        { details: { [Op.iLike]: `%${search}%` } },
+        { '$user.email$': { [Op.iLike]: `%${search}%` } },
+      ];
+    }
+    if (from || to) {
+      where.created_at = {};
+      if (from) where.created_at[Op.gte] = new Date(from);
+      if (to) where.created_at[Op.lte] = new Date(to);
+    }
+    const MAX_EXPORT = 10000;
+    const limitInt = Math.min(parseInt(req.query.limit, 10) || MAX_EXPORT, MAX_EXPORT);
 
     const logs = await Log.findAll({
       where,
       include: [{ model: User, as: 'user', attributes: ['email'] }],
       order: [[orderField, orderDirection]],
+      limit: limitInt,
     });
 
     const deriveType = (action = '') => {
@@ -126,25 +211,27 @@ exports.exportLogs = async (req, res) => {
 
     const deriveStatus = (details = '') => (/error|fail/i.test(details) ? 'error' : 'success');
 
-    const payload = logs
-      .map((log) => ({
-        id: log.id,
-        action: log.action,
-        type: deriveType(log.action),
-        timestamp: log.created_at,
-        user: log.user ? log.user.email : null,
-        entity: null,
-        status: deriveStatus(log.details),
-        description: log.details || '',
-        details: log.details || '',
-        host: log.host || null,
-        level: log.level || null,
-        source: log.source || null,
-        ip_address: null,
-        vm_id: null,
-      }))
-      .map((l) => JSON.stringify(l))
-      .join('\n');
+    let items = logs.map((log) => ({
+      id: log.id,
+      action: log.action,
+      type: deriveType(log.action),
+      timestamp: log.created_at,
+      user: log.user ? log.user.email : null,
+      entity: null,
+      status: deriveStatus(log.details),
+      description: log.details || '',
+      details: log.details || '',
+      host: log.host || null,
+      level: log.level || null,
+      source: log.source || null,
+      ip_address: null,
+      vm_id: null,
+    }));
+
+    if (type) items = items.filter((l) => l.type === type);
+    if (status) items = items.filter((l) => l.status === status);
+
+    const payload = items.map((l) => JSON.stringify(l)).join('\n');
 
     const buffer = Buffer.from(payload, 'utf8');
 

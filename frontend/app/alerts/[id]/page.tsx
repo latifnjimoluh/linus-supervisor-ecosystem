@@ -2,9 +2,10 @@
 
 import * as React from "react"
 import { useParams } from "next/navigation"
-import { getAlert, ackAlert, Alert } from "@/services/alerts"
+import { getAlert, markAlert, Alert } from "@/services/alerts"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Check } from "lucide-react"
 
 export default function AlertDetailPage() {
   const params = useParams<{ id: string }>()
@@ -20,9 +21,9 @@ export default function AlertDetailPage() {
     fetchAlert()
   }, [fetchAlert])
 
-  const handleAck = async () => {
+  const handleMark = async () => {
     if (!alert) return
-    await ackAlert(alert.id)
+    await markAlert(alert.id)
     fetchAlert()
   }
 
@@ -44,7 +45,7 @@ export default function AlertDetailPage() {
       </div>
       <div>
         <span className="font-semibold">Statut:&nbsp;</span>
-        {alert.status}
+        {alert.status === 'open' ? 'Non traitée' : 'Traitée'}
       </div>
       <div>
         <span className="font-semibold">Date:&nbsp;</span>
@@ -56,7 +57,11 @@ export default function AlertDetailPage() {
           {alert.description}
         </div>
       )}
-      <Button onClick={handleAck}>Acquitter</Button>
+      {alert.status === 'open' && (
+        <Button onClick={handleMark}>
+          <Check className="mr-2 h-4 w-4" /> Marquer comme traité
+        </Button>
+      )}
     </div>
   )
 }

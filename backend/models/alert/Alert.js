@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
       severity: DataTypes.STRING,
       status: {
         type: DataTypes.STRING,
-        defaultValue: 'en_cours',
+        defaultValue: 'open',
       },
       description: DataTypes.STRING,
       comment: DataTypes.TEXT,

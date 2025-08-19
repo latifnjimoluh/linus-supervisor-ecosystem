@@ -8,6 +8,7 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { AssistantAIBlock } from "@/components/assistant-ai-block"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
@@ -24,7 +25,7 @@ const emptyData: DashboardData = {
   recentActivity: [],
   lastUpdated: null,
   apiError: false,
-  deploymentStats: { total: 0, success: 0, failed: 0, deleted: 0 },
+  deploymentStats: { total: 0, success: 0, failed_count: 0, deleted: 0 },
 }
 
 const analyzeDashboardAI = async (): Promise<string> => {
@@ -87,7 +88,7 @@ export default function DashboardPage() {
   }
 
   const aiContext = data ?
-    `VMs: ${data.totalVms}, Services actifs: ${data.activeServices}, Alertes critiques: ${data.alerts.critical}, majeures: ${data.alerts.major}, mineures: ${data.alerts.minor}, Santé système: ${data.systemHealth}%, Déploiements: ${data.deploymentStats.total}, Succès: ${data.deploymentStats.success}, Échecs: ${data.deploymentStats.failed}, Suppressions: ${data.deploymentStats.deleted}.` :
+    `VMs: ${data.totalVms}, Services actifs: ${data.activeServices}, Alertes critiques: ${data.alerts.critical}, majeures: ${data.alerts.major}, mineures: ${data.alerts.minor}, Santé système: ${data.systemHealth}%, Déploiements: ${data.deploymentStats.total}, Succès: ${data.deploymentStats.success}, Échecs: ${data.deploymentStats.failed_count}, Suppressions: ${data.deploymentStats.deleted}.` :
     "Données du tableau de bord non disponibles."
 
   const formattedLastUpdated = React.useMemo(() => {
@@ -302,7 +303,19 @@ export default function DashboardPage() {
 
         <Card className="rounded-2xl shadow-md dark:shadow-inner dark:ring-1 dark:ring-slate-700/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-lg font-semibold">Échecs</CardTitle>
+            <CardTitle className="text-lg font-semibold flex items-center">
+              Échecs
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="ml-2 cursor-help">
+                      Comment est calculé
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>Période utilisée : jour</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
             <XCircle className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -310,13 +323,13 @@ export default function DashboardPage() {
               <div className="h-8 w-1/2 bg-muted animate-pulse rounded-md" />
             ) : (
               <motion.div
-                key={`deploy-failed-${data?.deploymentStats.failed}`}
+                key={`deploy-failed-${data?.deploymentStats.failed_count ?? 0}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
                 className="text-4xl font-bold text-destructive"
               >
-                {data?.deploymentStats.failed}
+                {data?.deploymentStats.failed_count ?? 0}
               </motion.div>
             )}
           </CardContent>

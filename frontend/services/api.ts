@@ -7,7 +7,7 @@ import axios from "axios";
 // --- Pending controllers pour annuler sur logout ---
 const pendingControllers = new Set<AbortController>();
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+export const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 export const api = axios.create({ baseURL: apiUrl, timeout: 60_000 }); // 🔧 timeout raisonnable
 
 // ---- Local storage helpers ----
@@ -80,7 +80,7 @@ const NEVER_LOGOUT_ENDPOINTS = [
   "/deploy",           // déclenchement
   "/logs",             // consultation des logs
   "/dashboard",        // map/infos
-  "/chat/ask",         // IAs internes
+  "/chat",             // IAs internes
 ];
 
 // 🔧 petit util: normaliser l'URL de la requête (path)

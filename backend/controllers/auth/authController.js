@@ -10,6 +10,10 @@ const { sendResetCode } = require('../../utils/mailer');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 
+// gestion basique des tentatives OTP en mémoire
+const otpAttempts = new Map(); // userId -> count
+const MAX_OTP_ATTEMPTS = 3;
+
 // Petit helper: jamais laisser un logAction faire échouer la route
 async function safeLog(req, action, meta = {}) {
   try {
@@ -136,7 +140,7 @@ exports.login = async (req, res) => {
     };
 
     if (user.two_factor_enabled && !otp) {
-      return res.status(206).json({ message: 'Code 2FA requis.' });
+      return res.status(206).json({ success: false, message: 'Code 2FA requis.' });
     }
 
     if (user.two_factor_enabled && otp) {
@@ -146,8 +150,17 @@ exports.login = async (req, res) => {
         token: otp,
       });
       if (!verifiedOtp) {
-        return res.status(401).json({ message: 'Code 2FA invalide.' });
+        const prev = otpAttempts.get(user.id) || 0;
+        const next = prev + 1;
+        otpAttempts.set(user.id, next);
+        const remaining = Math.max(MAX_OTP_ATTEMPTS - next, 0);
+        return res.status(401).json({
+          success: false,
+          message: 'Code 2FA invalide.',
+          remaining_attempts: remaining,
+        });
       }
+      otpAttempts.delete(user.id);
     }
 
     const token = createToken(
@@ -183,6 +196,7 @@ exports.login = async (req, res) => {
     console.log(`[LOGIN] OK ${email} en ${ms}ms`);
 
     const response = {
+      success: true,
       message: 'Connexion réussie',
       token,
       user: {

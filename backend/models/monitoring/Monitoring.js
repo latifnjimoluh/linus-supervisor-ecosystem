@@ -1,5 +1,5 @@
 const { evaluateResourceAlerts } = require('../../services/alertEvaluator');
-const { sendAlertEmail } = require('../../utils/mailer');
+const { enqueue } = require('../../utils/notificationQueue');
 
 module.exports = (sequelize, DataTypes) => {
   const Monitoring = sequelize.define('Monitoring', {
@@ -49,7 +49,7 @@ module.exports = (sequelize, DataTypes) => {
         const serverName = monitoring.vm_ip || monitoring.ip_address || monitoring.instance_id || 'unknown';
         const description = `${a.type} usage ${a.value_percent}% (seuil ${a.threshold}%)`;
         const [record, created] = await sequelize.models.Alert.findOrCreate({
-          where: { server: serverName, service: a.type, status: 'en_cours' },
+          where: { server: serverName, service: a.type, status: 'open' },
           defaults: { severity: 'critique', description },
         });
         if (created) {
@@ -57,7 +57,7 @@ module.exports = (sequelize, DataTypes) => {
             .split(',')
             .map((e) => e.trim())
             .filter(Boolean);
-          await sendAlertEmail(recipients, {
+          enqueue(record.id, recipients, {
             server: serverName,
             service: a.type,
             value: a.value_percent,

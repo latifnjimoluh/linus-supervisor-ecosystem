@@ -227,7 +227,7 @@ export default function DashboardStatsPage() {
               <Pie
                 data={[
                   { name: "Succès", value: stats?.totals.success || 0 },
-                  { name: "Échecs", value: stats?.totals.failed || 0 },
+                  { name: "Échecs", value: stats?.totals.failed_count || 0 },
                 ]}
                 dataKey="value"
                 nameKey="name"

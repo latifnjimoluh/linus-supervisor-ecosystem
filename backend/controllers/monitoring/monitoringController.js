@@ -324,7 +324,7 @@ exports.getOverview = async (req, res) => {
           const serverName = ip || `VM ${vm.vmid}`;
           const description = `${a.type} usage ${a.value_percent}% (seuil ${a.threshold}%)`;
           const [record] = await Alert.findOrCreate({
-            where: { server: serverName, service: a.type, status: 'en_cours' },
+            where: { server: serverName, service: a.type, status: 'open' },
             defaults: {
               severity: 'critique',
               description,

@@ -65,13 +65,9 @@ export default function LogsPage() {
   const [sortField, setSortField] = React.useState("timestamp")
   const [order, setOrder] = React.useState<"asc" | "desc">("desc")
   const [exportSize, setExportSize] = React.useState<number | null>(null)
+  const [exporting, setExporting] = React.useState(false)
   const { toast } = useToast()
   const { setError, clearError } = useErrors()
-
-  const filtersActive = React.useMemo(
-    () => !!searchTerm || sortField !== 'timestamp' || order !== 'desc',
-    [searchTerm, sortField, order]
-  )
 
   const fetchLogs = React.useCallback(async () => {
     try {
@@ -97,14 +93,16 @@ export default function LogsPage() {
   }, [fetchLogs])
 
   React.useEffect(() => {
-    if (filtersActive) {
-      estimateLogsExportSize({ search: searchTerm || undefined, sort: sortField, order })
-        .then((size) => setExportSize(size))
-        .catch(() => setExportSize(null))
-    } else {
-      setExportSize(null)
-    }
-  }, [filtersActive, searchTerm, sortField, order])
+    estimateLogsExportSize({
+      search: searchTerm || undefined,
+      sort: sortField,
+      order,
+      type: typeFilter !== 'all' ? typeFilter : undefined,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+    })
+      .then((size) => setExportSize(size))
+      .catch(() => setExportSize(null))
+  }, [searchTerm, sortField, order, typeFilter, statusFilter])
 
   const filteredLogs = logs.filter(log => {
     const matchesType = typeFilter === "all" || log.type === typeFilter
@@ -146,7 +144,14 @@ export default function LogsPage() {
 
   const handleExport = async () => {
     try {
-      const blob = await fetchLogsExport({ search: searchTerm || undefined, sort: sortField, order })
+      setExporting(true)
+      const blob = await fetchLogsExport({
+        search: searchTerm || undefined,
+        sort: sortField,
+        order,
+        type: typeFilter !== 'all' ? typeFilter : undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+      })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
@@ -162,6 +167,8 @@ export default function LogsPage() {
       })
     } catch (err) {
       setError('logs', { message: "Impossible d'exporter les logs", detailsUrl: "/logs" })
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -191,12 +198,22 @@ export default function LogsPage() {
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Actualiser
           </Button>
-          {filtersActive && (
-            <Button onClick={handleExport} variant="outline" size="sm" className="rounded-xl">
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            size="sm"
+            className="rounded-xl"
+            disabled={exporting}
+          >
+            {exporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
               <Download className="mr-2 h-4 w-4" />
-              {`Télécharger${exportSize !== null ? ` (${formatBytes(exportSize)})` : ''}`}
-            </Button>
-          )}
+            )}
+            {exporting
+              ? "Export en cours..."
+              : `Télécharger${exportSize !== null ? ` (${formatBytes(exportSize)})` : ''}`}
+          </Button>
         </div>
       </div>
 
