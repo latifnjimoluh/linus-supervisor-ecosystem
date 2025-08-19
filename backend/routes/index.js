@@ -21,5 +21,6 @@ router.use('/terminal', require('./terminal/terminalRoutes'));
 router.use('/terminal', require('./terminal/sshRoutes'));
 router.use('/deployments', require('./deployments/deploymentRoutes'));
 router.use('/chat', require('./chat/chatRoutes'));
+router.use('/alerts', require('./alerts/ingest'));  
 
 module.exports = router;

@@ -1,5 +1,15 @@
 const { Log, User, Deployment } = require('../../models');
 const { Op } = require('sequelize');
+const fs = require('fs')
+const mime = require('mime'); // npm i mime
+const path = require('path')
+const { resolveSafePath } = require('../../utils/paths')
+
+
+const safeName = (s) => (s || 'log').toString()
+  .toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9._-]/g, '')
+
+
 
 // Get logs with search/sort applied before pagination
 exports.getAllLogs = async (req, res) => {
@@ -248,3 +258,128 @@ exports.exportLogs = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
+
+
+exports.downloadLogById = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const log = await Log.findByPk(id, {
+      include: [{ model: User, as: 'user', attributes: ['email'] }],
+    })
+    if (!log) return res.status(404).json({ message: 'Log introuvable.' })
+
+    // Essaie de trouver un champ chemin exploitable (adapte si besoin)
+    const raw = log.log_path || log.file_path || log.path || null
+    const resolved = resolveSafePath(raw)
+
+    if (resolved && fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+      const stat = fs.statSync(resolved)
+      const ext = path.extname(resolved).slice(1)
+      const type = mime.getType(ext) || 'text/plain; charset=utf-8'
+
+      const fallback =
+        `${safeName(log.action)}_${new Date(log.created_at || Date.now())
+          .toISOString().replace(/[:.]/g, '-')}.log`
+
+      res.setHeader('Content-Type', type)
+      res.setHeader('Content-Length', stat.size)
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(path.basename(resolved) || fallback)}"`)
+      res.setHeader('X-Filename', path.basename(resolved) || fallback)
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, X-Filename')
+
+      return fs.createReadStream(resolved).pipe(res)
+    }
+
+    // Fallback : générer un petit fichier texte contenant les infos du log
+    const payload = [
+      `ID: ${log.id}`,
+      `Action: ${log.action || ''}`,
+      `Date: ${log.created_at ? new Date(log.created_at).toISOString() : ''}`,
+      `Utilisateur: ${log.user ? log.user.email : ''}`,
+      `Détails:`,
+      (log.details || '').toString()
+    ].join('\n')
+
+    const buffer = Buffer.from(payload, 'utf8')
+    const filename = `log-${log.id}.txt`
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`)
+    res.setHeader('Content-Length', buffer.length)
+    res.setHeader('X-Filename', filename)
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, X-Filename')
+
+    return res.send(buffer)
+  } catch (err) {
+    console.error('❌ Erreur downloadLogById:', err)
+    return res.status(500).json({ message: 'Erreur serveur.' })
+  }
+}
+
+
+/**
+ * GET /logs/deployments/:id/view
+ * Retourne le contenu texte du fichier de log associé à deployments.log_path
+ */
+exports.viewDeploymentLogById = async (req, res) => {
+  try {
+    const { id } = req.params
+    const dep = await Deployment.findByPk(id)
+    if (!dep) return res.status(404).json({ message: 'Déploiement introuvable.' })
+
+    const filePath = dep.log_path
+    const resolved = resolveSafePath(filePath)
+    if (!resolved) {
+      return res.status(400).json({ message: 'Chemin de log invalide ou non autorisé.' })
+    }
+
+    if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+      return res.status(404).json({ message: 'Fichier de log non trouvé.' })
+    }
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    const stream = fs.createReadStream(resolved, { encoding: 'utf8' })
+    return stream.pipe(res)
+  } catch (err) {
+    console.error('❌ Erreur viewDeploymentLogById:', err)
+    return res.status(500).json({ message: 'Erreur serveur.' })
+  }
+}
+
+/**
+ * GET /logs/deployments/:id/download
+ * Télécharge le fichier de log associé à deployments.log_path
+ */
+exports.downloadDeploymentLogById = async (req, res) => {
+  try {
+    const { id } = req.params
+    const dep = await Deployment.findByPk(id)
+    if (!dep) return res.status(404).json({ message: 'Déploiement introuvable.' })
+
+    const resolved = resolveSafePath(dep.log_path)
+    if (!resolved) return res.status(400).json({ message: 'Chemin de log invalide ou non autorisé.' })
+    if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+      return res.status(404).json({ message: 'Fichier de log non trouvé.' })
+    }
+
+    const stat = fs.statSync(resolved)
+    const ext = path.extname(resolved).slice(1)
+    const type = mime.getType(ext) || 'text/plain; charset=utf-8'
+
+    const fallback =
+      `${safeName(dep.vm_name || 'deployment')}_${new Date(dep.started_at || Date.now())
+        .toISOString().replace(/[:.]/g, '-')}.log`
+
+    res.setHeader('Content-Type', type)
+    res.setHeader('Content-Length', stat.size)
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(path.basename(resolved) || fallback)}"`)
+    res.setHeader('X-Filename', path.basename(resolved) || fallback)
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, X-Filename')
+
+    return fs.createReadStream(resolved).pipe(res)
+  } catch (err) {
+    console.error('❌ Erreur downloadDeploymentLogById:', err)
+    return res.status(500).json({ message: 'Erreur serveur.' })
+  }
+}

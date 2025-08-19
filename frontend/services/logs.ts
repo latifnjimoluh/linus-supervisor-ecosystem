@@ -1,3 +1,4 @@
+// services/logs.ts
 import { api } from './api';
 
 export interface LogEntry {
@@ -71,7 +72,7 @@ export async function estimateLogsExportSize(params?: {
   status?: string;
 }) {
   const res = await api.head('/logs/export', { params });
-  const len = res.headers['content-length'];
+  const len = (res.headers && (res.headers['content-length'] || res.headers['Content-Length'])) as string | undefined;
   return len ? Number(len) : null;
 }
 
@@ -89,4 +90,42 @@ export async function listDeploymentLogs(params?: {
     page?: number;
     limit?: number;
   };
+}
+
+// 🔹 NEW: téléchargement d’un log par ID
+export async function downloadLog(id: number): Promise<{ blob: Blob; filename?: string }> {
+  const res = await api.get(`/logs/${id}/download`, { responseType: 'blob' })
+
+  // Essayer d’extraire un nom de fichier depuis Content-Disposition si présent
+  const dispo: string | undefined = (res.headers['content-disposition'] || res.headers['Content-Disposition']) as any
+  let filename: string | undefined
+  if (dispo) {
+    const match = /filename\*?=(?:UTF-8'')?["']?([^"';\n]+)["']?/i.exec(dispo)
+    if (match && match[1]) filename = decodeURIComponent(match[1])
+  }
+
+  return { blob: res.data as Blob, filename }
+}
+
+// 🔹 NEW: lire le contenu (texte) d’un log de déploiement
+export async function viewDeploymentLogText(id: number): Promise<string> {
+  const res = await api.get(`/logs/deployments/${id}/view`, {
+    responseType: 'text',
+    transformResponse: (r) => r, // ne pas JSON.parse
+  })
+  // Axios peut déjà te renvoyer du texte selon la config; on force le type
+  return typeof res.data === 'string' ? res.data : String(res.data)
+}
+
+// 🔹 NEW: télécharger un log de déploiement
+export async function downloadDeploymentLog(id: number): Promise<{ blob: Blob; filename?: string }> {
+  const res = await api.get(`/logs/deployments/${id}/download`, { responseType: 'blob' })
+
+  const dispo: string | undefined = (res.headers['content-disposition'] || res.headers['Content-Disposition']) as any
+  let filename: string | undefined
+  if (dispo) {
+    const match = /filename\*?=(?:UTF-8'')?["']?([^"';\n]+)["']?/i.exec(dispo)
+    if (match && match[1]) filename = decodeURIComponent(match[1])
+  }
+  return { blob: res.data as Blob, filename }
 }
