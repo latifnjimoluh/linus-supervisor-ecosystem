@@ -79,28 +79,19 @@ function mapGeminiError(err) {
 }
 
 const createConversation = async (req, res) => {
-  if (!useGemini) {
-    return res.status(503).json({ error: 'Gemini integration disabled' });
-  }
   try {
     const convo = await ChatConversation.create({
       user_id: req.user.id,
       system_prompt: DEFAULT_SYSTEM_PROMPT,
     });
-    res.status(201).json({ conversation_id: convo.id });
+    return res.status(201).json({ conversation_id: convo.id });
   } catch (err) {
     console.error('createConversation error', err);
-    res.status(500).json({ error: 'Failed to create conversation' });
+    return res.status(500).json({ error: 'Failed to create conversation' });
   }
 };
 
 const streamMessage = async (req, res) => {
-  if (!useGemini) {
-    return res.status(503).json({ error: 'Gemini integration disabled' });
-  }
-  if (!apiKey) {
-    return res.status(503).json({ error: 'Service IA non disponible (auth)' });
-  }
   const { conversation_id, user_text } = req.body || {};
   if (!conversation_id || !user_text) {
     return res.status(400).json({ error: 'conversation_id and user_text required' });
@@ -109,6 +100,25 @@ const streamMessage = async (req, res) => {
     return res.status(400).json({ error: 'Input too long' });
   }
   const start = Date.now();
+  if (!useGemini || !apiKey) {
+    try {
+      const convo = await ChatConversation.findOne({ where: { id: conversation_id, user_id: req.user.id } });
+      if (!convo) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      const clean = sanitizeText(user_text);
+      await ChatMessage.create({ conversation_id, role: 'user', content: clean });
+      const reply = `Gemini désactivé : ${clean}`;
+      await ChatMessage.create({ conversation_id, role: 'assistant', content: reply });
+      const duration = Date.now() - start;
+      recordChatMetric({ success: true, durationMs: duration, tokens: reply.length });
+      return res.json({ reply });
+    } catch (err) {
+      const duration = Date.now() - start;
+      recordChatMetric({ success: false, durationMs: duration, errorType: err.message });
+      return res.status(500).json({ error: 'Failed to send message' });
+    }
+  }
   try {
     const convo = await ChatConversation.findOne({ where: { id: conversation_id, user_id: req.user.id } });
     if (!convo) {
