@@ -32,7 +32,6 @@ test('creates conversation even when Gemini disabled', async () => {
   expect(res.status).toHaveBeenCalledWith(201);
   expect(res.json).toHaveBeenCalledWith({ conversation_id: 1 });
 });
-
 test('returns echo response when Gemini disabled', async () => {
   const req = { user: { id: 1 }, body: { conversation_id: 1, user_text: 'hello' } };
   const res = mockRes();

@@ -75,6 +75,14 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    label: "network",
+    icon: Network,
+    children: [
+      { href: "/network/traceroute", icon: Route, label: "traceroute" },
+      { href: "/network/snmp", icon: Radio, label: "snmp" },
+    ],
+  },
+  {
     label: "deployment",
     icon: Server,
     children: [
