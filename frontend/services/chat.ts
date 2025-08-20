@@ -33,10 +33,20 @@ export async function streamChatMessage(
     body: JSON.stringify({ conversation_id: conversationId, user_text: userText }),
     signal,
   });
-
-  if (!res.ok || !res.body) {
+  if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(text || 'Chat API error');
+  }
+
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const data = await res.json();
+    onChunk(data.reply ?? '');
+    return;
+  }
+
+  if (!res.body) {
+    throw new Error('Chat API error');
   }
 
   const reader = res.body.getReader();

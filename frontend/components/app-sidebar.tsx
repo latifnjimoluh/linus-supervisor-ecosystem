@@ -12,7 +12,6 @@ import {
   Key,
   LayoutDashboard,
   Map,
-  Network,
   Route,
   Radio,
   Server,
@@ -71,6 +70,8 @@ const navItems: NavItem[] = [
       { href: "/logs", icon: FileText, label: "logAction" },
       { href: "/logs/deployments", icon: History, label: "deployLogs" },
       { href: "/alerts", icon: Bell, label: "alerts" },
+      { href: "/network/traceroute", icon: Route, label: "traceroute" },
+      { href: "/network/snmp", icon: Radio, label: "snmp" },
     ],
   },
   {

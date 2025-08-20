@@ -110,21 +110,14 @@ const streamMessage = async (req, res) => {
       await ChatMessage.create({ conversation_id, role: 'user', content: clean });
       const reply = `Gemini désactivé : ${clean}`;
       await ChatMessage.create({ conversation_id, role: 'assistant', content: reply });
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.write(`event: message\n`);
-      res.write(`data: ${JSON.stringify({ delta: reply })}\n\n`);
-      res.write('event: end\n\n');
-      res.end();
       const duration = Date.now() - start;
       recordChatMetric({ success: true, durationMs: duration, tokens: reply.length });
+      return res.json({ reply });
     } catch (err) {
       const duration = Date.now() - start;
       recordChatMetric({ success: false, durationMs: duration, errorType: err.message });
-      res.status(500).json({ error: 'Failed to send message' });
+      return res.status(500).json({ error: 'Failed to send message' });
     }
-    return;
   }
   try {
     const convo = await ChatConversation.findOne({ where: { id: conversation_id, user_id: req.user.id } });
