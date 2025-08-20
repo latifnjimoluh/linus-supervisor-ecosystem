@@ -11,7 +11,7 @@ router.post('/ingest', checkPermission('alert.create'), async (req, res) => {
     const { vms = [] } = req.body || {};
     const results = [];
     for (const vm of vms) {
-      const r = await handleResourceMetrics(vm);
+      const r = await handleResourceMetrics(vm, {}, { userEmail: req.user?.email });
       results.push({ vm: vm.id || vm.name || vm.hostname, ...r });
     }
     res.json({ ok: true, results });
