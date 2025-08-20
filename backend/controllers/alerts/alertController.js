@@ -3,7 +3,7 @@
 const { Alert, Sequelize } = require('../../models');
 const { Op } = Sequelize;
 const mailQueue = require('../../utils/notificationQueue');
-const { handleResourceMetrics } = require('../../services/alertEvaluator');
+const { handleResourceMetrics } = require('../../services/alertingService');
 
 /**
  * GET /alerts
@@ -253,7 +253,7 @@ exports.resendNotification = async (req, res) => {
  */
 exports.ingestResources = async (req, res) => {
   try {
-    const out = await handleResourceMetrics(req.body); // { created, totalAlerts }
+    const out = await handleResourceMetrics(req.body, {}, { userEmail: req.user?.email }); // { created, totalAlerts }
     res.json({ ok: true, ...out });
   } catch (error) {
     console.error('Erreur ingestion métriques:', error);

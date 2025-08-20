@@ -44,6 +44,7 @@ express.Router = function (...args) {
 const { sequelize } = require('./models');
 const routes = require('./routes');
 const { init: initTerminalWs } = require('./ws/terminal');
+const { startTracerouteMonitor } = require('./services/tracerouteService');
 
 const app = express();
 logger.info("Initialisation de l'application Express");
@@ -169,6 +170,9 @@ async function start() {
     }
   });
   initTerminalWs(server);
+  if (process.env.TRACEROUTE_TARGETS) {
+    startTracerouteMonitor();
+  }
 }
 
 if (require.main === module) start();
