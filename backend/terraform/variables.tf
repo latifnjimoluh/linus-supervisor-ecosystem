@@ -168,6 +168,7 @@ variable "default_monitoring_script_path" {
 }
 
 
+
 variable "scripts" {
   description = "Map VM => liste de chemins de scripts à exécuter dans l'ordre (en plus du monitoring par défaut)."
   type        = map(list(string))

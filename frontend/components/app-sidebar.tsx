@@ -14,6 +14,7 @@ import {
   Map,
   Route,
   Radio,
+  Network,
   Server,
   Settings,
   Shield,

@@ -22,6 +22,7 @@ output "ssh_commands" {
   }
 }
 
+
 # 👉 Statut global du déploiement
 output "status" {
   description = "Résumé du déploiement"
