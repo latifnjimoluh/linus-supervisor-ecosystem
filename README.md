@@ -1,30 +1,28 @@
-# Linusupervisor Frontend
+# LinSupervisor Frontend
 
-Next.js interface for managing and monitoring virtual machines via the Linusupervisor backend.
+Interface utilisateur moderne pour la plateforme de supervision LinSupervisor.
 
-## Prerequisites
-- Node.js 18+
+## Stack Technique
+- **Framework :** Next.js 15+ (App Router)
+- **UI :** Radix UI, Tailwind CSS
+- **Gestion d'État :** Stores personnalisés (Zustand/Context)
+- **Validation :** Zod, React Hook Form
+- **Icons :** Lucide React
 
-## Setup
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Create a `.env.local` file with:
-   ```bash
-   NEXT_PUBLIC_API_URL=http://localhost:3000
-   ```
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
+## Installation
 
-## Build
-Generate a production build with:
 ```bash
-npm run build
-npm start
+npm install
 ```
 
-## Testing
-Frontend tests are not yet configured. Use the backend tests from the repository root.
+## Lancement
+
+```bash
+npm run dev
+```
+
+## Fonctionnalités
+- Dashboard de supervision des services.
+- Gestion des utilisateurs et des permissions.
+- Configuration des alertes et monitoring.
+- Intégration avec le backend LinSupervisor via services API.
