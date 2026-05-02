@@ -27,20 +27,18 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <AuthGuard>
-      <div className="flex h-screen w-full overflow-hidden">
-        <AppSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
-        <div className="flex flex-1 flex-col">
-          <AppHeader onToggleSidebar={toggleSidebar} />
-          <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-auto p-3 sm:p-4 md:p-6 pb-24">
-            <ErrorBanner id="global" />
-            {children}
-          </main>
-        </div>
-        <ChatButton />
-        <ChatPanel />
+    <div className="flex h-screen w-full overflow-hidden">
+      <AppSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+      <div className="flex flex-1 flex-col">
+        <AppHeader onToggleSidebar={toggleSidebar} />
+        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-auto p-3 sm:p-4 md:p-6 pb-24">
+          <ErrorBanner id="global" />
+          {children}
+        </main>
       </div>
-    </AuthGuard>
+      <ChatButton />
+      <ChatPanel />
+    </div>
   );
 }
 
