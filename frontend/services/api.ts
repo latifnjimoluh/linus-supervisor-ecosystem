@@ -1,4 +1,7 @@
 import axios from "axios";
+import { getMockResponse } from "./mockData";
+
+const IS_DEMO = true; // Mode démo activé pour le déploiement frontend-only
 
 // --- Pending controllers pour annuler sur logout ---
 const pendingControllers = new Set<AbortController>();
@@ -6,6 +9,28 @@ const pendingControllers = new Set<AbortController>();
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export const api = axios.create({ baseURL: apiUrl });
+
+// Intercepteur pour le mode Démo
+if (IS_DEMO) {
+  api.interceptors.request.use(async (config) => {
+    const mockResponse = getMockResponse(config.url || "", config.method || "get");
+    if (mockResponse) {
+      // On simule un délai réseau pour le réalisme
+      await new Promise(resolve => setTimeout(resolve, 300));
+      // On rejette la requête réelle et on renvoie le mock via l'erreur (méthode simple pour axios)
+      return Promise.reject({ mockData: mockResponse });
+    }
+    return config;
+  });
+
+  api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.mockData) return Promise.resolve(error.mockData);
+      return Promise.reject(error);
+    }
+  );
+}
 
 // ---- Local storage helpers ----
 export const getAuthToken = (): string | null =>
