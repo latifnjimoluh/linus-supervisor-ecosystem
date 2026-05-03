@@ -86,7 +86,7 @@ export const logoutUser = async (reason?: string): Promise<void> => {
     if (typeof window !== "undefined") {
       const redirect = encodeURIComponent(window.location.pathname + window.location.search);
       window.localStorage.setItem("logout_message", reason || "Vous avez été déconnecté.");
-      window.location.href = `/login?redirect=${redirect}`;
+      // window.location.href = `/login?redirect=${redirect}`; // Désactivé pour la démo
     }
     loggingOut = false;
   }

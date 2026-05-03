@@ -16,15 +16,10 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
-  const isLoginPage = pathname === "/" || pathname === "/login";
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
   const toggleSidebar = () => setIsSidebarOpen((open) => !open);
   const closeSidebar = () => setIsSidebarOpen(false);
-
-  if (isLoginPage) {
-    return <main className="flex min-h-screen w-full flex-col">{children}</main>;
-  }
 
   return (
     <div className="flex h-screen w-full overflow-hidden">

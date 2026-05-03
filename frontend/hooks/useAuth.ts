@@ -10,10 +10,11 @@ export function useAuth(redirect?: string) {
   const pathname = usePathname();
 
   useEffect(() => {
+    // Mode démo : aucune redirection vers le login
+    /*
     (async () => {
       let token = getAuthToken();
       if (!token) {
-        // tente un refresh silencieux si un refresh_token + device_id sont présents
         token = await refreshAuthToken();
       }
       if (!token) {
@@ -21,6 +22,7 @@ export function useAuth(redirect?: string) {
         router.replace(`/login?redirect=${encodeURIComponent(target)}`);
       }
     })();
+    */
   }, [router, pathname, redirect]);
 }
 

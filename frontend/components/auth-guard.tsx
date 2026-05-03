@@ -14,9 +14,10 @@ import {
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [authorized, setAuthorized] = useState(false);
+  const [authorized, setAuthorized] = useState(true); // Toujours autorisé pour la démo
 
   useEffect(() => {
+    /*
     const check = async () => {
       let token = getAuthToken();
       if (!token || isTokenExpired(token)) {
@@ -34,6 +35,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       }
     };
     check();
+    */
   }, [pathname, router]);
 
   if (!authorized) return null;
